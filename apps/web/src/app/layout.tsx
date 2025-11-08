@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 
-import NavbarNeo from '@/components/navbar-neo';
+import Navbar from '@/components/navbar';
 import Providers from "@/components/providers"
 
 const inter = Inter({ subsets: ['latin'] });
@@ -49,7 +49,7 @@ export default function RootLayout({
         {/* Navbar is included on all pages */}
         <div className="relative flex flex-col min-h-screen">
           <Providers>
-            <NavbarNeo />
+            <Navbar />
             <main className="flex-1">
               {children}
             </main>
