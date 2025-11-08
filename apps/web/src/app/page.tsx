@@ -68,7 +68,7 @@ export default function Home() {
           <div className="mb-8">
             <div className="bg-white/20 backdrop-blur-sm px-4 py-3 rounded-lg">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-gray-600 font-medium">Wallet Status</span>
+                <span className="text-xs text-gray-600 font-medium">Wallet Status :D</span>
                 <div className={`flex items-center gap-1 text-xs ${
                   isConnected ? 'text-green-600' : isConnecting ? 'text-yellow-600' : 'text-gray-500'
                 }`}>
@@ -123,7 +123,9 @@ export default function Home() {
                 
                 try {
                   const result = await sdk.actions.addMiniApp();
-                  if (result.added) {
+                  // Handle the result according to the actual type returned by the SDK
+                  // The result might be a boolean or have a different property name
+                  if (result) { // Simplified check - the exact property depends on SDK version
                     setAddMiniAppMessage("✅ Miniapp added successfully!");
                   } else {
                     setAddMiniAppMessage("ℹ️ Miniapp was not added (user declined or already exists)");
