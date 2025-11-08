@@ -1,9 +1,10 @@
 "use client"
 
 import Link from "next/link"
-import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { Menu, ExternalLink } from "lucide-react"
+import { useState, useEffect } from "react"
+import { useAccount, useConnect, useDisconnect } from 'wagmi'
 
 import { Button } from "@/components/ui/button"
 import {
@@ -19,7 +20,57 @@ const navLinks = [
 
 export function Navbar() {
   const pathname = usePathname()
-  
+  const [mounted, setMounted] = useState(false)
+  const { address, isConnected } = useAccount()
+  const { connect, connectors } = useConnect()
+  const { disconnect } = useDisconnect()
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  const renderWalletButton = (isMobile = false) => {
+    if (!mounted) {
+      return (
+        <Button className={`${isMobile ? 'w-full' : ''}`}>
+          Connect Wallet
+        </Button>
+      )
+    }
+
+    if (!isConnected) {
+      const frameConnector = connectors.find(connector => connector.id === 'frameWallet')
+
+      return (
+        <Button 
+          onClick={() => frameConnector && connect({ connector: frameConnector })}
+          className={`${isMobile ? 'w-full' : ''}`}
+        >
+          Connect Wallet
+        </Button>
+      )
+    }
+
+    return (
+      <div className={`flex ${isMobile ? 'flex-col gap-2' : 'items-center gap-2'}`}>
+        <Button variant="outline" size="sm" className={`${isMobile ? 'w-full' : ''}`}>
+          Celo
+        </Button>
+        <span className={`text-sm font-medium ${isMobile ? 'w-full text-center' : ''}`}>
+          {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Connected'}
+        </span>
+        <Button
+          onClick={() => disconnect()}
+          variant="destructive"
+          size="sm"
+          className={`${isMobile ? 'w-full' : ''}`}
+        >
+          Disconnect
+        </Button>
+      </div>
+    )
+  }
+
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 max-w-screen-2xl items-center justify-between px-4">
@@ -55,7 +106,7 @@ export function Navbar() {
                   </Link>
                 ))}
                 <div className="mt-6 pt-6 border-t">
-                  <Button className="w-full">Connect Wallet</Button>
+                  {renderWalletButton(true)}
                 </div>
               </nav>
             </SheetContent>
@@ -69,7 +120,7 @@ export function Navbar() {
             </span>
           </Link>
         </div>
-        
+
         {/* Desktop navigation */}
         <nav className="hidden md:flex items-center gap-8">
           {navLinks.map((link) => (
@@ -88,9 +139,9 @@ export function Navbar() {
               {link.external && <ExternalLink className="h-4 w-4" />}
             </Link>
           ))}
-          
+
           <div className="flex items-center gap-3">
-            <Button variant="outline" size="sm">Connect Wallet</Button>
+            {renderWalletButton(false)}
           </div>
         </nav>
       </div>

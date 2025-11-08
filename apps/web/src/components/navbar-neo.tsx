@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useAccount, useConnect, useDisconnect } from 'wagmi';
-import { useMiniApp } from '@/contexts/miniapp-context';
 import { Menu } from "lucide-react";
 
 export default function NavbarNeo() {
@@ -11,7 +10,6 @@ export default function NavbarNeo() {
   const { address, isConnected } = useAccount();
   const { connect, connectors } = useConnect();
   const { disconnect } = useDisconnect();
-  const { context } = useMiniApp();
 
   useEffect(() => {
     setMounted(true);
@@ -23,7 +21,7 @@ export default function NavbarNeo() {
         <button
           className={`bg-[#27F52A] px-4 py-2 text-sm font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-[#27F52A] hover:shadow-none ${isMobile ? 'w-full' : 'sm:px-6 sm:text-base'}`}
         >
-          Conect Wallet
+          Connect Wallet
         </button>
       );
     }
@@ -36,7 +34,7 @@ export default function NavbarNeo() {
           onClick={() => frameConnector && connect({ connector: frameConnector })}
           className={`bg-[#27F52A] px-4 py-2 text-sm font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-[#27F52A] hover:shadow-none ${isMobile ? 'w-full' : 'sm:px-6 sm:text-base'}`}
         >
-          Conect Wallet
+          Connect Wallet
         </button>
       );
     }
@@ -50,12 +48,16 @@ export default function NavbarNeo() {
           Celo
         </button>
 
+        <span className={`px-3 py-2 text-sm font-black ${isMobile ? 'w-full text-center' : 'sm:text-base'}`}>
+          {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Connected'}
+        </span>
+
         <button
           onClick={() => disconnect()}
           type="button"
-          className={`bg-[#27F52A] px-4 py-2 text-sm font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-[#27F52A] hover:shadow-none ${isMobile ? 'w-full' : 'sm:px-6 sm:text-base'}`}
+          className={`bg-red-500 px-4 py-2 text-sm font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-red-600 hover:shadow-none ${isMobile ? 'w-full' : 'sm:px-4 sm:text-base'}`}
         >
-          {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Connected'}
+          Disconnect
         </button>
       </div>
     );
@@ -73,7 +75,7 @@ export default function NavbarNeo() {
             <Menu className="w-6 h-6" />
             <span className="sr-only">Toggle menu</span>
           </button>
-          <h1 className="text-xl font-black uppercase text-foreground sm:text-2xl md:text-3xl">Defi Crossword</h1>
+          <h1 className="text-xl font-black text-foreground sm:text-2xl md:text-3xl">Defi Crossword</h1>
         </div>
 
         {/* Desktop wallet button - hidden on mobile */}

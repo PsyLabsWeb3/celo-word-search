@@ -2,14 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { useAccount, useConnect, useDisconnect } from 'wagmi'
-import { useMiniApp } from '@/contexts/miniapp-context'
 
 export function WalletConnectButton() {
   const [mounted, setMounted] = useState(false)
   const { address, isConnected } = useAccount()
   const { connect, connectors } = useConnect()
   const { disconnect } = useDisconnect()
-  const { context } = useMiniApp()
 
   useEffect(() => {
     setMounted(true)
@@ -46,13 +44,36 @@ export function WalletConnectButton() {
         Celo
       </button>
 
+      <span className="text-sm font-medium text-foreground">
+        {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Connected'}
+      </span>
+
       <button
         onClick={() => disconnect()}
         type="button"
-        className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
+        className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-destructive/90 hover:text-destructive-foreground h-10 px-3 py-2 text-destructive-foreground bg-destructive"
       >
-        {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Connected'}
+        Disconnect
       </button>
     </div>
+  )
+}
+
+export function WalletDisconnectButton() {
+  const { isConnected } = useAccount()
+  const { disconnect } = useDisconnect()
+
+  if (!isConnected) {
+    return null
+  }
+
+  return (
+    <button
+      onClick={() => disconnect()}
+      type="button"
+      className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-destructive/90 hover:text-destructive-foreground h-10 px-4 py-2 text-destructive-foreground bg-destructive"
+    >
+      Disconnect
+    </button>
   )
 }
