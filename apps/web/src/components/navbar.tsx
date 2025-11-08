@@ -54,8 +54,12 @@ export function Navbar() {
     return (
       <div className={`flex ${isMobile ? 'flex-col gap-2' : 'items-center gap-2'}`}>
         <Button variant="outline" size="sm" className={`${isMobile ? 'w-full' : ''}`}>
-          Celo {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Connected'}
+          Celo
+          <span className="ml-2 text-xs font-medium">
+            {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Connected'}
+          </span>
         </Button>
+     
         <Button
           onClick={() => disconnect()}
           variant="destructive"
