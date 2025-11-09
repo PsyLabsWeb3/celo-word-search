@@ -79,6 +79,31 @@ export default function Navbar() {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 
+  // Function to connect to external wallets like MetaMask
+  const connectExternalWallet = async () => {
+    setManualConnecting(true);
+    try {
+      // Look for injected connector (MetaMask, Coinbase Wallet, etc.)
+      const injectedConnector = connectors.find(
+        (connector) => connector.id === 'injected' || 
+        connector.name.toLowerCase().includes('meta') ||
+        connector.id.includes('meta')
+      );
+      
+      if (injectedConnector) {
+        await connect({ connector: injectedConnector });
+      } else {
+        // If no injected connector found, show error
+        alert("No external wallet found. Please install MetaMask or another Ethereum wallet extension.");
+      }
+    } catch (error) {
+      console.error("Error connecting external wallet:", error);
+      alert(`Error connecting to external wallet: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setManualConnecting(false);
+    }
+  };
+
   const renderWalletButton = (isMobile = false) => {
     if (!mounted) {
       return (
@@ -95,29 +120,49 @@ export default function Navbar() {
 
     if (!isConnected) {
       return (
-        <button
-          onClick={async () => {
-            setManualConnecting(true);
-            const currentFarcasterConnector = connectors.find(c => c.id === 'farcaster');
-            try {
-              if (currentFarcasterConnector) {
-                await connect({ connector: currentFarcasterConnector });
-              }
-            } finally {
-              setManualConnecting(false);
-            }
-          }}
-          disabled={isConnecting}
-          className={`bg-[#27F52A] px-4 py-2 text-sm font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 active:translate-x-1 active:translate-y-1 hover:bg-[#27F52A] active:bg-[#27F52A] hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary ${isMobile ? 'w-full' : 'sm:px-6 sm:text-base'} ${isConnecting ? 'opacity-70' : ''}`}
-        >
-          {isConnecting && (
-            <svg className="inline-block w-4 h-4 mr-2 -ml-1 animate-spin text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
+        <div className="flex flex-col sm:flex-row gap-2">
+          {/* Farcaster wallet button - only shown in Farcaster environment */}
+          {hasFarcasterConnectorRef.current && (
+            <button
+              onClick={async () => {
+                setManualConnecting(true);
+                const currentFarcasterConnector = connectors.find(c => c.id === 'farcaster');
+                try {
+                  if (currentFarcasterConnector) {
+                    await connect({ connector: currentFarcasterConnector });
+                  }
+                } finally {
+                  setManualConnecting(false);
+                }
+              }}
+              disabled={isConnecting}
+              className={`bg-[#27F52A] px-3 py-2 text-sm font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 active:translate-x-1 active:translate-y-1 hover:bg-[#27F52A] active:bg-[#27F52A] hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary ${isMobile ? 'w-full' : 'sm:px-4 sm:text-base'} ${isConnecting ? 'opacity-70' : ''}`}
+            >
+              {isConnecting && (
+                <svg className="inline-block w-4 h-4 mr-2 -ml-1 animate-spin text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              )}
+              {isConnecting ? 'Connecting...' : 'Farcaster Wallet'}
+            </button>
           )}
-          {isConnecting ? 'Connecting...' : 'Connect Wallet'}
-        </button>
+          
+          {/* External wallet button */}
+          <button
+            onClick={connectExternalWallet}
+            disabled={isConnecting}
+            className={`bg-blue-500 px-3 py-2 text-sm font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 active:translate-x-1 active:translate-y-1 hover:bg-blue-600 active:bg-blue-600 hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary ${isMobile ? 'w-full' : 'sm:px-4 sm:text-base'} ${isConnecting ? 'opacity-70' : ''}`}
+          >
+            {isConnecting && (
+              <svg className="inline-block w-4 h-4 mr-2 -ml-1 animate-spin text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            )}
+            {isConnecting ? 'Connecting...' : 'External Wallet'}
+          </button>
+        </div>
       );
     }
 

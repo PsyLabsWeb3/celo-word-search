@@ -40,18 +40,15 @@ const getConnectors = () => {
   if (isFarcasterFrame) {
     // En entorno de Farcaster: usar conector específico
     return [farcasterMiniApp()];
-  } else if (isDevelopment) {
-    // En desarrollo: permitir MetaMask para pruebas
-    // En desarrollo: permitir MetaMask para pruebas
+  } else {
+    // En desarrollo o en entornos no Farcaster: permitir wallets externas como MetaMask
     return [
       injected({
         // Opciones para manejar mejor el conflicto con otras extensiones
         shimDisconnect: true,
-      })
+      }),
+      farcasterMiniApp() // Incluir también el conector de Farcaster como opción
     ];
-  } else {
-    // En producción pero fuera de Farcaster: usar conector de Farcaster como fallback
-    return [farcasterMiniApp()];
   }
 };
 

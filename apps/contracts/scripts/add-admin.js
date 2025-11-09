@@ -5,7 +5,7 @@ const hre = require("hardhat");
 
 async function main() {
   // The wallet address to add as admin
-  const walletToAdd = "0x0c9Adb5b5483130F88F10DB4978772986B1E953B";
+  const walletToAdd = "0x66299C18c60CE709777Ec79C73b131cE2634f58e";
   
   // Deployer or existing admin wallet (must be run from an admin account)
   const [deployer] = await hre.viem.getWalletClients();
