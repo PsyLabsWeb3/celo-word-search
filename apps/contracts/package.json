@@ -13,7 +13,10 @@
     "deploy:celo": "hardhat ignition deploy ignition/modules/Crossword.ts --network celo",
     "verify": "hardhat verify",
     "clean": "hardhat clean",
-    "typechain": "hardhat typechain"
+    "typechain": "hardhat typechain",
+    "add-admin": "node scripts/add-admin.js",
+    "add-admin-both": "node scripts/add-admin-both-contracts.js",
+    "add-admin-direct": "node scripts/add-admin-direct.js"
   },
   "keywords": [
     "hardhat",
@@ -48,6 +51,7 @@
     "viem": "^2.0.0"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^5.0.0"
+    "@openzeppelin/contracts": "^5.0.0",
+    "dotenv": "^17.2.3"
   }
 }

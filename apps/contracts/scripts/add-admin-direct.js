@@ -5,7 +5,7 @@ const { createWalletClient, http, getContract, createPublicClient, parseAbi } = 
 const { privateKeyToAccount } = require('viem/accounts');
 
 // Your wallet address to add as admin
-const walletToAdd = '0x66299C18c60CE709777Ec79C73b131cE2634f58e';
+const walletToAdd = '0x0c9Adb5b5483130F88F10DB4978772986B1E953B';
 
 // Configuration for Celo Sepolia
 const chain = {
