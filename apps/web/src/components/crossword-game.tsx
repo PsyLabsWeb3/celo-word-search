@@ -8,6 +8,9 @@ import { Button } from "@/components/ui/button"
 import { RotateCcw, X, Trophy, Save } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useRouter } from "next/navigation"
+import { useCrossword } from "@/contexts/crossword-context"
+import { useAccount } from "wagmi";
+import { submitSolvedCrossword, hasWalletSolvedCrossword } from "@/lib/supabase-utils";
 
 const DEFAULT_CROSSWORD = {
   gridSize: { rows: 6, cols: 10 },
@@ -99,28 +102,34 @@ interface CrosswordGameProps {
 }
 
 export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGameProps) {
+  const { currentCrossword, isLoading: crosswordLoading } = useCrossword();
+  const { address, isConnected } = useAccount();
+
   const [crosswordData, setCrosswordData] = useState(() => {
-    // Si ignoreSavedData es true, usar siempre el crucigrama por defecto
-    if (ignoreSavedData) {
+    // Si ignoreSavedData es true o no hay crucigrama en blockchain, usar el default
+    if (ignoreSavedData || !currentCrossword?.data) {
       return DEFAULT_CROSSWORD;
     }
-    // De lo contrario, cargar los datos guardados si existen
-    const stored = getStoredCrossword();
-    return stored || DEFAULT_CROSSWORD;
+    // De lo contrario, usar los datos del contrato
+    try {
+      return JSON.parse(currentCrossword.data);
+    } catch (e) {
+      console.error("Error parsing crossword data from contract:", e);
+      return DEFAULT_CROSSWORD;
+    }
   })
 
   // Efecto para actualizar los datos si no se debe ignorar los datos guardados
   useEffect(() => {
-    if (!ignoreSavedData) {
-      // Intentar cargar los datos más recientes desde localStorage
-      const stored = getStoredCrossword();
-      if (stored) {
+    if (!ignoreSavedData && currentCrossword?.data) {
+      try {
+        const stored = JSON.parse(currentCrossword.data);
         setCrosswordData(stored);
         const newGridFromClues = buildGridFromClues(stored.clues, stored.gridSize);
-        
+
         // Intentar cargar el progreso del usuario compatible
         let updatedUserGrid = newGridFromClues.map((row) => row.map((cell) => (cell === null ? null : "")));
-        
+
         // Cargar progreso del usuario si existe y es compatible
         if (typeof window !== 'undefined') {
           const savedUserProgress = localStorage.getItem("crossword_user_progress");
@@ -137,11 +146,13 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
             }
           }
         }
-        
+
         setUserGrid(updatedUserGrid);
+      } catch (e) {
+        console.error("Error parsing crossword data from contract:", e);
       }
     }
-  }, [ignoreSavedData]); // Solo se ejecuta cuando ignoreSavedData cambia
+  }, [currentCrossword, ignoreSavedData]); // Se ejecuta cuando cambia el crucigrama del contrato
 
   const CROSSWORD_GRID = buildGridFromClues(crosswordData.clues, crosswordData.gridSize)
 
@@ -153,7 +164,7 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
         try {
           const savedGrid = JSON.parse(savedUserProgress);
           // Verificar que el tamaño del grid guardado coincida con el actual
-          if (savedGrid.length === CROSSWORD_GRID.length && 
+          if (savedGrid.length === CROSSWORD_GRID.length &&
               savedGrid[0]?.length === CROSSWORD_GRID[0]?.length) {
             return savedGrid;
           }
@@ -191,24 +202,24 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
       if (stored) {
         // Guardar el progreso actual del usuario antes de actualizar el crucigrama
         const currentProgress = userGridRef.current ? [...userGridRef.current] : []; // Usar la referencia actualizada
-        
+
         setCrosswordData(stored)
         const newGrid = buildGridFromClues(stored.clues, stored.gridSize)
-        
+
         // Si ya había un progreso guardado del usuario, intentar preservarlo en la nueva estructura
-        let updatedUserGrid: (string | null)[][] = 
-            (currentProgress && 
+        let updatedUserGrid: (string | null)[][] =
+            (currentProgress &&
              Array.isArray(currentProgress) &&
-             currentProgress.length > 0 && 
-             currentProgress[0] && 
+             currentProgress.length > 0 &&
+             currentProgress[0] &&
              Array.isArray(newGrid) &&
              newGrid &&
-             newGrid.length > 0 && 
+             newGrid.length > 0 &&
              newGrid[0] &&
-             currentProgress.length === newGrid.length && 
+             currentProgress.length === newGrid.length &&
              currentProgress[0]?.length === newGrid[0]?.length) ?
             // Use preserved progress if dimensions match
-            currentProgress.map((row, i) => 
+            currentProgress.map((row, i) =>
               row && Array.isArray(row) ?
               row.map((cell, j) => {
                 // Solo mantener el valor del usuario si la celda no es bloqueada en el nuevo grid
@@ -218,7 +229,7 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
             ) :
             // Otherwise use empty grid based on new structure
             newGrid.map((row) => row.map((cell) => (cell === null ? null : "")));
-        
+
         setUserGrid(updatedUserGrid);
       }
     }
@@ -245,6 +256,13 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
       localStorage.setItem("crossword_user_progress", JSON.stringify(userGrid));
     }
   }, [userGrid])
+
+  // Efecto para establecer el tiempo de inicio cuando se carga el juego por primera vez
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !localStorage.getItem('crossword_start_time')) {
+      localStorage.setItem('crossword_start_time', Date.now().toString());
+    }
+  }, []);
 
   useEffect(() => {
     const complete = CROSSWORD_GRID.every((row, rowIdx) =>
@@ -449,7 +467,7 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
     }
   }
 
-  const handleSaveCompletion = () => {
+  const handleSaveCompletion = async () => {
     const isValid = CROSSWORD_GRID.every((row, rowIdx) =>
       row.every((cell, colIdx) => {
         if (cell === null) return true
@@ -460,6 +478,49 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
     if (!isValid) {
       alert("El crucigrama no está completo o tiene errores. Por favor revisa tus respuestas.")
       return
+    }
+
+    // Check if user is connected
+    if (!isConnected) {
+      alert("Por favor conecta tu wallet para guardar tu resultado.");
+      return;
+    }
+
+    // Check if already solved this crossword
+    if (currentCrossword?.id) {
+      const alreadySolved = await hasWalletSolvedCrossword(address!, currentCrossword.id);
+      if (alreadySolved) {
+        alert("Ya has resuelto este crucigrama. Solo puedes enviarlo una vez.");
+        return;
+      }
+    }
+
+    // Submit to Supabase
+    if (currentCrossword?.id && address) {
+      const startTime = localStorage.getItem('crossword_start_time');
+      let durationMs = 0;
+      if (startTime) {
+        durationMs = Date.now() - parseInt(startTime, 10);
+      }
+
+      try {
+        const result = await submitSolvedCrossword(
+          address,
+          currentCrossword.id,
+          durationMs,
+          10 // Default points, could be calculated based on difficulty/time
+        );
+
+        if (result.success) {
+          console.log("Crossword solve submitted successfully to Supabase");
+        } else {
+          console.error("Failed to submit crossword solve:", result.error);
+          // Still allow proceeding to the popup despite Supabase error
+        }
+      } catch (error) {
+        console.error("Error submitting crossword to Supabase:", error);
+        // Continue anyway to not block the user
+      }
     }
 
     setShowUsernamePopup(true)
@@ -485,10 +546,11 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
 
     // Save to localStorage
     localStorage.setItem("crossword_winners", JSON.stringify(winners))
-    
+
     // Limpiar el progreso guardado ya que se completó el crucigrama
     if (typeof window !== 'undefined') {
       localStorage.removeItem("crossword_user_progress");
+      localStorage.removeItem("crossword_start_time"); // Also remove start time
     }
 
     // Redirect to leaderboard
@@ -509,6 +571,18 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
 
   const acrossClues = crosswordData.clues.filter((c: any) => c.direction === "across")
   const downClues = crosswordData.clues.filter((c: any) => c.direction === "down")
+
+  // Show loading state if fetching crossword from contract
+  if (crosswordLoading && !ignoreSavedData) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mb-4"></div>
+          <p className="text-lg font-bold">Cargando crucigrama desde la blockchain...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -564,7 +638,7 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
               <Button
                 onClick={handleReset}
                 variant="outline"
-                className="w-full md:w-auto border-4 border-black bg-white font-black uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-0.5 hover:translate-y-0.5 sm:hover:translate-x-1 sm:hover:translate-y-1 active:translate-x-0.5 active:translate-y-0.5 sm:active:translate-x-1 sm:active:translate-y-1 hover:bg-white active:bg-white hover:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                className="w-full md:w-auto border-4 border-black bg-white font-black uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-0.5 hover:translate-y-0.5 sm:hover:translate-x-1 sm:hover:translate-y-1 active:translate-x-0.5 active:translate-y-0.5 sm:active:translate-y-1 hover:bg-white active:bg-white hover:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
               >
                 <RotateCcw className="mr-2 h-4 w-4" />
                 Reiniciar
@@ -572,7 +646,7 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
               <Button
                 onClick={handleSaveCompletion}
                 disabled={!isComplete}
-                className="w-full md:w-auto border-4 border-black bg-primary font-black uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-0.5 hover:translate-y-0.5 sm:hover:translate-x-1 sm:hover:translate-y-1 active:translate-x-0.5 active:translate-y-0.5 sm:active:translate-x-1 sm:active:translate-y-1 hover:bg-primary active:bg-primary hover:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] disabled:active:translate-x-0 disabled:active:translate-y-0 disabled:active:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+                className="w-full md:w-auto border-4 border-black bg-primary font-black uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-0.5 hover:translate-y-0.5 sm:hover:translate-x-1 sm:hover:translate-y-1 active:translate-x-0.5 active:translate-y-0.5 sm:active:translate-y-1 hover:bg-primary active:bg-primary hover:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] disabled:active:translate-x-0 disabled:active:translate-y-0 disabled:active:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
               >
                 <Save className="mr-2 h-4 w-4" />
                 {isComplete ? "Guardar Resultado" : "Completa el Crucigrama"}

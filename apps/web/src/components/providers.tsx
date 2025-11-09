@@ -3,6 +3,7 @@
 import { MiniAppProvider } from "@/contexts/miniapp-context";
 import FrameWalletProvider from "@/contexts/frame-wallet-context";
 import { ThemeProvider } from "@/contexts/theme-provider";
+import { CrosswordProvider } from "@/contexts/crossword-context";
 import dynamic from "next/dynamic";
 
 const ErudaProvider = dynamic(
@@ -16,7 +17,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       <FrameWalletProvider>
         <MiniAppProvider addMiniAppOnLoad={true}>
           <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
-            {children}
+            <CrosswordProvider>
+              {children}
+            </CrosswordProvider>
           </ThemeProvider>
         </MiniAppProvider>
       </FrameWalletProvider>

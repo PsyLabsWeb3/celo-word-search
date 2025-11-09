@@ -22,26 +22,51 @@ export function WalletConnectButton() {
   }
 
   if (!isConnected) {
-    // Buscar conectores disponibles (puede variar según el entorno y las extensiones instaladas)
-    const availableConnectors = [
-      connectors.find(connector => connector.id === 'frameWallet'), // Farcaster frame
-      connectors.find(connector => connector.id === 'injected'),    // Wallets inyectadas (MetaMask, etc.)
-      connectors.find(connector => connector.id === 'metaMask'),   // MetaMask específico
-      connectors.find(connector => connector.id.includes('meta')), // Alternativa MetaMask
-      connectors.find(connector => connector.name.toLowerCase().includes('meta')), // Alternativa por nombre
-    ].filter(Boolean); // Filtrar valores nulos/undefined
-
-    // Tomar el primer conector disponible
-    const connectorToUse = availableConnectors[0];
+    // En entornos de Farcaster, priorizar el conector de Farcaster
+    // En desarrollo, permitir otros conectores como MetaMask
+    const isDevelopment = typeof window !== 'undefined' && 
+      (window.location.hostname === 'localhost' || 
+       window.location.hostname === '127.0.0.1' ||
+       process.env.NODE_ENV === 'development');
+    
+    let connectorToUse;
+    
+    if (isDevelopment) {
+      // En desarrollo: buscar múltiples opciones para permitir pruebas con MetaMask
+      connectorToUse = connectors.find(connector => connector.id === 'injected') ||  // Wallets inyectadas (MetaMask, etc.)
+                connectors.find(connector => connector.id === 'metaMask') ||        // MetaMask específico
+                connectors.find(connector => connector.id === 'farcaster') ||       // Farcaster como fallback
+                connectors.find(connector => connector.id.includes('meta')) ||      // Alternativa MetaMask
+                connectors.find(connector => connector.name.toLowerCase().includes('meta')); // Alternativa por nombre
+    } else {
+      // En producción o entornos de Farcaster: usar principalmente el conector de Farcaster
+      connectorToUse = connectors.find(connector => connector.id === 'farcaster') ||      // Farcaster
+                connectors.find(connector => connector.id === 'frameWallet') ||      // Frame wallet
+                connectors.find(connector => connector.id === 'injected') ||         // Inyectado como fallback
+                connectors.find(connector => connector.id === 'metaMask');           // MetaMask como último recurso
+    }
 
     return (
       <button
-        onClick={() => {
+        onClick={async () => {
           if (connectorToUse) {
             console.log("Conectando con:", connectorToUse.id, connectorToUse.name); // Depuración
-            connect({ connector: connectorToUse });
+            try {
+              await connect({ connector: connectorToUse });
+              console.log("Conexión iniciada correctamente");
+            } catch (error) {
+              console.error("Error al conectar:", error);
+              // En entornos de desarrollo, mostrar más información para depuración
+              if (typeof window !== 'undefined' && 
+                  (window.location.hostname === 'localhost' || 
+                   window.location.hostname === '127.0.0.1' ||
+                   process.env.NODE_ENV === 'development')) {
+                alert(`Error al conectar: ${error instanceof Error ? error.message : 'Unknown error'}`);
+              }
+            }
           } else {
             console.log("No se encontró ningún conector disponible"); // Depuración
+            alert("No se encontró ningún conector disponible. Asegúrate de tener instalada una wallet como MetaMask.");
           }
         }}
         type="button"

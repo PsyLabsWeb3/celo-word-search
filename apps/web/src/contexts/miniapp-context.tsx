@@ -33,10 +33,17 @@ export function MiniAppProvider({ children, addMiniAppOnLoad }: MiniAppProviderP
 
   const setMiniAppReady = useCallback(async () => {
     try {
+      // Verificar que el SDK esté disponible antes de usarlo
+      if (!sdk || !sdk.context || !sdk.actions) {
+        console.warn("SDK no está completamente disponible");
+        return;
+      }
+      
       const context = await sdk.context;
       if (context) {
         setContext(context);
       }
+      
       await sdk.actions.ready();
     } catch (err) {
       console.error("SDK initialization error:", err);
@@ -55,10 +62,23 @@ export function MiniAppProvider({ children, addMiniAppOnLoad }: MiniAppProviderP
 
   const handleAddMiniApp = useCallback(async () => {
     try {
-      const result = await sdk.actions.addFrame();
-      // Asegurarse de que result esté definido antes de devolverlo
-      if (result && typeof result === 'object') {
-        return result;
+      // Verificar que el SDK esté disponible antes de usarlo
+      if (!sdk || !sdk.actions) {
+        console.warn("SDK no está disponible para agregar frame");
+        return null;
+      }
+      
+      const addFrameResult = await sdk.actions.addFrame();
+      
+      // Verificar que el resultado no sea undefined o null antes de procesarlo
+      // Asegurarse de manejar cualquier objeto que pueda contener propiedades inesperadas
+      if (addFrameResult) {
+        // Si addFrameResult es un objeto, verificar que sea un objeto simple válido
+        if (typeof addFrameResult === 'object' && !Array.isArray(addFrameResult)) {
+          return addFrameResult;
+        }
+        // Si es un valor primitivo, devolverlo directamente
+        return addFrameResult;
       }
       return null;
     } catch (error) {
@@ -70,9 +90,14 @@ export function MiniAppProvider({ children, addMiniAppOnLoad }: MiniAppProviderP
   useEffect(() => {
     // on load, set the frame as ready
     if (isMiniAppReady && !context?.client?.added && addMiniAppOnLoad) {
-      handleAddMiniApp().catch(error => {
-        console.error("Error adding mini app:", error);
-      });
+      // Usar setTimeout para asegurar que no se actualice durante la hidratación
+      const addMiniAppTimeout = setTimeout(() => {
+        handleAddMiniApp().catch(error => {
+          console.error("Error adding mini app:", error);
+        });
+      }, 0);
+
+      return () => clearTimeout(addMiniAppTimeout);
     }
   }, [
     isMiniAppReady,

@@ -44,13 +44,21 @@ export default function Navbar() {
     setMounted(true);
   }, []);
 
-  // Auto-connect wallet when miniapp is ready, but only if user hasn't manually disconnected
+  // Auto-connect wallet when miniapp is ready in Farcaster environment, but only if user hasn't manually disconnected
   useEffect(() => {
-    const farcasterConnector = farcasterConnectorRef.current;
-    if (isMiniAppReady && !isConnected && !isAccountConnecting && hasFarcasterConnectorRef.current && !hasManuallyDisconnected && farcasterConnector) {
-      connect({ connector: farcasterConnector });
+    // Detectar si estamos en un entorno de Farcaster
+    const isFarcasterEnvironment = typeof window !== 'undefined' && 
+      (window as any).frameContext !== undefined;
+    
+    // Solo intentar conexión automática en entornos de Farcaster
+    if (isFarcasterEnvironment && isMiniAppReady && !isConnected && !isAccountConnecting && !hasManuallyDisconnected) {
+      // Solo intentar conexión automática con el conector de Farcaster
+      const farcasterConnector = connectors.find(c => c.id === 'farcaster');
+      if (farcasterConnector) {
+        connect({ connector: farcasterConnector });
+      }
     }
-  }, [isMiniAppReady, isConnected, isAccountConnecting, connect, hasManuallyDisconnected]);
+  }, [isMiniAppReady, isConnected, isAccountConnecting, connect, hasManuallyDisconnected, connectors]);
 
 
   // Get frame connector for manual connection
