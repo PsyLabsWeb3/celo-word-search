@@ -24,22 +24,22 @@ const celoSepolia = defineChain({
 // Helper function to get contract config based on chain
 const getContractConfig = (contractName: 'CrosswordBoard' | 'CrosswordPrizes') => {
   const chainId = useChainId();
-  
+
   // Determine which chain configuration to use based on environment
   let chainConfig = CONTRACTS[celo.id]; // default to mainnet
-  
+
   if (chainId === celo.id) {
     chainConfig = CONTRACTS[celo.id];
   } else if (chainId === celoAlfajores.id) {
     chainConfig = CONTRACTS[celoAlfajores.id];
-  } else if (chainId === 11142220) { // Celo Sepolia testnet (new chain ID)
+  } else if (chainId === 11142220 || chainId === celoSepolia.id) { // Celo Sepolia testnet
     chainConfig = CONTRACTS[11142220];
   } else if (chainId === 44787) { // Legacy testnet ID
     chainConfig = CONTRACTS[celoAlfajores.id];
   }
-  
+
   const contract = chainConfig[contractName];
-  
+
   return {
     address: contract.address as `0x${string}`,
     abi: contract.abi,
@@ -49,19 +49,19 @@ const getContractConfig = (contractName: 'CrosswordBoard' | 'CrosswordPrizes') =
 // Helper function to get error message from error object
 const getErrorMessage = (error: any): string => {
   if (!error) return 'Unknown error occurred';
-  
+
   // Check for common error properties
   if (error.shortMessage) return error.shortMessage;
   if (error.message) return error.message;
   if (error.reason) return error.reason;
-  
+
   return 'Transaction failed. Please try again.';
 };
 
 // CrosswordBoard contract hooks
 export const useGetCurrentCrossword = () => {
   const contractConfig = getContractConfig('CrosswordBoard');
-  
+
   return useContractRead({
     address: contractConfig.address,
     abi: contractConfig.abi,
@@ -118,24 +118,108 @@ export const useSetCrossword = () => {
   };
 };
 
-// Check if current account is admin
+// Check if current account is admin - checks both contracts for admin status
 export const useIsAdmin = () => {
   const { address } = useAccount();
-  const contractConfig = getContractConfig('CrosswordBoard');
+  const boardContractConfig = getContractConfig('CrosswordBoard');
+  const prizesContractConfig = getContractConfig('CrosswordPrizes');
 
-  return useContractRead({
-    address: contractConfig.address,
-    abi: contractConfig.abi,
+  // Check if user is admin on CrosswordBoard
+  const boardAdminResult = useContractRead({
+    address: boardContractConfig.address,
+    abi: boardContractConfig.abi,
     functionName: 'isAdminAddress',
     args: address ? [address as `0x${string}`] : undefined,
     query: { enabled: !!address },
   });
+
+  // Check if user has admin role on CrosswordPrizes
+  const ADMIN_ROLE = '0xa49807205ce4d355092ef5a8a18f56e8913cf4a201fbe287825b095693c21775';
+  const prizesAdminResult = useContractRead({
+    address: prizesContractConfig.address,
+    abi: prizesContractConfig.abi,
+    functionName: 'hasRole',
+    args: address ? [ADMIN_ROLE, address as `0x${string}`] : undefined,
+    query: { enabled: !!address },
+  });
+
+  // Combine both results - user is admin if they have admin status in either contract
+  // (since deployer has admin rights in CrosswordBoard and also has DEFAULT_ADMIN_ROLE in CrosswordPrizes)
+  const isAdmin = address && (
+    (boardAdminResult.data === true) || 
+    (prizesAdminResult.data === true)
+  );
+
+  // Return a combined result with the same interface as useContractRead
+  return {
+    data: isAdmin,
+    isLoading: boardAdminResult.isLoading || prizesAdminResult.isLoading,
+    isError: boardAdminResult.isError || prizesAdminResult.isError,
+    error: boardAdminResult.error || prizesAdminResult.error,
+    isSuccess: boardAdminResult.isSuccess || prizesAdminResult.isSuccess,
+    isFetched: boardAdminResult.isFetched || prizesAdminResult.isFetched,
+    refetch: () => {
+      boardAdminResult.refetch();
+      prizesAdminResult.refetch();
+    }
+  };
+};
+
+// Additional debugging hook for admin status
+export const useAdminStatus = () => {
+  const { address } = useAccount();
+  const boardContractConfig = getContractConfig('CrosswordBoard');
+  const prizesContractConfig = getContractConfig('CrosswordPrizes');
+
+  // Check if user is admin on CrosswordBoard
+  const boardAdminResult = useContractRead({
+    address: boardContractConfig.address,
+    abi: boardContractConfig.abi,
+    functionName: 'isAdminAddress',
+    args: address ? [address as `0x${string}`] : undefined,
+    query: { enabled: !!address },
+  });
+
+  // Check if user has admin role on CrosswordPrizes
+  const ADMIN_ROLE = '0xa49807205ce4d355092ef5a8a18f56e8913cf4a201fbe287825b095693c21775';
+  const prizesAdminResult = useContractRead({
+    address: prizesContractConfig.address,
+    abi: prizesContractConfig.abi,
+    functionName: 'hasRole',
+    args: address ? [ADMIN_ROLE, address as `0x${string}`] : undefined,
+    query: { enabled: !!address },
+  });
+
+  // Check if user has DEFAULT_ADMIN_ROLE on CrosswordPrizes
+  const DEFAULT_ADMIN_ROLE = '0x0000000000000000000000000000000000000000000000000000000000000000';
+  const defaultAdminResult = useContractRead({
+    address: prizesContractConfig.address,
+    abi: prizesContractConfig.abi,
+    functionName: 'hasRole',
+    args: address ? [DEFAULT_ADMIN_ROLE, address as `0x${string}`] : undefined,
+    query: { enabled: !!address },
+  });
+
+  return {
+    boardAdmin: boardAdminResult,
+    prizesAdmin: prizesAdminResult, 
+    defaultAdmin: defaultAdminResult,
+    isBoardAdmin: boardAdminResult.data === true,
+    isPrizesAdmin: prizesAdminResult.data === true,
+    isDefaultAdmin: defaultAdminResult.data === true,
+    isLoading: boardAdminResult.isLoading || prizesAdminResult.isLoading || defaultAdminResult.isLoading,
+    allResults: {
+      boardAdmin: boardAdminResult.data,
+      prizesAdmin: prizesAdminResult.data,
+      defaultAdmin: defaultAdminResult.data,
+    }
+  };
 };
 
 // CrosswordPrizes contract hooks
 export const useGetCrosswordDetails = (crosswordId: `0x${string}`) => {
   const contractConfig = getContractConfig('CrosswordPrizes');
-  
+
   return useContractRead({
     address: contractConfig.address,
     abi: contractConfig.abi,
@@ -202,23 +286,6 @@ export const useClaimPrize = () => {
     isError: !!error,
     txHash: data,
   };
-};
-
-// Check if current account has admin role for CrosswordPrizes
-export const useHasAdminRole = () => {
-  const { address } = useAccount();
-  const contractConfig = getContractConfig('CrosswordPrizes');
-
-  // ADMIN_ROLE constant from the contract (this is typically keccak256("ADMIN_ROLE"))
-  const ADMIN_ROLE = '0xa49807205ce4d355092ef5a8a18f56e8913cf4a201fbe287825b095693c21775';
-
-  return useContractRead({
-    address: contractConfig.address,
-    abi: contractConfig.abi,
-    functionName: 'hasRole',
-    args: address ? [ADMIN_ROLE, address as `0x${string}`] : undefined,
-    query: { enabled: !!address },
-  });
 };
 
 // Hook for creating crossword with prizes
