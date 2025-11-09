@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useAccount } from "wagmi";
 import { useSetCrossword, useIsAdmin } from "@/hooks/useContract";
-import { LOCAL_CONTRACTS } from "@/lib/contracts";
+
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";

@@ -1,6 +1,5 @@
 import { createContext, useContext, ReactNode, useState, useEffect } from 'react';
 import { useGetCurrentCrossword, useIsAdmin } from '../hooks/useContract';
-import { LOCAL_CONTRACTS } from '../lib/contracts';
 import { useAccount } from 'wagmi';
 
 interface CrosswordContextType {
@@ -30,22 +29,22 @@ export const CrosswordProvider = ({ children }: { children: ReactNode }) => {
 
   // Update local state when contract data changes
   useEffect(() => {
-    if (crosswordData && crosswordData.length >= 3) {
+    if (crosswordData && Array.isArray(crosswordData) && (crosswordData as any).length >= 3) {
       setCurrentCrossword({
-        id: crosswordData[0],
-        data: crosswordData[1],
-        updatedAt: crosswordData[2]
+        id: (crosswordData as any)[0],
+        data: (crosswordData as any)[1],
+        updatedAt: (crosswordData as any)[2]
       });
     }
   }, [crosswordData]);
 
   const refetchCrossword = async () => {
     const result = await refetchCrosswordFromContract();
-    if (result.data && result.data.length >= 3) {
+    if (result.data && Array.isArray(result.data) && (result.data as any).length >= 3) {
       setCurrentCrossword({
-        id: result.data[0],
-        data: result.data[1],
-        updatedAt: result.data[2]
+        id: (result.data as any)[0],
+        data: (result.data as any)[1],
+        updatedAt: (result.data as any)[2]
       });
     }
   };

@@ -5,7 +5,24 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactNode } from "react";
 import { WagmiProvider, createConfig, http } from "wagmi";
 import { celo, celoAlfajores } from "wagmi/chains";
+import { defineChain } from "viem";
 import { injected } from "wagmi/connectors";
+
+// Define Celo Sepolia chain based on the RPC URL provided
+const celoSepolia = defineChain({
+  id: 44787, // Using the Alfajores testnet ID since that's likely what's being used
+  name: 'Celo Sepolia Testnet',
+  nativeCurrency: { name: 'CELO', symbol: 'A-CELO', decimals: 18 },
+  rpcUrls: {
+    default: {
+      http: ['https://forno.celo-sepolia.celo-testnet.org'],
+    },
+  },
+  blockExplorers: {
+    default: { name: 'Celo Explorer', url: 'https://alfajores.celoscan.io' },
+  },
+  testnet: true,
+});
 
 // Verificar si estamos en un entorno compatible con Farcaster
 // Detectar si estamos en un entorno de Farcaster
@@ -41,11 +58,12 @@ const getConnectors = () => {
 const connectors = getConnectors(); // Usar MetaMask como fallback
 
 const config = createConfig({
-  chains: [celo, celoAlfajores],
+  chains: [celo, celoAlfajores, celoSepolia],
   connectors: getConnectors(),
   transports: {
     [celo.id]: http(),
     [celoAlfajores.id]: http(),
+    [celoSepolia.id]: http(),
   },
 });
 

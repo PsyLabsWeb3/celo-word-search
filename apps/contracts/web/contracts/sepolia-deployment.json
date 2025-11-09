@@ -2,7 +2,7 @@
   "network": "sepolia",
   "contracts": {
     "CrosswordBoard": {
-      "address": "0xdc2a624dffc1f6343f62a02001906252e3ca8fd2",
+      "address": "0xb1986b74e08134aff13fd2df8a150fe621279722",
       "abi": [
         {
           "inputs": [
@@ -406,7 +406,7 @@
       ]
     },
     "CrosswordPrizes": {
-      "address": "0x6fd840cdb33fe6b6a9712a5d1fb812853b3f4946",
+      "address": "0x0ded91974d0ca80f96e0875d9c5553a24efafd57",
       "abi": [
         {
           "inputs": [
@@ -1235,5 +1235,5 @@
     }
   },
   "deployer": "DEPLOYER_WALLET_ADDRESS",
-  "timestamp": "2025-11-09T03:09:38.427Z"
+  "timestamp": "2025-11-09T03:40:37.611Z"
 }
