@@ -2813,7 +2813,7 @@ const CONTRACTS = {
   },
   [celoSepolia.id]: {
     CrosswordBoard: {
-      address: "0xb1986b74e08134aff13fd2df8a150fe621279722", // Updated to new deployment
+      address: "0xb1986b74e08134aff13fd2df8a150fe621279722",
       abi: [
         {
           "inputs": [

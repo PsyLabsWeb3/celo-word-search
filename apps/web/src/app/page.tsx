@@ -30,7 +30,7 @@ export default function Page() {
   // Forzar refresco del crucigrama del contrato cuando se monta la página
   useEffect(() => {
     refetchCrossword();
-  }, [refetchCrossword]);
+  }, []);
 
   const handleStartNewGame = () => {
     // No borrar el crucigrama guardado en admin_data - este contiene el crucigrama actual
@@ -113,10 +113,10 @@ export default function Page() {
           <div className="space-y-4">
             <Button
               onClick={handleStartNewGame}
-              disabled={!isConnected}
-              className="h-auto w-full border-4 border-black bg-accent px-8 py-6 text-2xl font-black uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-2 hover:translate-y-2 active:translate-x-2 active:translate-y-2 hover:bg-accent active:bg-accent hover:shadow-none active:shadow-none disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] disabled:active:translate-x-0 disabled:active:translate-y-0 disabled:active:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary sm:w-auto"
+              // Temporarily allow without wallet connection for debugging
+              className="h-auto w-full border-4 border-black bg-accent px-8 py-6 text-2xl font-black uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-2 hover:translate-y-2 active:translate-x-2 active:translate-y-2 hover:bg-accent active:bg-accent hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary sm:w-auto"
             >
-              {isConnected ? "Iniciar Crucigrama" : "Conectar Wallet Primero"}
+              Iniciar Crucigrama
             </Button>
             {hasSavedCrossword && (
               <Button

@@ -67,21 +67,12 @@ export const useGetCurrentCrossword = () => {
     abi: contractConfig.abi,
     functionName: 'getCurrentCrossword',
     query: {
-      // Configurar tiempos de espera razonables para entornos de Farcaster
-      retry: 2, // Reintentar 2 veces en caso de fallo
-      retryDelay: 3000, // Esperar 3 segundos entre reintentos
-      staleTime: 10000, // Considerar datos como "frescos" por 10 segundos
-      gcTime: 300000, // Tiempo de recolección de basura (5 minutos)
-      // Configurar timeout para evitar estados de carga indefinidos
-      queryFn: async (queryFunction) => {
-        // Usar un timeout para evitar que la consulta se quede colgada
-        return Promise.race([
-          queryFunction(),
-          new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Crossword data fetch timeout')), 15000) // 15 segundos
-          )
-        ]);
-      }
+      // Configurar tiempos de espera razonables para evitar sobrecarga de la red
+      retry: 1, // Reducir reintentos
+      retryDelay: 5000, // Aumentar delay entre reintentos
+      staleTime: 60000, // Datos considerados "frescos" por 60 segundos (era 10)
+      gcTime: 120000, // Tiempo de recolección de basura reducido (2 minutos)
+      refetchInterval: 300000, // Refetch cada 5 minutos si es necesario
     }
   });
 };
@@ -179,7 +170,13 @@ export const useGetCrosswordCompletions = (crosswordId: `0x${string}`) => {
     abi: contractConfig.abi,
     functionName: 'getCrosswordCompletions',
     args: [crosswordId],
-    query: { enabled: !!crosswordId },
+    query: {
+      enabled: !!crosswordId,
+      staleTime: 120000,  // Cache for 2 minutes
+      gcTime: 300000,     // Garbage collect after 5 minutes
+      retry: 1,           // Only retry once
+      retryDelay: 5000,   // Wait 5 seconds between retries
+    },
   });
 };
 
@@ -191,7 +188,13 @@ export const useUserCompletedCrossword = (crosswordId: `0x${string}`, user: `0x$
     abi: contractConfig.abi,
     functionName: 'userCompletedCrossword',
     args: [crosswordId, user],
-    query: { enabled: !!crosswordId && !!user },
+    query: {
+      enabled: !!crosswordId && !!user,
+      staleTime: 60000,  // Cache for 1 minute
+      gcTime: 120000,    // Garbage collect after 2 minutes  
+      retry: 1,          // Only retry once
+      retryDelay: 5000,  // Wait 5 seconds between retries
+    },
   });
 };
 
@@ -207,7 +210,13 @@ export const useIsAdmin = () => {
     abi: boardContractConfig.abi,
     functionName: 'isAdminAddress',
     args: address ? [address as `0x${string}`] : undefined,
-    query: { enabled: !!address },
+    query: {
+      enabled: !!address,
+      staleTime: 300000,  // Cache for 5 minutes (admin status rarely changes)
+      gcTime: 600000,     // Garbage collect after 10 minutes
+      retry: 1,           // Only retry once
+      retryDelay: 5000,   // Wait 5 seconds between retries
+    },
   });
 
   // Check if user has admin role on CrosswordPrizes
@@ -217,7 +226,13 @@ export const useIsAdmin = () => {
     abi: prizesContractConfig.abi,
     functionName: 'hasRole',
     args: address ? [ADMIN_ROLE, address as `0x${string}`] : undefined,
-    query: { enabled: !!address },
+    query: {
+      enabled: !!address,
+      staleTime: 300000,  // Cache for 5 minutes (admin status rarely changes)
+      gcTime: 600000,     // Garbage collect after 10 minutes
+      retry: 1,           // Only retry once
+      retryDelay: 5000,   // Wait 5 seconds between retries
+    },
   });
 
   // Combine both results - user is admin if they have admin status in either contract
@@ -254,7 +269,13 @@ export const useAdminStatus = () => {
     abi: boardContractConfig.abi,
     functionName: 'isAdminAddress',
     args: address ? [address as `0x${string}`] : undefined,
-    query: { enabled: !!address },
+    query: {
+      enabled: !!address,
+      staleTime: 300000,  // Cache for 5 minutes (admin status rarely changes)
+      gcTime: 600000,     // Garbage collect after 10 minutes
+      retry: 1,           // Only retry once
+      retryDelay: 5000,   // Wait 5 seconds between retries
+    },
   });
 
   // Check if user has admin role on CrosswordPrizes
@@ -264,7 +285,13 @@ export const useAdminStatus = () => {
     abi: prizesContractConfig.abi,
     functionName: 'hasRole',
     args: address ? [ADMIN_ROLE, address as `0x${string}`] : undefined,
-    query: { enabled: !!address },
+    query: {
+      enabled: !!address,
+      staleTime: 300000,  // Cache for 5 minutes (admin status rarely changes)
+      gcTime: 600000,     // Garbage collect after 10 minutes
+      retry: 1,           // Only retry once
+      retryDelay: 5000,   // Wait 5 seconds between retries
+    },
   });
 
   // Check if user has DEFAULT_ADMIN_ROLE on CrosswordPrizes
@@ -302,6 +329,13 @@ export const useGetCrosswordDetails = (crosswordId: `0x${string}`) => {
     abi: contractConfig.abi,
     functionName: 'getCrosswordDetails',
     args: [crosswordId],
+    query: {
+      enabled: !!crosswordId,
+      staleTime: 120000,  // Cache for 2 minutes
+      gcTime: 300000,     // Garbage collect after 5 minutes
+      retry: 1,           // Only retry once
+      retryDelay: 5000,   // Wait 5 seconds between retries
+    },
   });
 };
 
@@ -314,7 +348,13 @@ export const useIsWinner = (crosswordId: `0x${string}`) => {
     abi: contractConfig.abi,
     functionName: 'isWinner',
     args: address && crosswordId ? [crosswordId, address as `0x${string}`] : undefined,
-    query: { enabled: !!address && !!crosswordId },
+    query: {
+      enabled: !!address && !!crosswordId,
+      staleTime: 120000,  // Cache for 2 minutes
+      gcTime: 300000,     // Garbage collect after 5 minutes
+      retry: 1,           // Only retry once
+      retryDelay: 5000,   // Wait 5 seconds between retries
+    },
   });
 };
 

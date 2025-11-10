@@ -105,6 +105,13 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
   const { currentCrossword, isLoading: crosswordLoading } = useCrossword();
   const { address, isConnected } = useAccount();
   const { completeCrossword, isLoading: isCompleting, isSuccess: isCompleteSuccess } = useCompleteCrossword();
+
+  // Debug logs para entender el estado de carga del crucigrama
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log("CrosswordGame - currentCrossword:", currentCrossword, "crosswordLoading:", crosswordLoading, "ignoreSavedData:", ignoreSavedData);
+    }
+  }, [currentCrossword, crosswordLoading, ignoreSavedData]);
   
   const [crosswordData, setCrosswordData] = useState(() => {
     // Si ignoreSavedData es true, usar el default
@@ -120,7 +127,8 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
         return DEFAULT_CROSSWORD;
       }
     } else {
-      // Si no hay datos del contrato, usar el default
+      // Si no hay datos del contrato, usar el default en lugar de localStorage
+      // Esto fuerza a que el crucigrama se obtenga únicamente desde la blockchain
       return DEFAULT_CROSSWORD;
     }
   })
@@ -133,9 +141,13 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
         setCrosswordData(parsedData);
       } catch (e) {
         console.error("Error parsing crossword data from contract:", e);
+        // Si falla el parsing, usar el crucigrama predeterminado en lugar de localStorage
         setCrosswordData(DEFAULT_CROSSWORD);
       }
     } else if (ignoreSavedData) {
+      setCrosswordData(DEFAULT_CROSSWORD);
+    } else if (!ignoreSavedData && !currentCrossword?.data) {
+      // Si no hay datos del contrato y no se ignora los datos guardados, usar el default
       setCrosswordData(DEFAULT_CROSSWORD);
     }
   }, [currentCrossword?.data, currentCrossword?.id, ignoreSavedData]);
@@ -153,7 +165,7 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
     address as `0x${string}` || `0x0000000000000000000000000000000000000000`
   );
 
-  // Efecto para actualizar los datos si no se debe ignorar los datos guardados
+  // Efecto para actualizar los datos si hay nuevos datos del contrato
   useEffect(() => {
     if (!ignoreSavedData && currentCrossword?.data) {
       try {
@@ -182,6 +194,9 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
         }
 
         setUserGrid(updatedUserGrid);
+        
+        // Reset the completion check flag when the crossword changes
+        setHasCheckedCompletion(false);
       } catch (e) {
         console.error("Error parsing crossword data from contract:", e);
       }
@@ -189,11 +204,15 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
   }, [currentCrossword, ignoreSavedData]); // Se ejecuta cuando cambia el crucigrama del contrato
 
   // Efecto para actualizar el estado de completado desde el contrato
+  // Only run once when the crossword is loaded to check completion status
+  const [hasCheckedCompletion, setHasCheckedCompletion] = useState(false);
+  
   useEffect(() => {
-    if (isConnected && currentCrossword?.id && address) {
+    if (isConnected && currentCrossword?.id && address && !hasCheckedCompletion) {
       refetchCompletionStatus();
+      setHasCheckedCompletion(true); // Set flag to prevent repeated checks
     }
-  }, [isConnected, currentCrossword?.id, address, refetchCompletionStatus]);
+  }, [isConnected, currentCrossword?.id, address, refetchCompletionStatus, hasCheckedCompletion]);
 
   useEffect(() => {
     if (userCompletedData !== undefined) {
@@ -246,54 +265,9 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
     }
   }, [mobilePopup])
 
-  useEffect(() => {
-    const handleStorageChange = () => {
-      const stored = getStoredCrossword()
-      if (stored) {
-        // Guardar el progreso actual del usuario antes de actualizar el crucigrama
-        const currentProgress = userGridRef.current ? [...userGridRef.current] : []; // Usar la referencia actualizada
-
-        setCrosswordData(stored)
-        const newGrid = buildGridFromClues(stored.clues, stored.gridSize)
-
-        // Si ya había un progreso guardado del usuario, intentar preservarlo en la nueva estructura
-        let updatedUserGrid: (string | null)[][] =
-            (currentProgress &&
-             Array.isArray(currentProgress) &&
-             currentProgress.length > 0 &&
-             currentProgress[0] &&
-             Array.isArray(newGrid) &&
-             newGrid &&
-             newGrid.length > 0 &&
-             newGrid[0] &&
-             currentProgress.length === newGrid.length &&
-             currentProgress[0]?.length === newGrid[0]?.length) ?
-            // Use preserved progress if dimensions match
-            currentProgress.map((row, i) =>
-              row && Array.isArray(row) ?
-              row.map((cell, j) => {
-                // Solo mantener el valor del usuario si la celda no es bloqueada en el nuevo grid
-                return newGrid[i] && newGrid[i][j] === null ? null : (typeof cell === 'string' ? cell : "");
-              }) :
-              newGrid[i]?.map(() => null) || []
-            ) :
-            // Otherwise use empty grid based on new structure
-            newGrid.map((row) => row.map((cell) => (cell === null ? null : "")));
-
-        setUserGrid(updatedUserGrid);
-      }
-    }
-
-    // Only add event listener if running in browser environment
-    if (typeof window !== 'undefined') {
-      window.addEventListener("storage", handleStorageChange)
-    }
-    return () => {
-      if (typeof window !== 'undefined') {
-        window.removeEventListener("storage", handleStorageChange)
-      }
-    }
-  }, []) // Removido userGrid de las dependencias
+  // The storage change listener that updates crossword from localStorage has been removed
+  // to ensure the crossword data comes exclusively from the blockchain.
+  // Any crossword updates should now come only through the CrosswordContext which fetches from blockchain.
 
   // Actualizar userGridRef cada vez que cambia userGrid
   useEffect(() => {
@@ -651,7 +625,9 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
       }
       
       const timeoutId = setTimeout(() => {
-        console.log("Crossword loading timeout reached, showing extended loading");
+        if (process.env.NODE_ENV === 'development') {
+          console.log("Crossword loading timeout reached, showing extended loading");
+        }
         setTimeoutReached(true);
       }, 15000); // 15 seconds timeout
       
@@ -666,24 +642,13 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
     }
   }, [crosswordLoading, ignoreSavedData]);
 
-  // Add a forced refresh after timeout to try again
-  useEffect(() => {
-    let refreshInterval: NodeJS.Timeout;
-    if (timeoutReached && crosswordLoading && !ignoreSavedData) {
-      refreshInterval = setInterval(() => {
-        // Intentar refrescar el crucigrama periódicamente después del timeout
-        console.log("Attempting to refetch crossword after timeout");
-        // No se puede llamar directamente a refetch aquí sin tener acceso al contexto
-      }, 30000); // Cada 30 segundos
-    }
-    
-    return () => {
-      if (refreshInterval) clearInterval(refreshInterval);
-    };
-  }, [timeoutReached, crosswordLoading, ignoreSavedData]);
+
 
   const acrossClues = crosswordData.clues.filter((c: any) => c.direction === "across")
   const downClues = crosswordData.clues.filter((c: any) => c.direction === "down")
+
+  // Importante: Obtener el hook de refetch para permitir reload manual
+  const { refetchCrossword } = useCrossword();
 
   // Show loading state if fetching crossword from contract
   if (crosswordLoading && !ignoreSavedData) {
@@ -694,14 +659,32 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
           <p className="text-lg font-bold">Cargando crucigrama desde la blockchain...</p>
           {timeoutReached && (
             <div className="mt-2">
-              <p className="text-sm text-muted-foreground">La conexión está tomando más tiempo de lo habitual</p>
-              <p className="text-sm text-muted-foreground">Por favor, espera o actualiza la aplicación</p>
+              <p className="text-sm text-muted-foreground">La conexión está tomando más tiempo de lo habitual o no hay crucigrama configurado</p>
               <p className="text-xs text-muted-foreground mt-1">(Esto puede suceder en el entorno de Farcaster)</p>
+              <button 
+                onClick={() => {
+                  if (process.env.NODE_ENV === 'development') {
+                    console.log("Attempting to refetch crossword from the blockchain after timeout");
+                  }
+                  refetchCrossword();
+                }}
+                className="mt-3 px-4 py-2 text-sm bg-primary text-primary-foreground rounded-md hover:opacity-90"
+              >
+                Intentar de nuevo
+              </button>
             </div>
           )}
         </div>
       </div>
     );
+  }
+
+  // Mostrar un mensaje si no hay datos del contrato pero la carga ha terminado
+  if (!crosswordLoading && !currentCrossword && !ignoreSavedData) {
+    if (process.env.NODE_ENV === 'development') {
+      console.log("No crossword data available from blockchain contract. The admin needs to set a crossword on the blockchain.");
+    }
+    // The user will see the default crossword, which indicates no active crossword is set on blockchain
   }
 
   return (
