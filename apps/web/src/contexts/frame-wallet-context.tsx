@@ -2,8 +2,15 @@
 
 import { farcasterMiniApp } from "@farcaster/miniapp-wagmi-connector";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ReactNode } from "react";
-import { WagmiProvider, createConfig, http } from "wagmi";
+import { ReactNode, useEffect } from "react";
+import { 
+  WagmiProvider, 
+  createConfig, 
+  http,
+  useSwitchChain,
+  useChainId,
+  useAccount
+} from "wagmi";
 import { celo, celoAlfajores } from "wagmi/chains";
 import { defineChain } from "viem";
 import { injected } from "wagmi/connectors";
@@ -62,7 +69,33 @@ const config = createConfig({
     [celoAlfajores.id]: http(),
     [celoSepolia.id]: http(),
   },
+  // Set Celo Sepolia as the default chain, particularly in Farcaster frame context
+  ...(isFarcasterFrame ? { 
+    chainId: celoSepolia.id,
+    reconnectOnMount: true
+  } : {}),
 });
+
+// Component to enforce network switching to Celo Sepolia
+function NetworkEnforcer() {
+  const { isConnected } = useAccount();
+  const { switchChain } = useSwitchChain();
+  const chainId = useChainId();
+
+  useEffect(() => {
+    // Only switch to Celo Sepolia if the user is connected and not already on that network
+    if (isConnected && chainId !== celoSepolia.id) {
+      // Switch to Celo Sepolia automatically
+      try {
+        switchChain({ chainId: celoSepolia.id });
+      } catch (error) {
+        console.warn("Failed to switch to Celo Sepolia:", error);
+      }
+    }
+  }, [isConnected, chainId, switchChain]);
+
+  return null;
+}
 
 const queryClient = new QueryClient();
 
@@ -73,7 +106,10 @@ export default function FrameWalletProvider({
 }) {
   return (
     <WagmiProvider config={config}>
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      <QueryClientProvider client={queryClient}>
+        {children}
+        <NetworkEnforcer />
+      </QueryClientProvider>
     </WagmiProvider>
   );
 }

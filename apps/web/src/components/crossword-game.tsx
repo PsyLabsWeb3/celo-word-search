@@ -113,25 +113,7 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
     }
   }, [currentCrossword, crosswordLoading, ignoreSavedData]);
   
-  const [crosswordData, setCrosswordData] = useState(() => {
-    // Si ignoreSavedData es true, usar el default
-    if (ignoreSavedData) {
-      return DEFAULT_CROSSWORD;
-    }
-    // De lo contrario, usar los datos del contrato si están disponibles
-    if (currentCrossword?.data) {
-      try {
-        return JSON.parse(currentCrossword.data);
-      } catch (e) {
-        console.error("Error parsing crossword data from contract:", e);
-        return DEFAULT_CROSSWORD;
-      }
-    } else {
-      // Si no hay datos del contrato, usar el default en lugar de localStorage
-      // Esto fuerza a que el crucigrama se obtenga únicamente desde la blockchain
-      return DEFAULT_CROSSWORD;
-    }
-  })
+  const [crosswordData, setCrosswordData] = useState(DEFAULT_CROSSWORD);
 
   // Efecto para actualizar crosswordData cuando cambia el currentCrossword del contexto
   useEffect(() => {
@@ -150,7 +132,7 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
       // Si no hay datos del contrato y no se ignora los datos guardados, usar el default
       setCrosswordData(DEFAULT_CROSSWORD);
     }
-  }, [currentCrossword?.data, currentCrossword?.id, ignoreSavedData]);
+  }, [currentCrossword, ignoreSavedData]); // Use entire currentCrossword object in dependency array
 
   const [alreadyCompleted, setAlreadyCompleted] = useState(false);
   const [checkingCompletionStatus, setCheckingCompletionStatus] = useState(false);
@@ -351,7 +333,14 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
           }
         }
         setMobileInput(currentAnswer)
-        setMobilePopup({ clue, direction })
+        // Ensure the clue direction is properly typed as Direction
+        setMobilePopup({ 
+          clue: { 
+            ...clue, 
+            direction: direction 
+          } as { number: number; clue: string; answer: string; row: number; col: number; direction: Direction }, 
+          direction 
+        })
         return
       }
     }
@@ -383,7 +372,14 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
         }
       }
       setMobileInput(currentAnswer)
-      setMobilePopup({ clue, direction })
+      // Ensure the clue direction is properly typed as Direction
+      setMobilePopup({ 
+        clue: { 
+          ...clue, 
+          direction: direction 
+        } as { number: number; clue: string; answer: string; row: number; col: number; direction: Direction }, 
+        direction 
+      })
     } else {
       // Desktop behavior - just select the cell
       setSelectedCell({ row: clue.row, col: clue.col, direction })
