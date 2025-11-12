@@ -4,8 +4,10 @@ import { useState, useEffect } from "react"
 import { useAccount } from "wagmi";
 import CrosswordGame from "@/components/crossword-game"
 import { Button } from "@/components/ui/button"
-import { Sparkles } from "lucide-react"
+import { Sparkles, AlertCircle, Wallet } from "lucide-react"
 import { useCrossword } from "@/contexts/crossword-context";
+import { useCeloNetworkValidation } from "@/hooks/useCeloNetworkValidation";
+import { CeloNetworkButton } from "@/components/celo-network-button";
 
 export default function Page() {
   const [walletConnected, setWalletConnected] = useState(false)
@@ -26,6 +28,13 @@ export default function Page() {
   // Use actual wallet connection state
   const { isConnected } = useAccount();
   const { refetchCrossword } = useCrossword();
+  
+  // Validate Celo network connection
+  const { 
+    isOnCeloNetwork, 
+    currentChainName, 
+    requiredNetworks 
+  } = useCeloNetworkValidation();
 
   // Forzar refresco del crucigrama del contrato cuando se monta la página
   useEffect(() => {
@@ -64,7 +73,6 @@ export default function Page() {
               </p>
             </div>
             <CrosswordGame 
-              key={ignoreSavedData ? 'new-game' : 'continue-game'} 
               ignoreSavedData={ignoreSavedData} 
             />
           </div>
@@ -111,21 +119,20 @@ export default function Page() {
           </div>
 
           <div className="space-y-4">
-            <Button
+            <CeloNetworkButton
               onClick={handleStartNewGame}
-              // Temporarily allow without wallet connection for debugging
               className="h-auto w-full border-4 border-black bg-accent px-8 py-6 text-2xl font-black uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-2 hover:translate-y-2 active:translate-x-2 active:translate-y-2 hover:bg-accent active:bg-accent hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary sm:w-auto"
             >
               Iniciar Crucigrama
-            </Button>
+            </CeloNetworkButton>
             {hasSavedCrossword && (
-              <Button
-                onClick={handleContinueGame}
+              <CeloNetworkButton
                 variant="secondary"
+                onClick={handleContinueGame}
                 className="h-auto w-full border-4 border-black bg-primary px-8 py-6 text-2xl font-black uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-2 hover:translate-y-2 active:translate-x-2 active:translate-y-2 hover:bg-primary active:bg-primary hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary sm:w-auto"
               >
                 Continuar Crucigrama
-              </Button>
+              </CeloNetworkButton>
             )}
           </div>
 

@@ -33,52 +33,7 @@ const celoSepolia = defineChain({
   testnet: true,
 });
 
-const DEFAULT_CROSSWORD = {
-  gridSize: { rows: 6, cols: 10 },
-  clues: [
-    {
-      number: 1,
-      clue: "Popular JavaScript library for building UIs",
-      answer: "REACT",
-      row: 0,
-      col: 0,
-      direction: "across",
-    },
-    {
-      number: 5,
-      clue: "Programming language from Sun Microsystems",
-      answer: "JAVA",
-      row: 1,
-      col: 6,
-      direction: "across",
-    },
-    { number: 6, clue: "Typed superset of JavaScript", answer: "TYPESCRIPT", row: 3, col: 0, direction: "across" },
-    { number: 8, clue: "React function for side effects", answer: "HOOK", row: 5, col: 2, direction: "across" },
-    {
-      number: 1,
-      clue: "Defines paths for navigating between pages",
-      answer: "ROUTER",
-      row: 0,
-      col: 0,
-      direction: "down",
-    },
-    { number: 2, clue: "Static type checking for JavaScript", answer: "TYPE", row: 0, col: 4, direction: "down" },
-    { number: 3, clue: "JavaScript XML syntax extension", answer: "JSX", row: 1, col: 6, direction: "down" },
-  ],
-}
 
-const getStoredCrossword = () => {
-  if (typeof window === "undefined") return null
-  const saved = localStorage.getItem("crossword_admin_data")
-  if (saved) {
-    try {
-      return JSON.parse(saved)
-    } catch (e) {
-      return null
-    }
-  }
-  return null
-}
 
 const buildGridFromClues = (clues: any[], gridSize: { rows: number; cols: number }) => {
   const grid: (string | null)[][] = Array(gridSize.rows)
@@ -117,45 +72,31 @@ interface MobileInputPopup {
   direction: Direction
 }
 
-// Modificar CrosswordGame para aceptar una prop que indique si debe ignorar los datos guardados
-interface CrosswordGameProps {
-  ignoreSavedData?: boolean;
-}
 
-export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGameProps) {
+
+export default function CrosswordGame() {
   const { currentCrossword, isLoading: crosswordLoading, refetchCrossword: refetchCrosswordFromContext } = useCrossword();
   const { address, isConnected } = useAccount();
   const { completeCrossword, isLoading: isCompleting, isSuccess: isCompleteSuccess, isError: isCompleteError, txHash } = useCompleteCrossword();
   const getCurrentCrosswordHook = useGetCurrentCrossword(); // This hook will be used to refetch immediately before submission
   const chainId = useChainId();
-
-  // Debug logs para entender el estado de carga del crucigrama
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log("CrosswordGame - currentCrossword:", currentCrossword, "crosswordLoading:", crosswordLoading, "ignoreSavedData:", ignoreSavedData);
-    }
-  }, [currentCrossword, crosswordLoading, ignoreSavedData]);
   
-  const [crosswordData, setCrosswordData] = useState(DEFAULT_CROSSWORD);
+  const [crosswordData, setCrosswordData] = useState<any | null>(null);
 
   // Efecto para actualizar crosswordData cuando cambia el currentCrossword del contexto
   useEffect(() => {
-    if (!ignoreSavedData && currentCrossword?.data) {
+    if (currentCrossword?.data) {
       try {
         const parsedData = JSON.parse(currentCrossword.data);
         setCrosswordData(parsedData);
       } catch (e) {
         console.error("Error parsing crossword data from contract:", e);
-        // Si falla el parsing, usar el crucigrama predeterminado en lugar de localStorage
-        setCrosswordData(DEFAULT_CROSSWORD);
+        setCrosswordData(null);
       }
-    } else if (ignoreSavedData) {
-      setCrosswordData(DEFAULT_CROSSWORD);
-    } else if (!ignoreSavedData && !currentCrossword?.data) {
-      // Si no hay datos del contrato y no se ignora los datos guardados, usar el default
-      setCrosswordData(DEFAULT_CROSSWORD);
+    } else {
+      setCrosswordData(null);
     }
-  }, [currentCrossword, ignoreSavedData]); // Use entire currentCrossword object in dependency array
+  }, [currentCrossword]);
 
   const [alreadyCompleted, setAlreadyCompleted] = useState(false);
   const [checkingCompletionStatus, setCheckingCompletionStatus] = useState(false);
@@ -172,7 +113,7 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
 
   // Efecto para actualizar los datos si hay nuevos datos del contrato
   useEffect(() => {
-    if (!ignoreSavedData && currentCrossword?.data) {
+    if (currentCrossword?.data) {
       try {
         const stored = JSON.parse(currentCrossword.data);
         setCrosswordData(stored);
@@ -204,9 +145,13 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
         setHasCheckedCompletion(false);
       } catch (e) {
         console.error("Error parsing crossword data from contract:", e);
+        setCrosswordData(null); // Ensure state is null on error
       }
+    } else {
+      // If there's no crossword from the context, ensure our local state is null
+      setCrosswordData(null);
     }
-  }, [currentCrossword, ignoreSavedData]); // Se ejecuta cuando cambia el crucigrama del contrato
+  }, [currentCrossword]);
 
   // Efecto para actualizar el estado de completado desde el contrato
   // Only run once when the crossword is loaded to check completion status
@@ -228,28 +173,10 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
     }
   }, [userCompletedData]);
 
-  const CROSSWORD_GRID = buildGridFromClues(crosswordData.clues, crosswordData.gridSize)
 
-  const [userGrid, setUserGrid] = useState<(string | null)[][]>(() => {
-    // Primero intentar cargar el progreso guardado del usuario
-    if (typeof window !== 'undefined') {
-      const savedUserProgress = localStorage.getItem("crossword_user_progress");
-      if (savedUserProgress) {
-        try {
-          const savedGrid = JSON.parse(savedUserProgress);
-          // Verificar que el tamaño del grid guardado coincida con el actual
-          if (savedGrid.length === CROSSWORD_GRID.length &&
-              savedGrid[0]?.length === CROSSWORD_GRID[0]?.length) {
-            return savedGrid;
-          }
-        } catch (e) {
-          console.error("Error loading user progress:", e);
-        }
-      }
-    }
-    // Si no hay progreso guardado o no coincide el tamaño, usar grid vacío
-    return CROSSWORD_GRID.map((row) => row.map((cell) => (cell === null ? null : "")));
-  })
+
+
+  const [userGrid, setUserGrid] = useState<(string | null)[][]>([[]]);
   const [selectedCell, setSelectedCell] = useState<SelectedCell | null>(null)
   const [isComplete, setIsComplete] = useState(false)
   const [showUsernamePopup, setShowUsernamePopup] = useState(false)
@@ -261,7 +188,6 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
   const gridRef = useRef<HTMLDivElement>(null)
   const mobileInputRef = useRef<HTMLInputElement>(null)
   const usernameInputRef = useRef<HTMLInputElement>(null)
-  const userGridRef = useRef<(string | null)[][]>([]);
   const router = useRouter()
 
 
@@ -275,11 +201,6 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
   // The storage change listener that updates crossword from localStorage has been removed
   // to ensure the crossword data comes exclusively from the blockchain.
   // Any crossword updates should now come only through the CrosswordContext which fetches from blockchain.
-
-  // Actualizar userGridRef cada vez que cambia userGrid
-  useEffect(() => {
-    userGridRef.current = userGrid;
-  }, [userGrid]);
 
   // Efecto para guardar el progreso del usuario cada vez que cambia el userGrid
   useEffect(() => {
@@ -296,6 +217,8 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
   }, []);
 
   useEffect(() => {
+    if (!crosswordData) return;
+    const CROSSWORD_GRID = buildGridFromClues(crosswordData.clues, crosswordData.gridSize)
     const complete = CROSSWORD_GRID.every((row, rowIdx) =>
       row.every((cell, colIdx) => {
         if (cell === null) return true
@@ -304,7 +227,7 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
     )
 
     setIsComplete(complete)
-  }, [userGrid])
+  }, [userGrid, crosswordData])
 
   useEffect(() => {
     if (showUsernamePopup && usernameInputRef.current) {
@@ -339,11 +262,12 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
   }, [waitingForTransaction, isCompleteSuccess, isCompleteError])
 
   const handleCellClick = (row: number, col: number) => {
-    // If already solved this crossword, prevent any interaction
     if (alreadyCompleted) {
       alert("Ya has completado este crucigrama. No puedes editar respuestas.");
       return;
     }
+    if (!crosswordData) return;
+    const CROSSWORD_GRID = buildGridFromClues(crosswordData.clues, crosswordData.gridSize)
 
     if (CROSSWORD_GRID[row][col] === null) return
 
@@ -469,12 +393,11 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    // If already solved this crossword, prevent any interaction
     if (alreadyCompleted) {
       return;
     }
 
-    if (!selectedCell) return
+    if (!selectedCell || !crosswordData) return
 
     const { row, col, direction } = selectedCell
 
@@ -511,6 +434,8 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
   }
 
   const moveToNextCell = (row: number, col: number, dir: Direction) => {
+    if (!crosswordData) return;
+    const CROSSWORD_GRID = buildGridFromClues(crosswordData.clues, crosswordData.gridSize)
     const [nextRow, nextCol] = dir === "across" ? [row, col + 1] : [row + 1, col]
 
     if (
@@ -523,6 +448,8 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
   }
 
   const moveToPreviousCell = (row: number, col: number, dir: Direction) => {
+    if (!crosswordData) return;
+    const CROSSWORD_GRID = buildGridFromClues(crosswordData.clues, crosswordData.gridSize)
     const [prevRow, prevCol] = dir === "across" ? [row, col - 1] : [row - 1, col]
 
     if (prevRow >= 0 && prevCol >= 0 && CROSSWORD_GRID[prevRow][prevCol] !== null) {
@@ -531,12 +458,13 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
   }
 
   const getCellNumber = (row: number, col: number): number | null => {
+    if (!crosswordData) return null
     const clueAtCell = crosswordData.clues.find((c: any) => c.row === row && c.col === col)
     return clueAtCell?.number || null
   }
 
   const isInSelectedWord = (row: number, col: number): boolean => {
-    if (!selectedCell) return false
+    if (!selectedCell || !crosswordData) return false
 
     const { row: selRow, col: selCol, direction } = selectedCell
 
@@ -558,6 +486,7 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
   }
 
   const handleSaveCompletion = async () => {
+    if (!crosswordData) return;
     console.log("handleSaveCompletion called.");
 
     if (isCompleting || waitingForTransaction || isSubmitting) {
@@ -567,6 +496,7 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
     setIsSubmitting(true);
     console.log("Submitting state set to true.");
 
+    const CROSSWORD_GRID = buildGridFromClues(crosswordData.clues, crosswordData.gridSize)
     const isValid = CROSSWORD_GRID.every((row, rowIdx) =>
       row.every((cell, colIdx) => {
         if (cell === null) return true;
@@ -711,7 +641,10 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
   }
 
   const handleReset = () => {
-    setUserGrid(CROSSWORD_GRID.map((row) => row.map((cell) => (cell === null ? null : ""))))
+    if (crosswordData) {
+      const CROSSWORD_GRID = buildGridFromClues(crosswordData.clues, crosswordData.gridSize)
+      setUserGrid(CROSSWORD_GRID.map((row) => row.map((cell) => (cell === null ? null : ""))))
+    }
     setSelectedCell(null)
     setIsComplete(false)
     setShowUsernamePopup(false)
@@ -728,7 +661,7 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
   
   // Set up timeout to indicate that loading is taking too long
   useEffect(() => {
-    if (crosswordLoading && !ignoreSavedData) {
+    if (crosswordLoading) {
       // Clear any existing timeout
       if (timeoutIdRef) {
         clearTimeout(timeoutIdRef);
@@ -750,27 +683,24 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
         setTimeoutIdRef(null);
       }
     }
-  }, [crosswordLoading, ignoreSavedData]);
+  }, [crosswordLoading]);
 
 
-
-  const acrossClues = crosswordData.clues.filter((c: any) => c.direction === "across")
-  const downClues = crosswordData.clues.filter((c: any) => c.direction === "down")
 
   // The refetchCrossword function is already obtained from context at the top of the component
   // No need to destructure it again here
 
   // Show loading state if fetching crossword from contract
-  if (crosswordLoading && !ignoreSavedData) {
+  if (crosswordLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mb-4"></div>
+          <div className="inline-block w-12 h-12 mb-4 border-t-2 border-b-2 rounded-full animate-spin border-primary"></div>
           <p className="text-lg font-bold">Cargando crucigrama desde la blockchain...</p>
           {timeoutReached && (
             <div className="mt-2">
               <p className="text-sm text-muted-foreground">La conexión está tomando más tiempo de lo habitual o no hay crucigrama configurado</p>
-              <p className="text-xs text-muted-foreground mt-1">(Esto puede suceder en el entorno de Farcaster)</p>
+              <p className="mt-1 text-xs text-muted-foreground">(Esto puede suceder en el entorno de Farcaster)</p>
               <button 
                 onClick={() => {
                   if (process.env.NODE_ENV === 'development') {
@@ -778,7 +708,7 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
                   }
                   refetchCrosswordFromContext();
                 }}
-                className="mt-3 px-4 py-2 text-sm bg-primary text-primary-foreground rounded-md hover:opacity-90"
+                className="px-4 py-2 mt-3 text-sm rounded-md bg-primary text-primary-foreground hover:opacity-90"
               >
                 Intentar de nuevo
               </button>
@@ -788,16 +718,6 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
       </div>
     );
   }
-
-  // Mostrar un mensaje si no hay datos del contrato pero la carga ha terminado
-  if (!crosswordLoading && !currentCrossword && !ignoreSavedData) {
-    if (process.env.NODE_ENV === 'development') {
-      console.log("No crossword data available from blockchain contract. The admin needs to set a crossword on the blockchain.");
-    }
-    // The user will see the default crossword, which indicates no active crossword is set on blockchain
-  }
-
-  // Check if user is connected and on correct Celo network
   
   // Check if user is connected and on correct Celo network
   const isOnCeloNetwork = chainId === celo.id || chainId === celoAlfajores.id || chainId === celoSepolia.id;
@@ -806,13 +726,13 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
   if (!isConnected) {
     return (
       <div className="flex flex-col items-center justify-center p-8 text-center">
-        <h2 className="text-xl font-bold mb-4">Conectar Wallet Celo</h2>
+        <h2 className="mb-4 text-xl font-bold">Conectar Wallet Celo</h2>
         <p className="mb-4">
           Por favor conecta tu wallet para jugar y aprovechar los contratos inteligentes en la blockchain Celo.
         </p>
-        <div className="text-sm text-muted-foreground mb-4">
+        <div className="mb-4 text-sm text-muted-foreground">
           <p>Requisitos:</p>
-          <ul className="list-disc list-inside mt-2 text-left max-w-md mx-auto">
+          <ul className="max-w-md mx-auto mt-2 text-left list-disc list-inside">
             <li>Wallet compatible con Celo (MetaMask, Valora, etc.)</li>
             <li>Conectada a la red Celo Sepolia</li>
           </ul>
@@ -825,11 +745,11 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
   if (!isOnCeloNetwork) {
     return (
       <div className="flex flex-col items-center justify-center p-8 text-center">
-        <h2 className="text-xl font-bold mb-4">Red No Compatible</h2>
+        <h2 className="mb-4 text-xl font-bold">Red No Compatible</h2>
         <p className="mb-4">
           Esta aplicación requiere la red Celo. Por favor cambia a Celo Sepolia Testnet.
         </p>
-        <div className="text-sm text-muted-foreground mb-4">
+        <div className="mb-4 text-sm text-muted-foreground">
           <p>Red actual: {chainId}</p>
           <p>Redes compatibles: Celo Mainnet, Celo Alfajores, Celo Sepolia</p>
         </div>
@@ -837,15 +757,34 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
     );
   }
 
+  // After loading, if no crossword data, show message
+  if (!crosswordData) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 text-center">
+        <h2 className="mb-4 text-xl font-bold">No Hay Crucigrama Activo</h2>
+        <p className="mb-4">
+          Actualmente no hay ningún crucigrama disponible en la blockchain.
+        </p>
+        <p className="text-sm text-muted-foreground">
+          Un administrador necesita configurar un nuevo crucigrama para poder jugar.
+        </p>
+      </div>
+    );
+  }
+
+  const acrossClues = crosswordData?.clues.filter((c: any) => c.direction === "across") || [];
+  const downClues = crosswordData?.clues.filter((c: any) => c.direction === "down") || [];
+  const currentGrid = buildGridFromClues(crosswordData.clues, crosswordData.gridSize);
+
   return (
     <>
       <div className="flex flex-col gap-8 lg:grid lg:grid-cols-[1fr_400px]">
         {/* Crossword Grid */}
-        <div className="overflow-x-auto px-2">
+        <div className="px-2 overflow-x-auto">
           <Card className="border-4 border-black bg-card p-2 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] sm:p-4 md:p-6">
             <div ref={gridRef} className="mx-auto w-fit" onKeyDown={handleKeyDown} tabIndex={0}>
-              <div className="grid gap-0" style={{ gridTemplateColumns: `repeat(${CROSSWORD_GRID[0].length}, 1fr)` }}>
-                {CROSSWORD_GRID.map((row, rowIdx) =>
+              <div className="grid gap-0" style={{ gridTemplateColumns: `repeat(${currentGrid[0].length}, 1fr)` }}>
+                {currentGrid.map((row, rowIdx) =>
                   row.map((cell, colIdx) => {
                     const cellNumber = getCellNumber(rowIdx, colIdx)
                     const isSelected = selectedCell?.row === rowIdx && selectedCell?.col === colIdx
@@ -874,7 +813,7 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
                           </span>
                         )}
                         {!isBlocked && (
-                          <div className="flex h-full items-center justify-center">
+                          <div className="flex items-center justify-center h-full">
                             <span className="text-xs font-black uppercase text-foreground sm:text-sm md:text-base lg:text-lg">
                               {userValue}
                             </span>
@@ -887,13 +826,13 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
               </div>
             </div>
 
-            <div className="mt-6 flex flex-col md:flex-row gap-3 w-full px-2">
+            <div className="flex flex-col w-full gap-3 px-2 mt-6 md:flex-row">
               <Button
                 onClick={handleReset}
                 variant="outline"
                 className="w-full md:w-auto border-4 border-black bg-white font-black uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-0.5 hover:translate-y-0.5 sm:hover:translate-x-1 sm:hover:translate-y-1 active:translate-x-0.5 active:translate-y-0.5 sm:active:translate-y-1 hover:bg-white active:bg-white hover:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
               >
-                <RotateCcw className="mr-2 h-4 w-4" />
+                <RotateCcw className="w-4 h-4 mr-2" />
                 Reiniciar
               </Button>
               <Button
@@ -903,17 +842,17 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
               >
                 {isSubmitting || isCompleting ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     {isCompleting ? "Guardando..." : "Verificando..."}
                   </>
                 ) : isCompleteSuccess ? (
                   <>
-                    <Check className="mr-2 h-4 w-4" />
+                    <Check className="w-4 h-4 mr-2" />
                     ¡Guardado!
                   </>
                 ) : (
                   <>
-                    <Save className="mr-2 h-4 w-4" />
+                    <Save className="w-4 h-4 mr-2" />
                     {alreadyCompleted ? "¡Completado!" : (isComplete ? "Guardar Resultado" : "Completa el Crucigrama")}
                   </>
                 )}
@@ -923,7 +862,7 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
         </div>
 
         {/* Clues Panel */}
-        <div className="space-y-6 px-2">
+        <div className="px-2 space-y-6">
           <Card className="border-4 border-black bg-popover p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
             <h2 className="mb-4 text-xl font-black uppercase text-foreground">Horizontal</h2>
             <div className="space-y-3">
@@ -960,14 +899,14 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
 
       {mobilePopup && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
           onClick={() => setMobilePopup(null)}
         >
           <Card
             className="w-full max-w-md border-4 border-black bg-popover p-6 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="mb-4 flex items-start justify-between">
+            <div className="flex items-start justify-between mb-4">
               <div>
                 <h3 className="text-lg font-black uppercase text-foreground">
                   {mobilePopup.direction === "across" ? "Horizontal" : "Vertical"} {mobilePopup.clue.number}
@@ -980,7 +919,7 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
                 onClick={() => setMobilePopup(null)}
                 className="border-2 border-black hover:bg-secondary active:bg-secondary"
               >
-                <X className="h-4 w-4" />
+                <X className="w-4 h-4" />
               </Button>
             </div>
 
@@ -1022,7 +961,7 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
 
       {showUsernamePopup && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
           onClick={() => setShowUsernamePopup(false)}
         >
           <Card
@@ -1030,7 +969,7 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 text-center">
-              <Trophy className="mx-auto h-16 w-16 text-primary" />
+              <Trophy className="w-16 h-16 mx-auto text-primary" />
               <h3 className="mt-4 text-2xl font-black uppercase text-foreground">¡Felicidades!</h3>
               <p className="mt-2 text-sm font-bold text-muted-foreground">
                 Completaste el crucigrama. Ingresa tu nombre para participar por el premio.
@@ -1064,7 +1003,7 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
                   onClick={handleSaveUsername}
                   className="flex-1 border-4 border-black bg-primary font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 active:translate-x-1 active:translate-y-1 hover:bg-primary active:bg-primary hover:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
                 >
-                  <Trophy className="mr-2 h-4 w-4" />
+                  <Trophy className="w-4 h-4 mr-2" />
                   Guardar
                 </Button>
               </div>
