@@ -139,17 +139,7 @@ export default function LeaderboardPage() {
     )
   }
 
-  // Function to get username by address from localStorage
-  const getUsernameByAddress = (address: string): string | null => {
-    try {
-      const winners = JSON.parse(localStorage.getItem("crossword_winners") || "[]");
-      const winner = winners.find((w: any) => w.address === address);
-      return winner ? winner.username : null;
-    } catch (e) {
-      console.error("Error parsing winners from localStorage:", e);
-      return null;
-    }
-  };
+
 
   // Function to format address for display
   const formatAddress = (address: string): string => {
@@ -183,7 +173,6 @@ export default function LeaderboardPage() {
             <div className="space-y-4">
               {completions.slice(0, 10).map((completion, index) => {
                 const userAddress = getCompletionUser(completion);
-                const username = getUsernameByAddress(userAddress);
                 
                 return (
                   <Card
@@ -199,14 +188,7 @@ export default function LeaderboardPage() {
                       </div>
                       <div className="flex-1">
                         <h3 className="text-xl font-black uppercase text-foreground sm:text-2xl">
-                          {username ? (
-                            <>
-                              {username} 
-                              <span className="block text-sm font-normal text-muted-foreground">({formatAddress(userAddress)})</span>
-                            </>
-                          ) : (
-                            formatAddress(userAddress)
-                          )}
+                          {formatAddress(userAddress)}
                         </h3>
                         <div className="flex items-center gap-2 mt-1 text-sm font-bold text-muted-foreground">
                           <Clock className="w-4 h-4" />

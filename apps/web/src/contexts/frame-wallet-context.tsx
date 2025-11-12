@@ -61,7 +61,7 @@ const getConnectors = () => {
 
 const connectors = getConnectors(); // Usar MetaMask como fallback
 
-const config = createConfig({
+export const config = createConfig({
   chains: [celo, celoAlfajores, celoSepolia],
   connectors: getConnectors(),
   transports: {

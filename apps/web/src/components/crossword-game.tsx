@@ -12,7 +12,10 @@ import { useCrossword } from "@/contexts/crossword-context"
 import { useAccount, useChainId } from "wagmi";
 import { celo, celoAlfajores } from "wagmi/chains";
 import { defineChain } from "viem";
-import { useCompleteCrossword, useUserCompletedCrossword } from "@/hooks/useContract";
+import { useCompleteCrossword, useUserCompletedCrossword, useGetCurrentCrossword } from "@/hooks/useContract";
+import { readContract } from 'wagmi/actions';
+import { config } from '@/contexts/frame-wallet-context';
+import { CONTRACTS } from "@/lib/contracts";
 
 // Define Celo Sepolia chain
 const celoSepolia = defineChain({
@@ -120,9 +123,10 @@ interface CrosswordGameProps {
 }
 
 export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGameProps) {
-  const { currentCrossword, isLoading: crosswordLoading } = useCrossword();
+  const { currentCrossword, isLoading: crosswordLoading, refetchCrossword: refetchCrosswordFromContext } = useCrossword();
   const { address, isConnected } = useAccount();
   const { completeCrossword, isLoading: isCompleting, isSuccess: isCompleteSuccess, isError: isCompleteError, txHash } = useCompleteCrossword();
+  const getCurrentCrosswordHook = useGetCurrentCrossword(); // This hook will be used to refetch immediately before submission
   const chainId = useChainId();
 
   // Debug logs para entender el estado de carga del crucigrama
@@ -586,20 +590,52 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
     }
     console.log("Wallet is connected.", { address });
 
-    try {
-      if (currentCrossword?.id) {
-        console.log("Checking if user has already completed this crossword...", { crosswordId: currentCrossword.id });
-        const alreadyCompletedCheck = await refetchCompletionStatus();
-        console.log("Completion status check result:", alreadyCompletedCheck);
+    // Refetch the current crossword to make sure it hasn't been updated since we loaded it
+    const currentCrosswordFromContract = await getCurrentCrosswordHook.refetch();
+    
+    // Check if we have a valid crossword from the contract
+    let contractCrosswordId = null;
+    if (currentCrosswordFromContract.data && Array.isArray(currentCrosswordFromContract.data) && currentCrosswordFromContract.data.length >= 3) {
+      const [id, data, updatedAt] = currentCrosswordFromContract.data as [string, string, bigint];
+      contractCrosswordId = id;
+      
+      // IMPORTANT: Check if the crossword has been updated since we started solving it
+      if (currentCrossword?.id && currentCrossword.id !== contractCrosswordId) {
+        console.log("Crossword has been updated since the user started solving. Cannot submit completion for outdated crossword.", {
+          uiCrosswordId: currentCrossword.id,
+          contractCrosswordId: contractCrosswordId
+        });
+        alert("El crucigrama ha sido actualizado por un administrador. No puedes completar un crucigrama desactualizado.");
+        setIsSubmitting(false);
+        setAlreadyCompleted(false);
+        setIsComplete(false);
+        return;
+      }
+    } else {
+      console.log("No current crossword found on contract. Cannot submit completion.");
+      alert("No se encontró un crucigrama actual en la blockchain. Por favor, inténtalo de nuevo.");
+      setIsSubmitting(false);
+      return;
+    }
 
-        if (alreadyCompletedCheck.isError) {
-            console.error("Failed to check completion status:", alreadyCompletedCheck.error);
-            alert("No se pudo verificar si ya completaste el crucigrama. Por favor, inténtalo de nuevo.");
-            setIsSubmitting(false);
-            return;
+    try {
+      if (contractCrosswordId && address) {
+        console.log("Checking if user has already completed this crossword...", { crosswordId: contractCrosswordId });
+
+        // Use readContract for a direct, non-cached check
+        const contractInfo = (CONTRACTS as any)[chainId]?.['CrosswordBoard'];
+        if (!contractInfo) {
+          throw new Error(`Contract configuration not found for chain ID: ${chainId}`);
         }
 
-        if (alreadyCompletedCheck.data) {
+        const hasCompleted = await readContract(config, {
+          address: contractInfo.address as `0x${string}`,
+          abi: contractInfo.abi,
+          functionName: 'userCompletedCrossword',
+          args: [contractCrosswordId as `0x${string}`, address],
+        });
+
+        if (hasCompleted) {
           console.log("handleSaveCompletion aborted: User has already completed this crossword.");
           alert("Ya has completado este crucigrama. Solo puedes enviarlo una vez.");
           setAlreadyCompleted(true);
@@ -622,20 +658,21 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
     setAlreadyCompleted(true);
     setIsComplete(true);
 
-    if (currentCrossword?.id && address) {
+    if (contractCrosswordId && address) {
       const startTime = localStorage.getItem('crossword_start_time');
       let durationMs = 0;
       if (startTime) {
         durationMs = Date.now() - parseInt(startTime, 10);
       }
 
-      const crosswordId = currentCrossword.id as `0x${string}`;
+      const crosswordId = contractCrosswordId as `0x${string}`;
       const durationBigInt = BigInt(durationMs);
 
       console.log("Calling completeCrossword contract function with args:", { crosswordId, duration: durationBigInt.toString() });
       completeCrossword([crosswordId, durationBigInt]);
+      setWaitingForTransaction(true);
     } else {
-      console.log("handleSaveCompletion: No crossword ID or address found. Showing username popup instead of calling contract.", { crosswordId: currentCrossword?.id, address });
+      console.log("handleSaveCompletion: No crossword ID or address found. Showing username popup instead of calling contract.", { crosswordId: contractCrosswordId, address });
       setShowUsernamePopup(true);
       setIsSubmitting(false);
     }
@@ -720,8 +757,8 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
   const acrossClues = crosswordData.clues.filter((c: any) => c.direction === "across")
   const downClues = crosswordData.clues.filter((c: any) => c.direction === "down")
 
-  // Importante: Obtener el hook de refetch para permitir reload manual
-  const { refetchCrossword } = useCrossword();
+  // The refetchCrossword function is already obtained from context at the top of the component
+  // No need to destructure it again here
 
   // Show loading state if fetching crossword from contract
   if (crosswordLoading && !ignoreSavedData) {
@@ -739,7 +776,7 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
                   if (process.env.NODE_ENV === 'development') {
                     console.log("Attempting to refetch crossword from the blockchain after timeout");
                   }
-                  refetchCrossword();
+                  refetchCrosswordFromContext();
                 }}
                 className="mt-3 px-4 py-2 text-sm bg-primary text-primary-foreground rounded-md hover:opacity-90"
               >
