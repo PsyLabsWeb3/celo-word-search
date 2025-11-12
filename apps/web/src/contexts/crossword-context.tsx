@@ -87,6 +87,9 @@ export const CrosswordProvider = ({ children }: { children: ReactNode }) => {
         data,
         updatedAt
       });
+    } else {
+      // Si no hay datos válidos, limpiar el estado
+      setCurrentCrossword(null);
     }
   };
 

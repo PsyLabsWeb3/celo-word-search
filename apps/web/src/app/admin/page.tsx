@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Plus, Trash2, Save, AlertCircle, Upload } from "lucide-react"
 import { useAccount } from "wagmi"
 import { useIsAdmin, useSetCrossword } from "@/hooks/useContract"
+import { useCrossword } from "@/contexts/crossword-context"
 
 interface Clue {
   number: number
@@ -28,6 +29,7 @@ export default function AdminPage() {
   const { address, isConnected } = useAccount();
   const { data: isAdminData, isLoading: isAdminLoading } = useIsAdmin();
   const { setCrossword, isLoading: isSetCrosswordLoading, isSuccess } = useSetCrossword();
+  const { refetchCrossword } = useCrossword(); // Added to refetch after saving
   
   const [gridSize, setGridSize] = useState({ rows: 8, cols: 10 })
   const [clues, setClues] = useState<Clue[]>([])
@@ -36,18 +38,7 @@ export default function AdminPage() {
   const [conflicts, setConflicts] = useState<string[]>([])
   const [isSavingToBlockchain, setIsSavingToBlockchain] = useState(false);
 
-  useEffect(() => {
-    const saved = localStorage.getItem("crossword_admin_data")
-    if (saved) {
-      try {
-        const data: CrosswordData = JSON.parse(saved)
-        setGridSize(data.gridSize)
-        setClues(data.clues || [])
-      } catch (e) {
-        console.error("Error loading saved data:", e)
-      }
-    }
-  }, [])
+  // Initialize with empty state - no saved data from localStorage anymore
 
   const generateGridPreview = () => {
     const grid: (string | null)[][] = Array(gridSize.rows)
@@ -167,10 +158,7 @@ export default function AdminPage() {
       clues: clues.filter((c) => c.answer && c.clue),
     }
 
-    // Save to localStorage first
-    localStorage.setItem("crossword_admin_data", JSON.stringify(crosswordData));
-    
-    // Then save to blockchain
+    // Save directly to blockchain
     try {
       setIsSavingToBlockchain(true);
       
@@ -204,15 +192,18 @@ export default function AdminPage() {
   useEffect(() => {
     if (isSuccess) {
       alert("✓ Crossword saved successfully to the blockchain");
+      // Refetch the crossword data to update the context immediately
+      refetchCrossword();
+      // Also navigate away or update UI to reflect the change
+      // Forcing a refresh of the UI by maybe updating a state
     }
-  }, [isSuccess]);
+  }, [isSuccess, refetchCrossword]);
 
   const handleClear = () => {
     if (confirm("Are you sure you want to clear the entire crossword?")) {
       setClues([])
       setGridSize({ rows: 8, cols: 10 })
       setSelectedCell(null)
-      localStorage.removeItem("crossword_admin_data")
     }
   }
 

@@ -1,4 +1,5 @@
 import { useContractRead, useWriteContract, useAccount, useWaitForTransactionReceipt, useChainId } from 'wagmi';
+import { useQueryClient } from '@tanstack/react-query';
 import { CONTRACTS } from '../lib/contracts';
 import { celo, celoAlfajores } from 'wagmi/chains';
 import { defineChain } from 'viem';
@@ -71,9 +72,12 @@ export const useGetCurrentCrossword = () => {
       // Configurar tiempos de espera razonables para evitar sobrecarga de la red
       retry: 1, // Reducir reintentos
       retryDelay: 5000, // Aumentar delay entre reintentos
-      staleTime: 60000, // Datos considerados "frescos" por 60 segundos (era 10)
-      gcTime: 120000, // Tiempo de recolección de basura reducido (2 minutos)
-      refetchInterval: 300000, // Refetch cada 5 minutos si es necesario
+      staleTime: 0, // Forzar refetch en cada render para datos siempre actualizados
+      cacheTime: 5000, // Mantener en cache por 5 segundos para rendimiento
+      gcTime: 60000, // Tiempo de recolección de basura reducido (1 minuto)
+      refetchOnWindowFocus: true, // Refetch cuando la ventana gana foco
+      refetchOnReconnect: true, // Refetch cuando se reconecta la red
+      refetchInterval: 30000, // Refetch cada 30 segundos para mantener actualizado
     }
   });
 };
@@ -81,6 +85,7 @@ export const useGetCurrentCrossword = () => {
 export const useSetCrossword = () => {
   const { address, isConnected } = useAccount();
   const contractConfig = getContractConfig('CrosswordBoard');
+  const queryClient = useQueryClient();
 
   const { data, error, isPending, writeContract } = useWriteContract();
 
@@ -93,13 +98,20 @@ export const useSetCrossword = () => {
       toast.success('Transaction confirmed', {
         description: 'Your crossword has been successfully saved on the blockchain.',
       });
+      // Invalidar directamente la consulta para forzar una actualización inmediata
+      queryClient.invalidateQueries({ 
+        queryKey: ['readContract', { 
+          address: contractConfig.address, 
+          functionName: 'getCurrentCrossword' 
+        }] 
+      });
     }
     if (isError) {
       toast.error('Transaction failed', {
         description: getErrorMessage(txError),
       });
     }
-  }, [isSuccess, isError, txError]);
+  }, [isSuccess, isError, txError, queryClient, contractConfig.address]);
 
   return {
     setCrossword: (args: [`0x${string}`, string]) =>
@@ -114,7 +126,7 @@ export const useSetCrossword = () => {
             description: getErrorMessage(error),
           });
         },
-        onSuccess: () => {
+        onSuccess: (hash) => {
           toast.success('Crossword set successfully', {
             description: 'The crossword has been saved to the blockchain.',
           });
@@ -129,6 +141,7 @@ export const useSetCrossword = () => {
 
 export const useCompleteCrossword = () => {
   const contractConfig = getContractConfig('CrosswordBoard');
+  const queryClient = useQueryClient();
   const { data, error, isPending, writeContract } = useWriteContract();
 
   const { isLoading: isConfirming, isSuccess, isError, error: txError } = useWaitForTransactionReceipt({
@@ -140,13 +153,26 @@ export const useCompleteCrossword = () => {
       toast.success('Crossword completed successfully', {
         description: 'Your crossword completion has been recorded on the blockchain.',
       });
+      // Invalidar consultas relacionadas para mantener los datos actualizados
+      queryClient.invalidateQueries({ 
+        queryKey: ['readContract', { 
+          address: contractConfig.address, 
+          functionName: 'getCurrentCrossword' 
+        }] 
+      });
+      queryClient.invalidateQueries({ 
+        queryKey: ['readContract', { 
+          address: contractConfig.address, 
+          functionName: 'userCompletedCrossword' 
+        }] 
+      });
     }
     if (isError) {
       toast.error('Transaction failed', {
         description: getErrorMessage(txError),
       });
     }
-  }, [isSuccess, isError, txError]);
+  }, [isSuccess, isError, txError, queryClient, contractConfig.address]);
 
   return {
     completeCrossword: (args: [`0x${string}`, bigint]) =>

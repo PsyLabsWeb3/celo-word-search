@@ -31,14 +31,14 @@ const AlphabetAnimation = () => {
 export default function Page() {
   const [walletConnected, setWalletConnected] = useState(false)
   
-  // Verificar si hay progreso guardado del usuario en localStorage
-  const hasSavedUserProgress = typeof window !== 'undefined' && localStorage.getItem("crossword_user_progress") !== null;
+  // We no longer check for saved user progress in localStorage - all data is on-chain
+  const hasSavedUserProgress = false;
   
-  // Verificar si hay crucigrama guardado en admin
-  const hasSavedCrosswordData = typeof window !== 'undefined' && localStorage.getItem("crossword_admin_data") !== null;
+  // We no longer check for saved crossword data in localStorage - all data is on-chain
+  const hasSavedCrosswordData = false;
   
-  // Considerar que hay un crucigrama para continuar si hay progreso guardado del usuario
-  const hasSavedCrossword = hasSavedUserProgress && hasSavedCrosswordData;
+  // No saved crossword to continue since we're using on-chain only
+  const hasSavedCrossword = false;
   
   const [gameStarted, setGameStarted] = useState(false)
   // Estado para controlar si se debe ignorar los datos guardados
@@ -61,11 +61,6 @@ export default function Page() {
   }, []);
 
   const handleStartNewGame = () => {
-    // No borrar el crucigrama guardado en admin_data - este contiene el crucigrama actual
-    // Solo limpiar el progreso del usuario, no el crucigrama base
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem("crossword_user_progress");
-    }
     // Establecer que NO se debe ignorar los datos guardados (queremos el crucigrama actual)
     setIgnoreSavedData(false);
     setGameStarted(true)

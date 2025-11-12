@@ -123,25 +123,8 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
         setCrosswordData(stored);
         const newGridFromClues = buildGridFromClues(stored.clues, stored.gridSize);
 
-        // Intentar cargar el progreso del usuario compatible
+        // Always start with a fresh grid from the contract data, no saved progress
         let updatedUserGrid = newGridFromClues.map((row) => row.map((cell) => (cell === null ? null : "")));
-
-        // Cargar progreso del usuario si existe y es compatible (unless ignoreSavedData is true)
-        if (!ignoreSavedData && typeof window !== 'undefined') {
-          const savedUserProgress = localStorage.getItem("crossword_user_progress");
-          if (savedUserProgress) {
-            try {
-              const savedGrid = JSON.parse(savedUserProgress);
-              // Verificar que el tamaño del grid guardado coincida con el nuevo
-              if (savedGrid.length === newGridFromClues.length &&
-                  savedGrid[0]?.length === newGridFromClues[0]?.length) {
-                updatedUserGrid = savedGrid;
-              }
-            } catch (e) {
-              console.error("Error loading user progress:", e);
-            }
-          }
-        }
 
         setUserGrid(updatedUserGrid);
         
@@ -206,19 +189,10 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
   // to ensure the crossword data comes exclusively from the blockchain.
   // Any crossword updates should now come only through the CrosswordContext which fetches from blockchain.
 
-  // Efecto para guardar el progreso del usuario cada vez que cambia el userGrid
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem("crossword_user_progress", JSON.stringify(userGrid));
-    }
-  }, [userGrid])
 
-  // Efecto para establecer el tiempo de inicio cuando se carga el juego por primera vez
-  useEffect(() => {
-    if (typeof window !== 'undefined' && !localStorage.getItem('crossword_start_time')) {
-      localStorage.setItem('crossword_start_time', Date.now().toString());
-    }
-  }, []);
+
+  // Initialize start time for duration calculation when the crossword starts
+  const startTimeRef = useRef<number>(Date.now());
 
   useEffect(() => {
     if (!crosswordData) return;
@@ -593,12 +567,8 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
     setIsComplete(true);
 
     if (contractCrosswordId && address) {
-      const startTime = localStorage.getItem('crossword_start_time');
-      let durationMs = 0;
-      if (startTime) {
-        durationMs = Date.now() - parseInt(startTime, 10);
-      }
-
+      // Calculate duration using the ref that was initialized when the crossword started
+      const durationMs = Date.now() - startTimeRef.current;
       const crosswordId = contractCrosswordId as `0x${string}`;
       const durationBigInt = BigInt(durationMs);
 
@@ -618,27 +588,10 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
       return
     }
 
-    // Get existing winners from localStorage
-    const winners = JSON.parse(localStorage.getItem("crossword_winners") || "[]")
+    // For on-chain functionality, we don't store winners in localStorage
+    // The completion is recorded in the blockchain via the completeCrossword function
 
-    // Add new winner with timestamp and address
-    const newWinner = {
-      username: username.trim(),
-      address: address, // Save the wallet address
-      completedAt: new Date().toISOString(),
-      timestamp: Date.now(),
-    }
 
-    winners.push(newWinner)
-
-    // Save to localStorage
-    localStorage.setItem("crossword_winners", JSON.stringify(winners))
-
-    // Limpiar el progreso guardado ya que se completó el crucigrama
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem("crossword_user_progress");
-      localStorage.removeItem("crossword_start_time"); // Also remove start time
-    }
 
     // Redirect to leaderboard
     router.push("/leaderboard")
@@ -653,10 +606,6 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
     setIsComplete(false)
     setShowUsernamePopup(false)
     setUsername("")
-    // Limpiar el progreso guardado
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem("crossword_user_progress");
-    }
   }
 
   // Create a state to manage timeout for the loading state
@@ -949,7 +898,7 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
                   variant="outline"
                   className="flex-1 border-4 border-black bg-white font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 active:translate-x-1 active:translate-y-1 hover:bg-white active:bg-white hover:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
                 >
-                  Cancelar
+                  Cancel
                 </Button>
                 <Button
                   onClick={handleMobileSubmit}
@@ -1001,7 +950,7 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
                   variant="outline"
                   className="flex-1 border-4 border-black bg-white font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 active:translate-x-1 active:translate-y-1 hover:bg-white active:bg-white hover:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
                 >
-                  Cancelar
+                  Cancel
                 </Button>
                 <Button
                   onClick={handleSaveUsername}
