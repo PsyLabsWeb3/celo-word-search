@@ -852,7 +852,7 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
                 ) : (
                   <>
                     <Save className="w-4 h-4 mr-2" />
-                    {alreadyCompleted ? "Completed!" : (isComplete ? "Save Result" : "Complete the Crossword")}
+                    {alreadyCompleted ? "Completed!" : (isComplete ? "Save Result" : "Mark as Complete")}
                   </>
                 )}
               </Button>

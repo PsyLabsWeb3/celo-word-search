@@ -139,7 +139,7 @@ export default function LeaderboardPage() {
               className="border-4 border-black bg-accent font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-accent hover:shadow-none"
             >
               <Home className="w-4 h-4 mr-2" />
-              Return to Crossword
+              Back to home
             </Button>
           </div>
         </div>
@@ -183,28 +183,40 @@ export default function LeaderboardPage() {
                   <Card
                     key={`${userAddress}-${getCompletionTimestamp(completion).toString()}`}
                     className={cn(
-                      "border-4 border-black p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none",
+                      "border-4 border-black p-4 sm:p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none",
                       getRankColor(index),
                     )}
                   >
-                    <div className="flex items-center gap-4">
-                      <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-none border-4 border-black bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                    <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+                      <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center self-center rounded-none border-4 border-black bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] sm:self-auto">
                         {getRankIcon(index)}
                       </div>
                       <div className="flex-1">
-                        <FarcasterUserDisplay 
-                          address={userAddress} 
-                          fallbackUsername={userAddress.substring(0, 6) + "..." + userAddress.substring(userAddress.length - 4)}
+                        <FarcasterUserDisplay
+                          address={userAddress}
+                          fallbackUsername={
+                            userAddress.substring(0, 6) +
+                            "..." +
+                            userAddress.substring(userAddress.length - 4)
+                          }
                           size="md"
                         />
-                        <div className="flex items-center gap-2 mt-1 text-sm font-bold text-muted-foreground">
-                          <Clock className="w-4 h-4" />
-                          <span>{formatDate(getCompletionTimestamp(completion))}</span>
-                          <span>• Duration: {Number(getCompletionDuration(completion))}ms</span>
+                        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-bold text-muted-foreground">
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-4 w-4" />
+                            <span>
+                              {formatDate(getCompletionTimestamp(completion))}
+                            </span>
+                          </div>
+                          <span className="hidden sm:inline">•</span>
+                          <span>
+                            Duration: {Number(getCompletionDuration(completion))}
+                            ms
+                          </span>
                         </div>
                       </div>
                       {index < 3 && (
-                        <div className="hidden flex-shrink-0 rounded-none border-4 border-black bg-primary px-4 py-2 font-black uppercase text-primary-foreground shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] sm:block">
+                        <div className="hidden flex-shrink-0 self-end rounded-none border-4 border-black bg-primary px-4 py-2 font-black uppercase text-primary-foreground shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] sm:self-auto sm:block">
                           Winner
                         </div>
                       )}
@@ -224,7 +236,7 @@ export default function LeaderboardPage() {
               className="border-4 border-black bg-accent font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-accent hover:shadow-none"
             >
               <Home className="w-4 h-4 mr-2" />
-              Return to Crossword
+              Back to home
             </Button>
           </div>
         </div>
