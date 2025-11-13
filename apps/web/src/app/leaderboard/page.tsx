@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation"
 import { useCrossword } from "@/contexts/crossword-context"
 import { useGetCrosswordCompletions } from "@/hooks/useContract"
 import { sdk } from "@farcaster/frame-sdk";
+import FarcasterUserDisplay from "@/components/farcaster-user-display";
 
 export default function LeaderboardPage() {
   const [completions, setCompletions] = useState<any[]>([])
@@ -16,7 +17,7 @@ export default function LeaderboardPage() {
   const [error, setError] = useState<string | null>(null)
   const { currentCrossword } = useCrossword()
   const router = useRouter()
-  const [usernamesMap, setUsernamesMap] = useState<Record<string, string>>({})
+  
 
   // Helper functions to handle both tuple-style and object-style completion data
   const getCompletionTimestamp = (completion: any): bigint => {
@@ -32,37 +33,7 @@ export default function LeaderboardPage() {
     return completion.durationMs ?? completion[2];
   };
 
-  // Effect to fetch usernames for addresses when completions change
-  useEffect(() => {
-    if (completions.length > 0) {
-      // In a real implementation, we would call an API to get Farcaster usernames for addresses
-      // For now, this would be an implementation that fetches from a backend service
-      const fetchUsernames = async () => {
-        // Extract all addresses from completions
-        const addresses = completions.map(completion => getCompletionUser(completion));
-        
-        // In a complete implementation, we would make an API call to get usernames:
-        /*
-        try {
-          const response = await fetch('/api/usernames', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ addresses })
-          });
-          const usernameData = await response.json();
-          setUsernamesMap(usernameData);
-        } catch (error) {
-          console.error('Error fetching usernames:', error);
-        }
-        */
-        
-        // For now, we'll just keep the address mapping empty since we can't resolve arbitrary addresses to Farcaster usernames
-        // In production, this would require a backend service that stores address to username mappings when users submit
-      };
-      
-      fetchUsernames();
-    }
-  }, [completions]);
+  
 
   // Get completions for the current crossword from blockchain
   const {
@@ -175,17 +146,7 @@ export default function LeaderboardPage() {
 
 
 
-  // Function to get username for an address (currently using a fallback to formatted address)
-  // In a complete implementation, this would fetch from an API that maps addresses to Farcaster usernames
-  const getUsernameForAddress = (address: string): string => {
-    // First check if we have the username in our local map
-    if (usernamesMap[address]) {
-      return usernamesMap[address];
-    }
-    
-    // Fallback to formatted address
-    return address.substring(0, 6) + "..." + address.substring(address.length - 4);
-  };
+  
 
   return (
     <>
@@ -228,9 +189,11 @@ export default function LeaderboardPage() {
                         {getRankIcon(index)}
                       </div>
                       <div className="flex-1">
-                        <h3 className="text-xl font-black uppercase text-foreground sm:text-2xl">
-                          {getUsernameForAddress(userAddress)}
-                        </h3>
+                        <FarcasterUserDisplay 
+                          address={userAddress} 
+                          fallbackUsername={userAddress.substring(0, 6) + "..." + userAddress.substring(userAddress.length - 4)}
+                          size="md"
+                        />
                         <div className="flex items-center gap-2 mt-1 text-sm font-bold text-muted-foreground">
                           <Clock className="w-4 h-4" />
                           <span>{formatDate(getCompletionTimestamp(completion))}</span>

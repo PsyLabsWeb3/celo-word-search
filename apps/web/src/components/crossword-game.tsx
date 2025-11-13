@@ -168,8 +168,6 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
   const [selectedCell, setSelectedCell] = useState<SelectedCell | null>(null)
   const [isComplete, setIsComplete] = useState(false)
   const [showUsernamePopup, setShowUsernamePopup] = useState(false)
-  // Farcaster username will be used instead of asking for input
-  const [farcasterUsername, setFarcasterUsername] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [waitingForTransaction, setWaitingForTransaction] = useState(false)
   const [mobilePopup, setMobilePopup] = useState<MobileInputPopup | null>(null)
@@ -223,44 +221,84 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
     }
   }, [isCompleteError]);
 
-  // Effect to get Farcaster username
+  // State for full Farcaster profile
+  const [farcasterProfile, setFarcasterProfile] = useState<{
+    username: string | null;
+    displayName: string | null;
+    pfpUrl: string | null;
+  } | null>(null);
+
+  // Effect to get Farcaster profile
   useEffect(() => {
-    const fetchFarcasterUsername = async () => {
+    const fetchFarcasterProfile = async () => {
       try {
         // Check if we're in a Farcaster frame context
         if (typeof window !== 'undefined' && (window as any).frameContext) {
           const context = await sdk.context;
           if (context && context.user) {
-            setFarcasterUsername(context.user.username || null);
+            setFarcasterProfile({
+              username: context.user.username || null,
+              displayName: context.user.displayName || context.user.username || null,
+              pfpUrl: context.user.pfpUrl || null
+            });
           } else {
             console.log("Farcaster context or user not available");
-            setFarcasterUsername(null);
+            setFarcasterProfile(null);
           }
         } else {
           console.log("Not in Farcaster frame context");
-          setFarcasterUsername(null);
+          setFarcasterProfile(null);
         }
       } catch (error) {
-        console.error("Error fetching Farcaster username:", error);
-        setFarcasterUsername(null);
+        console.error("Error fetching Farcaster profile:", error);
+        setFarcasterProfile(null);
       }
     };
 
-    fetchFarcasterUsername();
+    fetchFarcasterProfile();
   }, []);
 
   // Effect to show username popup after transaction confirmation
   useEffect(() => {
-    if (waitingForTransaction && isCompleteSuccess) {
-      // Transaction confirmed, redirect to leaderboard (no popup needed)
+    if (waitingForTransaction && isCompleteSuccess && txHash && address) {
+      // Transaction confirmed, store the Farcaster profile info and redirect to leaderboard
       setWaitingForTransaction(false);
+      
+      // Store the Farcaster profile associated with this address
+      const storeFarcasterProfile = async () => {
+        try {
+          // Get the user's Farcaster profile info from the SDK context
+          if (farcasterProfile && farcasterProfile.username) {
+            const response = await fetch('/api/store-farcaster-profile', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                address: address,
+                username: farcasterProfile.username,
+                displayName: farcasterProfile.displayName,
+                pfpUrl: farcasterProfile.pfpUrl,
+                txHash: txHash,
+                timestamp: Date.now()
+              }),
+            });
+            
+            if (!response.ok) {
+              console.error('Failed to store Farcaster profile:', response.status);
+            }
+          }
+        } catch (error) {
+          console.error('Error storing Farcaster profile:', error);
+        }
+      };
+      
+      storeFarcasterProfile();
       router.push("/leaderboard");
     } else if (waitingForTransaction && isCompleteError) {
       // Transaction failed, reset waiting state and show error
       setWaitingForTransaction(false);
       alert("Error completing the crossword on the blockchain. Transaction failed.");
     }
-  }, [waitingForTransaction, isCompleteSuccess, isCompleteError])
+  }, [waitingForTransaction, isCompleteSuccess, isCompleteError, txHash, address, farcasterProfile])
 
   const handleCellClick = (row: number, col: number) => {
     if (alreadyCompleted) {
