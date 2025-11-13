@@ -83,7 +83,7 @@ export default function Page() {
                 DeFi Crossword
               </h1>
               <p className="mt-2 text-sm text-muted-foreground sm:text-base">
-                Click a cell to select, then start typing. Use arrow keys to navigate.
+                Click a cell to select, then start typing.
               </p>
             </div>
             <CrosswordGame 

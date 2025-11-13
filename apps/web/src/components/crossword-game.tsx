@@ -934,7 +934,7 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
                   }
                 }}
                 maxLength={mobilePopup.clue.answer.length}
-                placeholder={`${mobilePopup.clue.answer.length} letras`}
+                placeholder={`${mobilePopup.clue.answer.length} words`}
                 className="w-full border-4 border-black bg-white p-4 text-center text-2xl font-black uppercase tracking-widest text-foreground shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] focus:outline-none focus:ring-0"
               />
 
