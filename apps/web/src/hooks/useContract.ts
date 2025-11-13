@@ -4,7 +4,7 @@ import { CONTRACTS } from '../lib/contracts';
 import { celo, celoAlfajores } from 'wagmi/chains';
 import { defineChain } from 'viem';
 import { toast } from 'sonner';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 // Define Celo Sepolia chain
 const celoSepolia = defineChain({
@@ -62,21 +62,22 @@ const getErrorMessage = (error: any): string => {
 // CrosswordBoard contract hooks
 export const useGetCurrentCrossword = () => {
   const contractConfig = getContractConfig('CrosswordBoard');
+  const queryClient = useQueryClient();
 
   return useContractRead({
     address: contractConfig.address,
     abi: contractConfig.abi,
     functionName: 'getCurrentCrossword',
-    blockTag: 'safe',
+    blockTag: 'latest', // Use latest instead of safe for real-time updates
     query: {
-      // Configurar tiempos de espera razonables para evitar sobrecarga de la red
-      retry: 1, // Reducir reintentos
-      retryDelay: 5000, // Aumentar delay entre reintentos
-      staleTime: 0, // Forzar refetch en cada render para datos siempre actualizados
-      gcTime: 60000, // Tiempo de recolección de basura reducido (1 minuto)
-      refetchOnWindowFocus: true, // Refetch cuando la ventana gana foco
-      refetchOnReconnect: true, // Refetch cuando se reconecta la red
-      refetchInterval: 30000, // Refetch cada 30 segundos para mantener actualizado
+      // Minimal caching for real-time updates
+      retry: 1,
+      retryDelay: 3000,
+      staleTime: 0, // Data becomes stale immediately, forcing refetch
+      gcTime: 2000, // Garbage collect quickly
+      refetchOnWindowFocus: true,
+      refetchOnReconnect: true,
+      refetchInterval: 5000, // Regular refresh for real-time updates
     }
   });
 };
@@ -92,8 +93,12 @@ export const useSetCrossword = () => {
     hash: data,
   });
 
+  // Track if we've already shown the success/error toasts to prevent duplicates
+  const successShown = useRef(false);
+  const errorShown = useRef(false);
+
   useEffect(() => {
-    if (isSuccess) {
+    if (isSuccess && !successShown.current) {
       toast.success('Transaction confirmed', {
         description: 'Your crossword has been successfully saved on the blockchain.',
       });
@@ -104,13 +109,31 @@ export const useSetCrossword = () => {
           functionName: 'getCurrentCrossword' 
         }] 
       });
+      successShown.current = true;
     }
-    if (isError) {
+    if (isError && !errorShown.current) {
       toast.error('Transaction failed', {
         description: getErrorMessage(txError),
       });
+      errorShown.current = true;
     }
   }, [isSuccess, isError, txError, queryClient, contractConfig.address]);
+
+  // Reset the flags when a new transaction is initiated
+  useEffect(() => {
+    if (isPending) {
+      successShown.current = false;
+      errorShown.current = false;
+    }
+  }, [isPending]);
+  
+  // Also reset when data changes (new transaction initiated)
+  useEffect(() => {
+    if (data) {
+      successShown.current = false;
+      errorShown.current = false;
+    }
+  }, [data]);
 
   return {
     setCrossword: (args: [`0x${string}`, string]) =>
@@ -124,6 +147,8 @@ export const useSetCrossword = () => {
           toast.error('Error setting crossword', {
             description: getErrorMessage(error),
           });
+          // Mark error as shown in case error occurs during writeContract
+          errorShown.current = true;
         },
         onSuccess: (hash) => {
           toast.success('Crossword set successfully', {
@@ -135,6 +160,7 @@ export const useSetCrossword = () => {
     isSuccess,
     isError: !!error,
     txHash: data,
+    contractAddress: contractConfig.address, // Add contract address for cache invalidation
   };
 };
 
@@ -147,8 +173,12 @@ export const useCompleteCrossword = () => {
     hash: data,
   });
 
+  // Track if we've already shown the success/error toasts to prevent duplicates
+  const successShown = useRef(false);
+  const errorShown = useRef(false);
+
   useEffect(() => {
-    if (isSuccess) {
+    if (isSuccess && !successShown.current) {
       toast.success('Crossword completed successfully', {
         description: 'Your crossword completion has been recorded on the blockchain.',
       });
@@ -165,13 +195,31 @@ export const useCompleteCrossword = () => {
           functionName: 'userCompletedCrossword' 
         }] 
       });
+      successShown.current = true;
     }
-    if (isError) {
+    if (isError && !errorShown.current) {
       toast.error('Transaction failed', {
         description: getErrorMessage(txError),
       });
+      errorShown.current = true;
     }
   }, [isSuccess, isError, txError, queryClient, contractConfig.address]);
+
+  // Reset the flags when a new transaction is initiated
+  useEffect(() => {
+    if (isPending) {
+      successShown.current = false;
+      errorShown.current = false;
+    }
+  }, [isPending]);
+  
+  // Also reset when data changes (new transaction initiated)
+  useEffect(() => {
+    if (data) {
+      successShown.current = false;
+      errorShown.current = false;
+    }
+  }, [data]);
 
   return {
     completeCrossword: (args: [`0x${string}`, bigint]) =>
@@ -186,6 +234,8 @@ export const useCompleteCrossword = () => {
             description: getErrorMessage(error),
           });
           console.error('Complete crossword error:', error);
+          // Mark error as shown in case error occurs during writeContract
+          errorShown.current = true;
         },
         onSuccess: (hash) => {
           toast.success('Transaction submitted', {
@@ -198,6 +248,7 @@ export const useCompleteCrossword = () => {
     isSuccess,
     isError: !!error,
     txHash: data,
+    contractAddress: contractConfig.address, // Add contract address for cache invalidation
   };
 };
 
@@ -406,18 +457,40 @@ export const useClaimPrize = () => {
     hash: data,
   });
 
+  // Track if we've already shown the success/error toasts to prevent duplicates
+  const successShown = useRef(false);
+  const errorShown = useRef(false);
+
   useEffect(() => {
-    if (isSuccess) {
+    if (isSuccess && !successShown.current) {
       toast.success('Transaction confirmed', {
         description: 'Your prize has been successfully claimed.',
       });
+      successShown.current = true;
     }
-    if (isError) {
+    if (isError && !errorShown.current) {
       toast.error('Transaction failed', {
         description: getErrorMessage(txError),
       });
+      errorShown.current = true;
     }
   }, [isSuccess, isError, txError]);
+
+  // Reset the flags when a new transaction is initiated
+  useEffect(() => {
+    if (isPending) {
+      successShown.current = false;
+      errorShown.current = false;
+    }
+  }, [isPending]);
+  
+  // Also reset when data changes (new transaction initiated)
+  useEffect(() => {
+    if (data) {
+      successShown.current = false;
+      errorShown.current = false;
+    }
+  }, [data]);
 
   return {
     claimPrize: (args: [`0x${string}`]) =>
@@ -431,6 +504,8 @@ export const useClaimPrize = () => {
           toast.error('Error claiming prize', {
             description: getErrorMessage(error),
           });
+          // Mark error as shown in case error occurs during writeContract
+          errorShown.current = true;
         },
         onSuccess: () => {
           toast.success('Prize claimed successfully', {
@@ -454,18 +529,40 @@ export const useCreateCrossword = () => {
     hash: data,
   });
 
+  // Track if we've already shown the success/error toasts to prevent duplicates
+  const successShown = useRef(false);
+  const errorShown = useRef(false);
+
   useEffect(() => {
-    if (isSuccess) {
+    if (isSuccess && !successShown.current) {
       toast.success('Transaction confirmed', {
         description: 'The crossword has been successfully created on the blockchain.',
       });
+      successShown.current = true;
     }
-    if (isError) {
+    if (isError && !errorShown.current) {
       toast.error('Transaction failed', {
         description: getErrorMessage(txError),
       });
+      errorShown.current = true;
     }
   }, [isSuccess, isError, txError]);
+
+  // Reset the flags when a new transaction is initiated
+  useEffect(() => {
+    if (isPending) {
+      successShown.current = false;
+      errorShown.current = false;
+    }
+  }, [isPending]);
+  
+  // Also reset when data changes (new transaction initiated)
+  useEffect(() => {
+    if (data) {
+      successShown.current = false;
+      errorShown.current = false;
+    }
+  }, [data]);
 
   return {
     createCrossword: (args: [`0x${string}`, `0x${string}`, bigint, number[], bigint]) =>
@@ -479,6 +576,8 @@ export const useCreateCrossword = () => {
           toast.error('Error creating crossword', {
             description: getErrorMessage(error),
           });
+          // Mark error as shown in case error occurs during writeContract
+          errorShown.current = true;
         },
         onSuccess: () => {
           toast.success('Crossword created successfully', {
@@ -502,18 +601,40 @@ export const useRegisterWinners = () => {
     hash: data,
   });
 
+  // Track if we've already shown the success/error toasts to prevent duplicates
+  const successShown = useRef(false);
+  const errorShown = useRef(false);
+
   useEffect(() => {
-    if (isSuccess) {
+    if (isSuccess && !successShown.current) {
       toast.success('Transaction confirmed', {
         description: 'The winners have been successfully registered on the blockchain.',
       });
+      successShown.current = true;
     }
-    if (isError) {
+    if (isError && !errorShown.current) {
       toast.error('Transaction failed', {
         description: getErrorMessage(txError),
       });
+      errorShown.current = true;
     }
   }, [isSuccess, isError, txError]);
+
+  // Reset the flags when a new transaction is initiated
+  useEffect(() => {
+    if (isPending) {
+      successShown.current = false;
+      errorShown.current = false;
+    }
+  }, [isPending]);
+  
+  // Also reset when data changes (new transaction initiated)
+  useEffect(() => {
+    if (data) {
+      successShown.current = false;
+      errorShown.current = false;
+    }
+  }, [data]);
 
   return {
     registerWinners: (args: [`0x${string}`, `0x${string}`[]]) =>
@@ -527,6 +648,8 @@ export const useRegisterWinners = () => {
           toast.error('Error registering winners', {
             description: getErrorMessage(error),
           });
+          // Mark error as shown in case error occurs during writeContract
+          errorShown.current = true;
         },
         onSuccess: () => {
           toast.success('Winners registered successfully', {

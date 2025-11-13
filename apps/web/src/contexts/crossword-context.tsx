@@ -1,6 +1,7 @@
 import { createContext, useContext, ReactNode, useState, useEffect } from 'react';
 import { useGetCurrentCrossword, useIsAdmin } from '../hooks/useContract';
 import { useAccount } from 'wagmi';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface CrosswordContextType {
   currentCrossword: {
@@ -17,6 +18,7 @@ const CrosswordContext = createContext<CrosswordContextType | undefined>(undefin
 
 export const CrosswordProvider = ({ children }: { children: ReactNode }) => {
   const { address } = useAccount();
+  const queryClient = useQueryClient();
   const [currentCrossword, setCurrentCrossword] = useState<any>(null);
   
   const {
@@ -79,6 +81,8 @@ export const CrosswordProvider = ({ children }: { children: ReactNode }) => {
   }, [isLoading, isError, crosswordData, error]);
 
   const refetchCrossword = async () => {
+    // Just refetch from blockchain directly without manual cache invalidation
+    // The refetchCrosswordFromContract function should handle refetching from blockchain
     const result = await refetchCrosswordFromContract();
     if (result.data && Array.isArray(result.data) && result.data.length >= 3) {
       const [id, data, updatedAt] = result.data as [string, string, bigint];

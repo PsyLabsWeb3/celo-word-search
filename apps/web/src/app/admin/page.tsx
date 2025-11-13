@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,6 +10,7 @@ import { Plus, Trash2, Save, AlertCircle, Upload } from "lucide-react"
 import { useAccount } from "wagmi"
 import { useIsAdmin, useSetCrossword } from "@/hooks/useContract"
 import { useCrossword } from "@/contexts/crossword-context"
+import { useQueryClient } from "@tanstack/react-query"
 
 interface Clue {
   number: number
@@ -28,8 +29,9 @@ interface CrosswordData {
 export default function AdminPage() {
   const { address, isConnected } = useAccount();
   const { data: isAdminData, isLoading: isAdminLoading } = useIsAdmin();
-  const { setCrossword, isLoading: isSetCrosswordLoading, isSuccess } = useSetCrossword();
+  const { setCrossword, isLoading: isSetCrosswordLoading, isSuccess, isError, error, txHash, contractAddress } = useSetCrossword();
   const { refetchCrossword } = useCrossword(); // Added to refetch after saving
+  const queryClient = useQueryClient();
   
   const [gridSize, setGridSize] = useState({ rows: 8, cols: 10 })
   const [clues, setClues] = useState<Clue[]>([])
@@ -158,12 +160,19 @@ export default function AdminPage() {
       clues: clues.filter((c) => c.answer && c.clue),
     }
 
+    // Validate we have at least one clue
+    if (crosswordData.clues.length === 0) {
+      alert("Please add at least one word to the crossword before saving.")
+      return;
+    }
+
     // Save directly to blockchain
     try {
       setIsSavingToBlockchain(true);
       
       // Generate a deterministic crossword ID using the hash of the crossword data
       const dataString = JSON.stringify(crosswordData);
+      console.log("Preparing to save crossword:", { dataString, clues: crosswordData.clues });
       // Use a simple hash approach that works in browser context
       let crosswordId = `0x`;
       if (typeof window !== 'undefined') {
@@ -177,27 +186,66 @@ export default function AdminPage() {
         crosswordId = `0x${Date.now().toString(16)}${Math.random().toString(16).substr(2)}`;
       }
 
+      console.log("Saving crossword to blockchain with ID:", crosswordId);
+      console.log("Crossword data:", dataString);
+      console.log("Current wallet address:", address);
+      console.log("Admin status check:", { isAdminData, address });
+
       // Call the blockchain function to save the crossword
+      console.log("Calling setCrossword function with params:", [crosswordId as `0x${string}`, dataString]);
       setCrossword([crosswordId as `0x${string}`, dataString]);
+      console.log("Transaction submitted. Hash will be available in hook state.");
       
     } catch (error) {
       console.error("Error saving crossword to blockchain:", error);
       alert("Error saving crossword to blockchain: " + (error instanceof Error ? error.message : "Unknown error"));
-    } finally {
       setIsSavingToBlockchain(false);
     }
   }
 
   // Effect to handle success after transaction
+  const successAlertShown = useRef(false);
+  
   useEffect(() => {
-    if (isSuccess) {
+    if (isSuccess && !successAlertShown.current) {
+      console.log("Transaction confirmed successfully, hash:", txHash);
       alert("✓ Crossword saved successfully to the blockchain");
-      // Refetch the crossword data to update the context immediately
-      refetchCrossword();
-      // Also navigate away or update UI to reflect the change
-      // Forcing a refresh of the UI by maybe updating a state
+      // Add a small delay to ensure blockchain has time to update before refetching
+      setTimeout(() => {
+        console.log("Invalidating cache and refetching crossword data");
+        // Invalidate and refetch the crossword data to ensure we get fresh data from blockchain
+        queryClient.invalidateQueries({
+          queryKey: ['readContract', { 
+            address: contractAddress, 
+            functionName: 'getCurrentCrossword' 
+          }] 
+        }).then(() => {
+          console.log("Cache invalidated, now refetching crossword");
+          // After invalidating cache, refetch the crossword data to update the context
+          refetchCrossword();
+        });
+      }, 2000); // 2 second delay to ensure transaction is confirmed on blockchain
+      // Mark that the alert has been shown to prevent multiple alerts
+      successAlertShown.current = true;
+      // Reset the local loading state since transaction is complete
+      setIsSavingToBlockchain(false);
     }
-  }, [isSuccess, refetchCrossword]);
+  }, [isSuccess, refetchCrossword, queryClient, contractAddress, txHash]);
+  
+  // Effect to handle error state
+  useEffect(() => {
+    if (isError) {
+      console.error("Transaction failed:", error);
+      setIsSavingToBlockchain(false); // Reset loading state when there's an error
+    }
+  }, [isError, error]);
+
+  // Reset the success flag when starting a new save operation
+  useEffect(() => {
+    if (isSavingToBlockchain) {
+      successAlertShown.current = false;
+    }
+  }, [isSavingToBlockchain]);
 
   const handleClear = () => {
     if (confirm("Are you sure you want to clear the entire crossword?")) {
