@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
       address,
       username,
       displayName: displayName || username,
-      pfpUrl: pfpUrl || null,
+      pfpUrl: pfpUrl || undefined,
       timestamp: timestamp || Date.now()
     });
     

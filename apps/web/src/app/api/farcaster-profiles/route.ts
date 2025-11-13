@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
         results[address] = {
           username: address.substring(0, 6) + "..." + address.substring(address.length - 4),
           displayName: address.substring(0, 6) + "..." + address.substring(address.length - 4),
-          pfpUrl: null,
+          pfpUrl: undefined,
         };
       }
     });
