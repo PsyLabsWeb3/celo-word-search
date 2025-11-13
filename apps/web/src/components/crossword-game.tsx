@@ -16,6 +16,7 @@ import { useCompleteCrossword, useUserCompletedCrossword, useGetCurrentCrossword
 import { readContract } from 'wagmi/actions';
 import { config } from '@/contexts/frame-wallet-context';
 import { CONTRACTS } from "@/lib/contracts";
+import { sdk } from "@farcaster/frame-sdk";
 
 // Define Celo Sepolia chain
 const celoSepolia = defineChain({
@@ -167,14 +168,14 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
   const [selectedCell, setSelectedCell] = useState<SelectedCell | null>(null)
   const [isComplete, setIsComplete] = useState(false)
   const [showUsernamePopup, setShowUsernamePopup] = useState(false)
-  const [username, setUsername] = useState("")
+  // Farcaster username will be used instead of asking for input
+  const [farcasterUsername, setFarcasterUsername] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [waitingForTransaction, setWaitingForTransaction] = useState(false)
   const [mobilePopup, setMobilePopup] = useState<MobileInputPopup | null>(null)
   const [mobileInput, setMobileInput] = useState("")
   const gridRef = useRef<HTMLDivElement>(null)
   const mobileInputRef = useRef<HTMLInputElement>(null)
-  const usernameInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
 
@@ -207,11 +208,7 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
     setIsComplete(complete)
   }, [userGrid, crosswordData])
 
-  useEffect(() => {
-    if (showUsernamePopup && usernameInputRef.current) {
-      usernameInputRef.current.focus()
-    }
-  }, [showUsernamePopup])
+  // Removed focus effect for username input since the dialog no longer exists
 
   useEffect(() => {
     if (isCompleteSuccess || isCompleteError) {
@@ -226,12 +223,38 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
     }
   }, [isCompleteError]);
 
+  // Effect to get Farcaster username
+  useEffect(() => {
+    const fetchFarcasterUsername = async () => {
+      try {
+        // Check if we're in a Farcaster frame context
+        if (typeof window !== 'undefined' && (window as any).frameContext) {
+          const context = await sdk.context;
+          if (context && context.user) {
+            setFarcasterUsername(context.user.username || null);
+          } else {
+            console.log("Farcaster context or user not available");
+            setFarcasterUsername(null);
+          }
+        } else {
+          console.log("Not in Farcaster frame context");
+          setFarcasterUsername(null);
+        }
+      } catch (error) {
+        console.error("Error fetching Farcaster username:", error);
+        setFarcasterUsername(null);
+      }
+    };
+
+    fetchFarcasterUsername();
+  }, []);
+
   // Effect to show username popup after transaction confirmation
   useEffect(() => {
     if (waitingForTransaction && isCompleteSuccess) {
-      // Transaction confirmed, show the popup
-      setShowUsernamePopup(true);
+      // Transaction confirmed, redirect to leaderboard (no popup needed)
       setWaitingForTransaction(false);
+      router.push("/leaderboard");
     } else if (waitingForTransaction && isCompleteError) {
       // Transaction failed, reset waiting state and show error
       setWaitingForTransaction(false);
@@ -576,26 +599,12 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
       completeCrossword([crosswordId, durationBigInt]);
       setWaitingForTransaction(true);
     } else {
-      console.log("handleSaveCompletion: No crossword ID or address found. Showing username popup instead of calling contract.", { crosswordId: contractCrosswordId, address });
-      setShowUsernamePopup(true);
+      console.log("handleSaveCompletion: No crossword ID or address found.", { crosswordId: contractCrosswordId, address });
       setIsSubmitting(false);
     }
   }
 
-  const handleSaveUsername = () => {
-    if (!username.trim()) {
-      alert("Please enter your name")
-      return
-    }
-
-    // For on-chain functionality, we don't store winners in localStorage
-    // The completion is recorded in the blockchain via the completeCrossword function
-
-
-
-    // Redirect to leaderboard
-    router.push("/leaderboard")
-  }
+  // handleSaveUsername is no longer needed since we use Farcaster username directly
 
   const handleReset = () => {
     if (crosswordData) {
@@ -605,7 +614,6 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
     setSelectedCell(null)
     setIsComplete(false)
     setShowUsernamePopup(false)
-    setUsername("")
   }
 
   // Create a state to manage timeout for the loading state
@@ -912,58 +920,7 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
         </div>
       )}
 
-      {showUsernamePopup && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
-          onClick={() => setShowUsernamePopup(false)}
-        >
-          <Card
-            className="w-full max-w-md border-4 border-black bg-accent p-6 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mb-4 text-center">
-              <Trophy className="w-16 h-16 mx-auto text-primary" />
-              <h3 className="mt-4 text-2xl font-black uppercase text-foreground">Congratulations!</h3>
-              <p className="mt-2 text-sm font-bold text-muted-foreground">
-                You completed the crossword. Enter your name to participate for the prize.
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              <input
-                ref={usernameInputRef}
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    handleSaveUsername()
-                  }
-                }}
-                placeholder="Your name or wallet"
-                className="w-full border-4 border-black bg-white p-4 text-center text-xl font-black text-foreground shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] focus:outline-none focus:ring-0"
-              />
-
-              <div className="flex gap-2">
-                <Button
-                  onClick={() => setShowUsernamePopup(false)}
-                  variant="outline"
-                  className="flex-1 border-4 border-black bg-white font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 active:translate-x-1 active:translate-y-1 hover:bg-white active:bg-white hover:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleSaveUsername}
-                  className="flex-1 border-4 border-black bg-primary font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 active:translate-x-1 active:translate-y-1 hover:bg-primary active:bg-primary hover:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-                >
-                  <Trophy className="w-4 h-4 mr-2" />
-                  Save
-                </Button>
-              </div>
-            </div>
-          </Card>
-        </div>
-      )}
+      {/* Removed the username input popup since we now use Farcaster username */}
     </>
   )
 }

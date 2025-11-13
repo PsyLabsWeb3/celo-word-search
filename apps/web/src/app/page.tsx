@@ -22,7 +22,7 @@ const AlphabetAnimation = () => {
   }, [alphabet.length]);
 
   return (
-    <div className="w-12 h-12 mx-auto text-foreground flex items-center justify-center text-4xl font-black">
+    <div className="flex items-center justify-center w-12 h-12 mx-auto text-4xl font-black text-foreground">
       {alphabet[currentLetter]}
     </div>
   );
@@ -80,7 +80,7 @@ export default function Page() {
           <div className="mx-auto max-w-7xl">
             <div className="mb-6 text-center md:mb-8">
               <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl md:text-5xl">
-                Daily Crossword
+                DeFi Crossword
               </h1>
               <p className="mt-2 text-sm text-muted-foreground sm:text-base">
                 Click a cell to select, then start typing. Use arrow keys to navigate.
