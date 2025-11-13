@@ -234,7 +234,6 @@ export const useCompleteCrossword = () => {
           toast.error('Error completing crossword', {
             description: getErrorMessage(error),
           });
-          console.error('Complete crossword error:', error);
           // Mark error as shown in case error occurs during writeContract
           errorShown.current = true;
         },
@@ -242,7 +241,6 @@ export const useCompleteCrossword = () => {
           toast.success('Transaction submitted', {
             description: 'Your crossword completion is being processed on the blockchain.',
           });
-          console.log('Complete crossword transaction submitted:', hash);
         }
       }),
     isLoading: isPending || isConfirming,

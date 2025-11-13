@@ -172,7 +172,7 @@ export default function AdminPage() {
       
       // Generate a deterministic crossword ID using the hash of the crossword data
       const dataString = JSON.stringify(crosswordData);
-      console.log("Preparing to save crossword:", { dataString, clues: crosswordData.clues });
+
       // Use a simple hash approach that works in browser context
       let crosswordId = `0x`;
       if (typeof window !== 'undefined') {
@@ -186,18 +186,11 @@ export default function AdminPage() {
         crosswordId = `0x${Date.now().toString(16)}${Math.random().toString(16).substr(2)}`;
       }
 
-      console.log("Saving crossword to blockchain with ID:", crosswordId);
-      console.log("Crossword data:", dataString);
-      console.log("Current wallet address:", address);
-      console.log("Admin status check:", { isAdminData, address });
 
       // Call the blockchain function to save the crossword
-      console.log("Calling setCrossword function with params:", [crosswordId as `0x${string}`, dataString]);
       setCrossword([crosswordId as `0x${string}`, dataString]);
-      console.log("Transaction submitted. Hash will be available in hook state.");
       
     } catch (error) {
-      console.error("Error saving crossword to blockchain:", error);
       alert("Error saving crossword to blockchain: " + (error instanceof Error ? error.message : "Unknown error"));
       setIsSavingToBlockchain(false);
     }
@@ -208,19 +201,16 @@ export default function AdminPage() {
   
   useEffect(() => {
     if (isSuccess && !successAlertShown.current) {
-      console.log("Transaction confirmed successfully, hash:", txHash);
       alert("✓ Crossword saved successfully to the blockchain");
       // Add a small delay to ensure blockchain has time to update before refetching
       setTimeout(() => {
-        console.log("Invalidating cache and refetching crossword data");
         // Invalidate and refetch the crossword data to ensure we get fresh data from blockchain
         queryClient.invalidateQueries({
-          queryKey: ['readContract', { 
-            address: contractAddress, 
-            functionName: 'getCurrentCrossword' 
-          }] 
+          queryKey: ['readContract', {
+            address: contractAddress,
+            functionName: 'getCurrentCrossword'
+          }]
         }).then(() => {
-          console.log("Cache invalidated, now refetching crossword");
           // After invalidating cache, refetch the crossword data to update the context
           refetchCrossword();
         });
@@ -235,7 +225,6 @@ export default function AdminPage() {
   // Effect to handle error state
   useEffect(() => {
     if (isError) {
-      console.error("Transaction failed:", error);
       setIsSavingToBlockchain(false); // Reset loading state when there's an error
     }
   }, [isError, error]);

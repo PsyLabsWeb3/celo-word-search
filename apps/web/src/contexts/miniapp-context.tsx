@@ -54,9 +54,7 @@ export function MiniAppProvider({ children, addMiniAppOnLoad }: MiniAppProviderP
 
   useEffect(() => {
     if (!isMiniAppReady) {
-      setMiniAppReady().then(() => {
-        console.log("MiniApp loaded");
-      });
+      setMiniAppReady();
     }
   }, [isMiniAppReady, setMiniAppReady]);
 
@@ -67,9 +65,9 @@ export function MiniAppProvider({ children, addMiniAppOnLoad }: MiniAppProviderP
     }
   
     try {
-      console.log("Attempting to call sdk.actions.addFrame()...");
+
       const addFrameResult = await sdk.actions.addFrame();
-      console.log("sdk.actions.addFrame() result:", addFrameResult);
+
   
       // Defensive check to ensure the result is an object with a 'result' property
       if (addFrameResult && typeof addFrameResult === 'object' && 'result' in addFrameResult) {

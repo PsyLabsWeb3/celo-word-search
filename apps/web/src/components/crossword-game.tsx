@@ -95,7 +95,6 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
         const parsedData = JSON.parse(currentCrossword.data);
         setCrosswordData(parsedData);
       } catch (e) {
-        console.error("Error parsing crossword data from contract:", e);
         setCrosswordData(null);
       }
     } else {
@@ -132,7 +131,6 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
         // Reset the completion check flag when the crossword changes
         setHasCheckedCompletion(false);
       } catch (e) {
-        console.error("Error parsing crossword data from contract:", e);
         setCrosswordData(null); // Ensure state is null on error
       }
     } else {
@@ -242,15 +240,12 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
               pfpUrl: context.user.pfpUrl || null
             });
           } else {
-            console.log("Farcaster context or user not available");
             setFarcasterProfile(null);
           }
         } else {
-          console.log("Not in Farcaster frame context");
           setFarcasterProfile(null);
         }
       } catch (error) {
-        console.error("Error fetching Farcaster profile:", error);
         setFarcasterProfile(null);
       }
     };
@@ -526,14 +521,11 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
 
   const handleSaveCompletion = async () => {
     if (!crosswordData) return;
-    console.log("handleSaveCompletion called.");
 
     if (isCompleting || waitingForTransaction || isSubmitting) {
-      console.log("handleSaveCompletion aborted: Transaction already in progress.", { isCompleting, waitingForTransaction, isSubmitting });
       return;
     }
     setIsSubmitting(true);
-    console.log("Submitting state set to true.");
 
     const CROSSWORD_GRID = buildGridFromClues(crosswordData.clues, crosswordData.gridSize)
     const isValid = CROSSWORD_GRID.every((row, rowIdx) =>
@@ -544,36 +536,28 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
     );
 
     if (!isValid) {
-      console.log("handleSaveCompletion aborted: Crossword is not valid.");
       alert("The crossword is not complete or has errors. Please check your answers.");
       setIsSubmitting(false);
       return;
     }
-    console.log("Crossword is valid.");
 
     if (!isConnected) {
-      console.log("handleSaveCompletion aborted: Wallet not connected.");
       alert("Please connect your wallet to save your result.");
       setIsSubmitting(false);
       return;
     }
-    console.log("Wallet is connected.", { address });
 
     // Refetch the current crossword to make sure it hasn't been updated since we loaded it
     const currentCrosswordFromContract = await getCurrentCrosswordHook.refetch();
-    
+
     // Check if we have a valid crossword from the contract
     let contractCrosswordId = null;
     if (currentCrosswordFromContract.data && Array.isArray(currentCrosswordFromContract.data) && currentCrosswordFromContract.data.length >= 3) {
       const [id, data, updatedAt] = currentCrosswordFromContract.data as [string, string, bigint];
       contractCrosswordId = id;
-      
+
       // IMPORTANT: Check if the crossword has been updated since we started solving it
       if (currentCrossword?.id && currentCrossword.id !== contractCrosswordId) {
-        console.log("Crossword has been updated since the user started solving. Cannot submit completion for outdated crossword.", {
-          uiCrosswordId: currentCrossword.id,
-          contractCrosswordId: contractCrosswordId
-        });
         alert("The crossword has been updated by an administrator. You cannot complete an outdated crossword.");
         setIsSubmitting(false);
         setAlreadyCompleted(false);
@@ -581,7 +565,6 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
         return;
       }
     } else {
-      console.log("No current crossword found on contract. Cannot submit completion.");
       alert("No current crossword found on the blockchain. Please try again.");
       setIsSubmitting(false);
       return;
@@ -589,8 +572,6 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
 
     try {
       if (contractCrosswordId && address) {
-        console.log("Checking if user has already completed this crossword...", { crosswordId: contractCrosswordId });
-
         // Use readContract for a direct, non-cached check
         const contractInfo = (CONTRACTS as any)[chainId]?.['CrosswordBoard'];
         if (!contractInfo) {
@@ -605,25 +586,21 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
         });
 
         if (hasCompleted) {
-          console.log("handleSaveCompletion aborted: User has already completed this crossword.");
           alert("You have already completed this crossword. You can only submit it once.");
           setAlreadyCompleted(true);
           setIsComplete(true);
           setIsSubmitting(false);
           return;
         }
-        console.log("User has not completed this crossword yet.");
       } else {
-        console.log("No currentCrossword.id found, skipping completion check.");
+        // No currentCrossword.id found, skipping completion check.
       }
     } catch (error) {
-      console.error("An unexpected error occurred while checking completion status:", error);
       setIsSubmitting(false);
       alert("There was an unexpected error checking if you have completed this crossword. Please try again.");
       return;
     }
 
-    console.log("Setting UI to completed state.");
     setAlreadyCompleted(true);
     setIsComplete(true);
 
@@ -633,11 +610,9 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
       const crosswordId = contractCrosswordId as `0x${string}`;
       const durationBigInt = BigInt(durationMs);
 
-      console.log("Calling completeCrossword contract function with args:", { crosswordId, duration: durationBigInt.toString() });
       completeCrossword([crosswordId, durationBigInt]);
       setWaitingForTransaction(true);
     } else {
-      console.log("handleSaveCompletion: No crossword ID or address found.", { crosswordId: contractCrosswordId, address });
       setIsSubmitting(false);
     }
   }
@@ -667,9 +642,6 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
       }
       
       const timeoutId = setTimeout(() => {
-        if (process.env.NODE_ENV === 'development') {
-          console.log("Crossword loading timeout reached, showing extended loading");
-        }
         setTimeoutReached(true);
       }, 15000); // 15 seconds timeout
       
@@ -702,9 +674,6 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
               <p className="mt-1 text-xs text-muted-foreground">(This can happen in the Farcaster environment)</p>
               <button 
                 onClick={() => {
-                  if (process.env.NODE_ENV === 'development') {
-                    console.log("Attempting to refetch crossword from the blockchain after timeout");
-                  }
                   refetchCrosswordFromContext();
                 }}
                 className="px-4 py-2 mt-3 text-sm rounded-md bg-primary text-primary-foreground hover:opacity-90"

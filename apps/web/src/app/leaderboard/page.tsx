@@ -139,7 +139,7 @@ export default function LeaderboardPage() {
               className="border-4 border-black bg-accent font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-accent hover:shadow-none"
             >
               <Home className="w-4 h-4 mr-2" />
-              Back to home
+              Return to Crossword
             </Button>
           </div>
         </div>
@@ -236,7 +236,7 @@ export default function LeaderboardPage() {
               className="border-4 border-black bg-accent font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-accent hover:shadow-none"
             >
               <Home className="w-4 h-4 mr-2" />
-              Back to home
+              Return to Crossword
             </Button>
           </div>
         </div>

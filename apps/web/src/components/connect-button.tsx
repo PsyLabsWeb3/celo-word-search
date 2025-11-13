@@ -50,22 +50,18 @@ export function WalletConnectButton() {
       <button
         onClick={async () => {
           if (connectorToUse) {
-            console.log("Conectando con:", connectorToUse.id, connectorToUse.name); // Depuración
             try {
               await connect({ connector: connectorToUse });
-              console.log("Conexión iniciada correctamente");
             } catch (error) {
-              console.error("Error al conectar:", error);
               // En entornos de desarrollo, mostrar más información para depuración
-              if (typeof window !== 'undefined' && 
-                  (window.location.hostname === 'localhost' || 
+              if (typeof window !== 'undefined' &&
+                  (window.location.hostname === 'localhost' ||
                    window.location.hostname === '127.0.0.1' ||
                    process.env.NODE_ENV === 'development')) {
                 alert(`Error al conectar: ${error instanceof Error ? error.message : 'Unknown error'}`);
               }
             }
           } else {
-            console.log("No se encontró ningún conector disponible"); // Depuración
             alert("No se encontró ningún conector disponible. Asegúrate de tener instalada una wallet como MetaMask.");
           }
         }}

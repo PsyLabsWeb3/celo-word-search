@@ -37,25 +37,19 @@ export const CrosswordProvider = ({ children }: { children: ReactNode }) => {
       const [id, data, updatedAt] = crosswordData as [string, string, bigint];
       // Verificar si los datos son válidos (no vacíos)
       if (id && data && updatedAt) {
-        if (process.env.NODE_ENV === 'development') {
-          console.log("Crossword data loaded from contract:", { id, data, updatedAt });
-        }
+
         setCurrentCrossword({
           id,
           data,
           updatedAt
         });
       } else {
-        if (process.env.NODE_ENV === 'development') {
-          console.log("Crossword data from contract is empty, using null state");
-        }
+
         setCurrentCrossword(null);
       }
     } else if (crosswordData === null) {
       // Si no hay datos, asegurarse de que se limpie el estado
-      if (process.env.NODE_ENV === 'development') {
-        console.log("Crossword data is null, clearing state");
-      }
+
       setCurrentCrossword(null);
     }
   }, [crosswordData]);
@@ -75,9 +69,7 @@ export const CrosswordProvider = ({ children }: { children: ReactNode }) => {
 
   // Debug logs para entender el estado de carga
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log("Crossword context - isLoading:", isLoading, "isError:", isError, "data:", crosswordData, "error:", error);
-    }
+
   }, [isLoading, isError, crosswordData, error]);
 
   const refetchCrossword = async () => {
