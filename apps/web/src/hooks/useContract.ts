@@ -87,9 +87,9 @@ export const useSetCrossword = () => {
   const contractConfig = getContractConfig('CrosswordBoard');
   const queryClient = useQueryClient();
 
-  const { data, error, isPending, writeContract } = useWriteContract();
+  const { data, error: writeError, isPending, writeContract } = useWriteContract();
 
-  const { isLoading: isConfirming, isSuccess, isError, error: txError } = useWaitForTransactionReceipt({
+  const { isLoading: isConfirming, isSuccess, isError: isTxError, error: txError } = useWaitForTransactionReceipt({
     hash: data,
   });
 
@@ -111,13 +111,13 @@ export const useSetCrossword = () => {
       });
       successShown.current = true;
     }
-    if (isError && !errorShown.current) {
+    if ((isTxError || writeError) && !errorShown.current) {
       toast.error('Transaction failed', {
-        description: getErrorMessage(txError),
+        description: getErrorMessage(txError || writeError),
       });
       errorShown.current = true;
     }
-  }, [isSuccess, isError, txError, queryClient, contractConfig.address]);
+  }, [isSuccess, isTxError, txError, writeError, queryClient, contractConfig.address]);
 
   // Reset the flags when a new transaction is initiated
   useEffect(() => {
@@ -158,7 +158,8 @@ export const useSetCrossword = () => {
       }),
     isLoading: isPending || isConfirming,
     isSuccess,
-    isError: !!error,
+    isError: !!writeError || isTxError,
+    error: writeError || txError,
     txHash: data,
     contractAddress: contractConfig.address, // Add contract address for cache invalidation
   };
@@ -167,9 +168,9 @@ export const useSetCrossword = () => {
 export const useCompleteCrossword = () => {
   const contractConfig = getContractConfig('CrosswordBoard');
   const queryClient = useQueryClient();
-  const { data, error, isPending, writeContract } = useWriteContract();
+  const { data, error: writeError, isPending, writeContract } = useWriteContract();
 
-  const { isLoading: isConfirming, isSuccess, isError, error: txError } = useWaitForTransactionReceipt({
+  const { isLoading: isConfirming, isSuccess, isError: isTxError, error: txError } = useWaitForTransactionReceipt({
     hash: data,
   });
 
@@ -197,13 +198,13 @@ export const useCompleteCrossword = () => {
       });
       successShown.current = true;
     }
-    if (isError && !errorShown.current) {
+    if ((isTxError || writeError) && !errorShown.current) {
       toast.error('Transaction failed', {
-        description: getErrorMessage(txError),
+        description: getErrorMessage(txError || writeError),
       });
       errorShown.current = true;
     }
-  }, [isSuccess, isError, txError, queryClient, contractConfig.address]);
+  }, [isSuccess, isTxError, txError, writeError, queryClient, contractConfig.address]);
 
   // Reset the flags when a new transaction is initiated
   useEffect(() => {
@@ -246,7 +247,8 @@ export const useCompleteCrossword = () => {
       }),
     isLoading: isPending || isConfirming,
     isSuccess,
-    isError: !!error,
+    isError: !!writeError || isTxError,
+    error: writeError || txError,
     txHash: data,
     contractAddress: contractConfig.address, // Add contract address for cache invalidation
   };
@@ -451,9 +453,9 @@ export const useIsWinner = (crosswordId: `0x${string}`) => {
 
 export const useClaimPrize = () => {
   const contractConfig = getContractConfig('CrosswordPrizes');
-  const { data, error, isPending, writeContract } = useWriteContract();
+  const { data, error: writeError, isPending, writeContract } = useWriteContract();
 
-  const { isLoading: isConfirming, isSuccess, isError, error: txError } = useWaitForTransactionReceipt({
+  const { isLoading: isConfirming, isSuccess, isError: isTxError, error: txError } = useWaitForTransactionReceipt({
     hash: data,
   });
 
@@ -468,13 +470,13 @@ export const useClaimPrize = () => {
       });
       successShown.current = true;
     }
-    if (isError && !errorShown.current) {
+    if ((isTxError || writeError) && !errorShown.current) {
       toast.error('Transaction failed', {
-        description: getErrorMessage(txError),
+        description: getErrorMessage(txError || writeError),
       });
       errorShown.current = true;
     }
-  }, [isSuccess, isError, txError]);
+  }, [isSuccess, isTxError, txError, writeError]);
 
   // Reset the flags when a new transaction is initiated
   useEffect(() => {
@@ -515,7 +517,8 @@ export const useClaimPrize = () => {
       }),
     isLoading: isPending || isConfirming,
     isSuccess,
-    isError: !!error,
+    isError: !!writeError || isTxError,
+    error: writeError || txError,
     txHash: data,
   };
 };
@@ -523,9 +526,9 @@ export const useClaimPrize = () => {
 // Hook for creating crossword with prizes
 export const useCreateCrossword = () => {
   const contractConfig = getContractConfig('CrosswordPrizes');
-  const { data, error, isPending, writeContract } = useWriteContract();
+  const { data, error: writeError, isPending, writeContract } = useWriteContract();
 
-  const { isLoading: isConfirming, isSuccess, isError, error: txError } = useWaitForTransactionReceipt({
+  const { isLoading: isConfirming, isSuccess, isError: isTxError, error: txError } = useWaitForTransactionReceipt({
     hash: data,
   });
 
@@ -540,13 +543,13 @@ export const useCreateCrossword = () => {
       });
       successShown.current = true;
     }
-    if (isError && !errorShown.current) {
+    if ((isTxError || writeError) && !errorShown.current) {
       toast.error('Transaction failed', {
-        description: getErrorMessage(txError),
+        description: getErrorMessage(txError || writeError),
       });
       errorShown.current = true;
     }
-  }, [isSuccess, isError, txError]);
+  }, [isSuccess, isTxError, txError, writeError]);
 
   // Reset the flags when a new transaction is initiated
   useEffect(() => {
@@ -587,7 +590,8 @@ export const useCreateCrossword = () => {
       }),
     isLoading: isPending || isConfirming,
     isSuccess,
-    isError: !!error,
+    isError: !!writeError || isTxError,
+    error: writeError || txError,
     txHash: data,
   };
 };
@@ -595,9 +599,9 @@ export const useCreateCrossword = () => {
 // Hook for registering winners
 export const useRegisterWinners = () => {
   const contractConfig = getContractConfig('CrosswordPrizes');
-  const { data, error, isPending, writeContract } = useWriteContract();
+  const { data, error: writeError, isPending, writeContract } = useWriteContract();
 
-  const { isLoading: isConfirming, isSuccess, isError, error: txError } = useWaitForTransactionReceipt({
+  const { isLoading: isConfirming, isSuccess, isError: isTxError, error: txError } = useWaitForTransactionReceipt({
     hash: data,
   });
 
@@ -612,13 +616,13 @@ export const useRegisterWinners = () => {
       });
       successShown.current = true;
     }
-    if (isError && !errorShown.current) {
+    if ((isTxError || writeError) && !errorShown.current) {
       toast.error('Transaction failed', {
-        description: getErrorMessage(txError),
+        description: getErrorMessage(txError || writeError),
       });
       errorShown.current = true;
     }
-  }, [isSuccess, isError, txError]);
+  }, [isSuccess, isTxError, txError, writeError]);
 
   // Reset the flags when a new transaction is initiated
   useEffect(() => {
@@ -659,7 +663,8 @@ export const useRegisterWinners = () => {
       }),
     isLoading: isPending || isConfirming,
     isSuccess,
-    isError: !!error,
+    isError: !!writeError || isTxError,
+    error: writeError || txError,
     txHash: data,
   };
 };
