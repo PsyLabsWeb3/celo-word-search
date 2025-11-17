@@ -871,7 +871,7 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
           onClick={() => setMobilePopup(null)}
         >
           <Card
-            className="w-full max-w-md border-4 border-black bg-popover p-6 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]"
+            className="w-full max-w-md p-6 border-4 border-black bg-popover"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between mb-4">
