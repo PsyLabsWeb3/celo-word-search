@@ -68,14 +68,8 @@ export function MiniAppProvider({ children, addMiniAppOnLoad }: MiniAppProviderP
 
       const addFrameResult = await sdk.actions.addFrame();
 
-  
-      // Defensive check to ensure the result is an object with a 'result' property
-      if (addFrameResult && typeof addFrameResult === 'object' && 'result' in addFrameResult) {
-        return addFrameResult;
-      }
-      
-      console.warn("addFrame() did not return the expected object structure.");
-      return null;
+      // Return the result directly, since we don't know its exact structure
+      return addFrameResult || null;
     } catch (error) {
       console.error("[error] adding frame:", error);
       // Log the full error object for more details

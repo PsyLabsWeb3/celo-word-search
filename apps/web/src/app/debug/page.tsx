@@ -5,12 +5,13 @@ import { useAdminStatus } from "@/hooks/useContract";
 
 export default function DebugPage() {
   const { address, isConnected, chain } = useAccount();
-  const { 
-    isBoardAdmin, 
-    isPrizesAdmin, 
-    isDefaultAdmin, 
-    isLoading, 
-    allResults 
+  const {
+    isBoardAdmin,
+    isPrizesAdmin,
+    isDefaultAdmin,
+    isLegacyAdmin,
+    isLoading,
+    allResults
   } = useAdminStatus();
 
   if (!isConnected) {
@@ -43,17 +44,17 @@ export default function DebugPage() {
 
       <div className="mb-6 p-4 border rounded bg-gray-50">
         <h2 className="text-xl font-semibold mb-2">Contract Results</h2>
-        <p><strong>Board Admin (isAdminAddress):</strong> {allResults.boardAdmin ? 'true' : 'false'}</p>
-        <p><strong>Prizes Admin (ADMIN_ROLE):</strong> {allResults.prizesAdmin ? 'true' : 'false'}</p>
-        <p><strong>Prizes Default Admin:</strong> {allResults.defaultAdmin ? 'true' : 'false'}</p>
+        <p><strong>Board Admin (hasRole ADMIN_ROLE):</strong> {allResults.prizesAdmin ? 'true' : 'false'}</p>
+        <p><strong>Default Admin (hasRole DEFAULT_ADMIN_ROLE):</strong> {allResults.defaultAdmin ? 'true' : 'false'}</p>
+        <p><strong>Legacy Admin (isAdminAddress):</strong> {allResults.legacyAdmin ? 'true' : 'false'}</p>
       </div>
 
       <div className="mb-6 p-4 border rounded bg-blue-50">
         <h2 className="text-xl font-semibold mb-2">Admin Status</h2>
-        <p><strong>Is Board Admin:</strong> {isBoardAdmin ? 'YES' : 'NO'}</p>
         <p><strong>Is Prizes Admin:</strong> {isPrizesAdmin ? 'YES' : 'NO'}</p>
         <p><strong>Is Default Admin:</strong> {isDefaultAdmin ? 'YES' : 'NO'}</p>
-        <p><strong>Overall Admin:</strong> {(isBoardAdmin || isPrizesAdmin || isDefaultAdmin) ? 'YES' : 'NO'}</p>
+        <p><strong>Is Legacy Admin:</strong> {isLegacyAdmin ? 'YES' : 'NO'}</p>
+        <p><strong>Overall Admin:</strong> {(isPrizesAdmin || isDefaultAdmin || isLegacyAdmin) ? 'YES' : 'NO'}</p>
       </div>
 
       <div className="p-4 border rounded bg-yellow-50">
@@ -61,9 +62,9 @@ export default function DebugPage() {
         <p>This page shows the detailed admin status verification.</p>
         <p>For a user to be an admin, any of the following needs to be true:</p>
         <ul className="list-disc pl-6 mt-2">
-          <li>isAdminAddress() returns true on CrosswordBoard contract</li>
-          <li>hasRole(ADMIN_ROLE) returns true on CrosswordPrizes contract</li>
-          <li>hasRole(DEFAULT_ADMIN_ROLE) returns true on CrosswordPrizes contract</li>
+          <li>hasRole(ADMIN_ROLE) returns true on CrosswordBoard contract (prizes/admin functions)</li>
+          <li>hasRole(DEFAULT_ADMIN_ROLE) returns true on CrosswordBoard contract (highest level admin)</li>
+          <li>isAdminAddress() returns true on CrosswordBoard contract (legacy admin check)</li>
         </ul>
       </div>
     </div>

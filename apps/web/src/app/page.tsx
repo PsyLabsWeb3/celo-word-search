@@ -136,14 +136,14 @@ export default function Page() {
           <div className="space-y-4">
             <CeloNetworkButton
               onClick={handleStartNewGame}
-              className="h-auto w-full border-4 border-black bg-accent px-8 py-6 text-2xl font-black uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-2 hover:translate-y-2 active:translate-x-2 active:translate-y-2 hover:bg-accent active:bg-accent hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary sm:w-auto"
+              className="md:mr-2 h-auto w-full border-4 border-black bg-accent px-8 py-6 text-2xl font-black uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-2 hover:translate-y-2 active:translate-x-2 active:translate-y-2 hover:bg-accent active:bg-accent hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary sm:w-auto"
             >
               Start
             </CeloNetworkButton>
             <Link href="/leaderboard" passHref>
               <CeloNetworkButton
                 variant="secondary"
-                className="h-auto w-full border-4 border-black bg-blue-500 px-8 py-6 text-2xl font-black uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-2 hover:translate-y-2 active:translate-x-2 active:translate-y-2 hover:bg-blue-500 active:bg-blue-500 hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary sm:w-auto"
+                className="md:ml-2 h-auto w-full border-4 border-black bg-blue-500 px-8 py-6 text-2xl font-black uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-2 hover:translate-y-2 active:translate-x-2 active:translate-y-2 hover:bg-blue-500 active:bg-blue-500 hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary sm:w-auto"
               >
                 Leaderboard
               </CeloNetworkButton>
@@ -162,7 +162,7 @@ export default function Page() {
           {/* Features */}
           <div className="grid gap-4 mt-12 sm:grid-cols-3">
             {[
-              { emoji: "🏆", text: "Top 10 Prizes" },
+              { emoji: "🏆", text: "Prizes for the first solves" },
               { emoji: "⚡", text: "Instant Answers" },
               { emoji: "🎯", text: "Daily Challenges" },
             ].map((feature, i) => (

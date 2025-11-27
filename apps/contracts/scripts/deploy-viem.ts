@@ -47,6 +47,28 @@ async function main() {
   await publicClient.waitForTransactionReceipt({ hash: boardAdminTx });
   console.log("Added admin to CrosswordBoard:", admin.account.address);
 
+  // Add additional admin address
+  const additionalAdmin = "0x66299C18c60CE709777Ec79C73b131cE2634f58e";
+
+  // Add admin to CrosswordBoard
+  console.log("\nAdding admin to CrosswordBoard:", additionalAdmin);
+  const addAdminTx = await owner.sendTransaction({
+    to: boardContract.address,
+    data: boardContract.encodeFunctionData("addAdmin", [additionalAdmin])
+  });
+  await publicClient.waitForTransactionReceipt({ hash: addAdminTx });
+
+  // Grant admin role on CrosswordPrizes
+  console.log("Granting admin role on CrosswordPrizes:", additionalAdmin);
+  const adminRole = await prizesContract.read.ADMIN_ROLE();
+  const grantRoleTx = await owner.sendTransaction({
+    to: prizesContract.address,
+    data: prizesContract.encodeFunctionData("grantRole", [adminRole, additionalAdmin])
+  });
+  await publicClient.waitForTransactionReceipt({ hash: grantRoleTx });
+
+  console.log("✅ Additional admin added to both contracts");
+
   console.log("\nDeployment completed successfully!");
   console.log("Contracts are ready for use:");
   console.log("- Config:", configContract.address);

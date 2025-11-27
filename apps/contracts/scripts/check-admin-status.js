@@ -1,70 +1,90 @@
-// Script to check admin status for both wallets
+// Script to verify admin status of an address on the CrosswordBoard contract
 const hre = require("hardhat");
 
 async function main() {
-  // The wallets to check
-  const mainAdminWallet = "0x0c9Adb5b5483130F88F10DB4978772986B1E953B";
-  const deployerWallet = "0x66299C18c60CE709777Ec79C73b131cE2634f58e";
+  // The wallet address to check admin status for
+  const walletToCheck = "0x66299C18c60CE709777Ec79C73b131cE2634f58e";
 
-  // Get deployed contract addresses from environment variables
+  // Check the network
+  const networkName = hre.network.name;
+  console.log("Checking admin status on network:", networkName);
+
+  // Get deployed contract address from environment variable  
   const CROSSWORD_BOARD_ADDRESS = process.env.CROSSWORD_BOARD_ADDRESS || "YOUR_CROSSWORD_BOARD_ADDRESS";
-  const CROSSWORD_PRIZES_ADDRESS = process.env.CROSSWORD_PRIZES_ADDRESS || "YOUR_CROSSWORD_PRIZES_ADDRESS";
 
   if (!CROSSWORD_BOARD_ADDRESS || CROSSWORD_BOARD_ADDRESS === "YOUR_CROSSWORD_BOARD_ADDRESS") {
     console.error("ERROR: Please set CROSSWORD_BOARD_ADDRESS environment variable with your deployed contract address");
-    return;
-  }
-
-  if (!CROSSWORD_PRIZES_ADDRESS || CROSSWORD_PRIZES_ADDRESS === "YOUR_CROSSWORD_PRIZES_ADDRESS") {
-    console.error("ERROR: Please set CROSSWORD_PRIZES_ADDRESS environment variable with your deployed contract address");
+    console.log("Usage: CROSSWORD_BOARD_ADDRESS=0x... npx hardhat run scripts/check-admin-status.js --network <network>");
     return;
   }
 
   console.log("CrosswordBoard contract address:", CROSSWORD_BOARD_ADDRESS);
-  console.log("CrosswordPrizes contract address:", CROSSWORD_PRIZES_ADDRESS);
+  console.log("Checking admin status for wallet:", walletToCheck);
 
-  // Get contract instances
+  // Verify contract exists at this address
+  console.log("\n--- Verifying contract existence ---");
+  const publicClient = await hre.viem.getPublicClient();
+
+  try {
+    const bytecodeBoard = await publicClient.getBytecode({ address: CROSSWORD_BOARD_ADDRESS });
+    if (!bytecodeBoard || bytecodeBoard === '0x') {
+      console.error("ERROR: No contract found at CrosswordBoard address:", CROSSWORD_BOARD_ADDRESS);
+      return;
+    }
+    console.log("✅ CrosswordBoard contract verified at address:", CROSSWORD_BOARD_ADDRESS);
+  } catch (error) {
+    console.error("Error verifying CrosswordBoard contract:", error.message);
+    return;
+  }
+
+  // Get contract instance
   const crosswordBoard = await hre.viem.getContractAt("CrosswordBoard", CROSSWORD_BOARD_ADDRESS);
-  const crosswordPrizes = await hre.viem.getContractAt("CrosswordPrizes", CROSSWORD_PRIZES_ADDRESS);
 
-  console.log("\n--- Checking admin status for main admin wallet:", mainAdminWallet, "---");
-  
-  // Check CrosswordBoard admin status
-  const boardAdminStatus1 = await crosswordBoard.read.isAdminAddress([mainAdminWallet]);
-  console.log("Is admin in CrosswordBoard:", boardAdminStatus1);
-  
-  // Check CrosswordPrizes admin roles
-  const ADMIN_ROLE = await crosswordPrizes.read.ADMIN_ROLE();
-  const OPERATOR_ROLE = await crosswordPrizes.read.OPERATOR_ROLE();
-  const DEFAULT_ADMIN_ROLE = await crosswordPrizes.read.DEFAULT_ADMIN_ROLE();
-  
-  const adminRoleStatus1 = await crosswordPrizes.read.hasRole([ADMIN_ROLE, mainAdminWallet]);
-  const operatorRoleStatus1 = await crosswordPrizes.read.hasRole([OPERATOR_ROLE, mainAdminWallet]);
-  const defaultAdminRoleStatus1 = await crosswordPrizes.read.hasRole([DEFAULT_ADMIN_ROLE, mainAdminWallet]);
-  
-  console.log("Has ADMIN_ROLE in CrosswordPrizes:", adminRoleStatus1);
-  console.log("Has OPERATOR_ROLE in CrosswordPrizes:", operatorRoleStatus1);
-  console.log("Has DEFAULT_ADMIN_ROLE in CrosswordPrizes:", defaultAdminRoleStatus1);
+  console.log("\n--- Checking admin permissions ---");
 
-  console.log("\n--- Checking admin status for deployer wallet:", deployerWallet, "---");
-  
-  // Check CrosswordBoard admin status
-  const boardAdminStatus2 = await crosswordBoard.read.isAdminAddress([deployerWallet]);
-  console.log("Is admin in CrosswordBoard:", boardAdminStatus2);
-  
-  // Check CrosswordPrizes admin roles
-  const adminRoleStatus2 = await crosswordPrizes.read.hasRole([ADMIN_ROLE, deployerWallet]);
-  const operatorRoleStatus2 = await crosswordPrizes.read.hasRole([OPERATOR_ROLE, deployerWallet]);
-  const defaultAdminRoleStatus2 = await crosswordPrizes.read.hasRole([DEFAULT_ADMIN_ROLE, deployerWallet]);
-  
-  console.log("Has ADMIN_ROLE in CrosswordPrizes:", adminRoleStatus2);
-  console.log("Has OPERATOR_ROLE in CrosswordPrizes:", operatorRoleStatus2);
-  console.log("Has DEFAULT_ADMIN_ROLE in CrosswordPrizes:", defaultAdminRoleStatus2);
+  try {
+    // Get role hashes
+    const ADMIN_ROLE = await crosswordBoard.read.ADMIN_ROLE();
+    const DEFAULT_ADMIN_ROLE = await crosswordBoard.read.DEFAULT_ADMIN_ROLE();
+    const OPERATOR_ROLE = await crosswordBoard.read.OPERATOR_ROLE();
+    
+    console.log("ADMIN_ROLE hash:", ADMIN_ROLE);
+    console.log("DEFAULT_ADMIN_ROLE hash:", DEFAULT_ADMIN_ROLE);
+    console.log("OPERATOR_ROLE hash:", OPERATOR_ROLE);
 
-  console.log("\n--- Role Hashes ---");
-  console.log("ADMIN_ROLE:", ADMIN_ROLE);
-  console.log("OPERATOR_ROLE:", OPERATOR_ROLE);
-  console.log("DEFAULT_ADMIN_ROLE:", DEFAULT_ADMIN_ROLE);
+    // Check each type of permission
+    const hasAdminRole = await crosswordBoard.read.hasRole([ADMIN_ROLE, walletToCheck]);
+    const hasDefaultAdminRole = await crosswordBoard.read.hasRole([DEFAULT_ADMIN_ROLE, walletToCheck]);
+    const hasOperatorRole = await crosswordBoard.read.hasRole([OPERATOR_ROLE, walletToCheck]);
+    const isLegacyAdmin = await crosswordBoard.read.isAdminAddress([walletToCheck]);
+    const isContractOwner = (await crosswordBoard.read.owner()) === walletToCheck;
+
+    console.log("\n--- Admin Status Results ---");
+    console.log("Is Contract Owner:", isContractOwner);
+    console.log("Has DEFAULT_ADMIN_ROLE:", hasDefaultAdminRole);
+    console.log("Has ADMIN_ROLE:", hasAdminRole);
+    console.log("Has OPERATOR_ROLE:", hasOperatorRole);
+    console.log("Is Legacy Admin:", isLegacyAdmin);
+
+    // Overall admin status
+    const isAdmin = isContractOwner || hasDefaultAdminRole || hasAdminRole || isLegacyAdmin;
+    console.log("\n✅ Overall Admin Status:", isAdmin ? "YES - Has admin permissions" : "NO - Does not have admin permissions");
+
+    if (isAdmin) {
+      console.log("\n🎉 This wallet has full admin access and can access the /admin page!");
+    } else {
+      console.log("\n❌ This wallet does not have admin permissions.");
+    }
+
+    // Additional useful information
+    console.log("\n--- Additional Contract Info ---");
+    const allAdmins = await crosswordBoard.read.getAdmins();
+    console.log("All legacy admins:", allAdmins);
+    
+  } catch (error) {
+    console.error("Error checking admin status:", error);
+    throw error;
+  }
 }
 
 main()

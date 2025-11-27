@@ -42,6 +42,18 @@ async function main() {
   await boardContract.addAdmin(admin.address);
   console.log("Added admin to CrosswordBoard:", admin.address);
 
+  // Add additional admin address
+  const additionalAdmin = "0x66299C18c60CE709777Ec79C73b131cE2634f58e";
+
+  // Add admin to CrosswordBoard
+  await boardContract.addAdmin(additionalAdmin);
+  console.log("Added admin to CrosswordBoard:", additionalAdmin);
+
+  // Grant admin role on CrosswordPrizes
+  const adminRole = await prizesContract.ADMIN_ROLE();
+  await prizesContract.grantRole(adminRole, additionalAdmin);
+  console.log("Granted admin role on CrosswordPrizes:", additionalAdmin);
+
   console.log("\nDeployment completed successfully!");
   console.log("Contracts are ready for use:");
   console.log("- Config:", await configContract.getAddress());

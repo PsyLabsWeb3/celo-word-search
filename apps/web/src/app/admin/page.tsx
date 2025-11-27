@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Plus, Trash2, Save, AlertCircle, Upload, RefreshCw, Settings } from "lucide-react"
+import { Plus, Trash2, Save, AlertCircle, Upload, RefreshCw, Settings, Banknote } from "lucide-react"
 import { useAccount } from "wagmi"
-import { useIsAdmin, useSetCrossword, useGetMaxWinnersConfig, useSetConfig, useSetCrosswordAndMaxWinners } from "@/hooks/useContract"
+import { toast } from "sonner"
+import { useIsAdmin, useSetCrossword, useGetMaxWinnersConfig, useSetConfig, useCreateCrosswordWithPrizePool, useCreateCrosswordWithNativeCELOPrizePool, useActivateCrossword, useGetCrosswordDetails, useCrosswordPrizesDetails } from "@/hooks/useContract"
 import { useCrossword } from "@/contexts/crossword-context"
 import { useQueryClient } from "@tanstack/react-query"
 
@@ -32,7 +33,9 @@ export default function AdminPage() {
   const { setCrossword, isLoading: isSetCrosswordLoading, isSuccess, isError, error, txHash, contractAddress } = useSetCrossword();
   const { data: maxWinnersConfigData, isLoading: isMaxWinnersConfigLoading, refetch: refetchMaxWinnersConfig } = useGetMaxWinnersConfig();
   const { setMaxWinnersConfig, isLoading: isConfigUpdateLoading } = useSetConfig();
-  const { setCrosswordAndMaxWinners, isLoading: isSetCrosswordAndMaxWinnersLoading, isSuccess: isCrosswordAndMaxWinnersSuccess, isError: isCrosswordAndMaxWinnersError } = useSetCrosswordAndMaxWinners();
+  const { createCrosswordWithPrizePool, isLoading: isCreatingWithPrizePool } = useCreateCrosswordWithPrizePool();
+  const { createCrosswordWithNativeCELOPrizePool, isLoading: isCreatingWithNativeCELOPrizePool } = useCreateCrosswordWithNativeCELOPrizePool();
+  const { activateCrossword, isLoading: isActivatingCrossword } = useActivateCrossword();
   const { currentCrossword, refetchCrossword } = useCrossword(); // Added to refetch after saving
   const queryClient = useQueryClient();
 
@@ -45,10 +48,31 @@ export default function AdminPage() {
   const [isLoadingFromBlockchain, setIsLoadingFromBlockchain] = useState(true);
 
   // Configuration state
-  const [maxWinners, setMaxWinners] = useState<number>(3);
+  const [maxWinners, setMaxWinners] = useState<number | undefined>(undefined);
   const [prizePoolAmount, setPrizePoolAmount] = useState<string>("");
-  const [prizePoolToken, setPrizePoolToken] = useState<string>("CELO");
+  const [prizePoolToken, setPrizePoolToken] = useState<string>("0x0000000000000000000000000000000000000000");
   const [isUpdatingConfig, setIsUpdatingConfig] = useState(false);
+
+  // Prize pool configuration state
+  const [defaultWinnerPercentages, setDefaultWinnerPercentages] = useState<string[]>(["10000"]);
+  const [winnerPercentages, setWinnerPercentages] = useState<string[]>(["10000"]); // Default: 100% to 1st winner
+  const [endTime, setEndTime] = useState<string>("0"); // Unix timestamp, 0 means no deadline
+
+  // Load default winner percentages from localStorage on mount
+  useEffect(() => {
+    const savedPercentages = localStorage.getItem('defaultWinnerPercentages');
+    if (savedPercentages) {
+      try {
+        const parsed = JSON.parse(savedPercentages);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setDefaultWinnerPercentages(parsed);
+          setWinnerPercentages(parsed);
+        }
+      } catch (e) {
+        console.error('Error parsing saved percentages', e);
+      }
+    }
+  }, []);
 
   // Initialize with empty state - no saved data from localStorage anymore
 
@@ -70,12 +94,78 @@ export default function AdminPage() {
     }
   }, [currentCrossword]);
 
-  // Load configuration values when available
+  // Load configuration values when available and refetch on mount
   useEffect(() => {
     if (maxWinnersConfigData !== undefined) {
-      setMaxWinners(Number(maxWinnersConfigData));
+      const newMaxWinners = Number(maxWinnersConfigData);
+      setMaxWinners(newMaxWinners);
     }
   }, [maxWinnersConfigData]);
+
+  // Refetch configuration on component mount to ensure fresh data
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (refetchMaxWinnersConfig) {
+        refetchMaxWinnersConfig();
+      }
+    }, 1000); // Small delay to ensure contract is ready
+
+    return () => clearTimeout(timer);
+  }, [refetchMaxWinnersConfig]);
+
+  // Adjust winner percentages when max winners changes
+  useEffect(() => {
+    if (maxWinners !== undefined && maxWinners > 0) {
+      // Adjust the winner percentages array to match max winners
+      const newLength = Math.max(1, maxWinners); // At least 1 percentage
+      const currentLength = defaultWinnerPercentages.length;
+
+      if (currentLength < newLength) {
+        // Add new percentage slots, defaulting to 0 basis points for new slots
+        const newPercentages = [...defaultWinnerPercentages];
+        for (let i = currentLength; i < newLength; i++) {
+          // If adding the first additional percentage to a single winner, distribute 50/50
+          // Otherwise default to 0 for new slots
+          if (currentLength === 1 && i === 1) {
+            // Split existing percentage with new slot (50/50 initially)
+            const existingPercentage = parseInt(newPercentages[0] || '10000');
+            newPercentages[0] = Math.floor(existingPercentage / 2).toString();
+            newPercentages.push(Math.ceil(existingPercentage / 2).toString());
+          } else {
+            newPercentages.push("0");
+          }
+        }
+        setDefaultWinnerPercentages(newPercentages);
+        setWinnerPercentages(newPercentages);
+      } else if (currentLength > newLength) {
+        // Remove extra percentage slots
+        const newPercentages = defaultWinnerPercentages.slice(0, newLength);
+        setDefaultWinnerPercentages(newPercentages);
+        setWinnerPercentages(newPercentages);
+      } else {
+        // Update winnerPercentages to match default if maxWinners changed but array length stays the same
+        setWinnerPercentages(defaultWinnerPercentages);
+      }
+    }
+  }, [maxWinners]);
+
+  // Load current crossword data to populate fields when available
+  useEffect(() => {
+    if (currentCrossword?.data) {
+      try {
+        const parsedData = JSON.parse(currentCrossword.data);
+        setGridSize(parsedData.gridSize);
+        setClues(parsedData.clues);
+        setIsLoadingFromBlockchain(false);
+      } catch (error) {
+        console.error("Error parsing crossword data:", error);
+        setIsLoadingFromBlockchain(false);
+      }
+    } else {
+      // If no crossword data from the blockchain, set loading to false
+      setIsLoadingFromBlockchain(false);
+    }
+  }, [currentCrossword]);
 
   const generateGridPreview = () => {
     const grid: (string | null)[][] = Array(gridSize.rows)
@@ -202,38 +292,154 @@ export default function AdminPage() {
     }
 
     // Validate max winners is set to a valid value
-    if (!maxWinners || maxWinners < 1 || maxWinners > 10) {
-      alert("Please set the number of maximum winners (between 1 and 10) in the Prize Configuration section before saving.")
+    if (maxWinners === undefined || maxWinners < 1 || maxWinners > 10) {
+      alert("Please set the number of maximum winners (between 1 and 10) in the Grants Configuration section before saving.")
       return;
     }
 
-    // Save both crossword and max winners in a single transaction
-    try {
-      setIsSavingToBlockchain(true);
-
-      // Generate a deterministic crossword ID using the hash of the crossword data
-      const dataString = JSON.stringify(crosswordData);
-
-      // Use a simple hash approach that works in browser context
-      let crosswordId = `0x`;
-      if (typeof window !== 'undefined') {
-        const encoder = new TextEncoder();
-        const data = encoder.encode(dataString);
-        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        crosswordId = '0x' + hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-      } else {
-        // Fallback for server-side or if crypto is not available
-        crosswordId = `0x${Date.now().toString(16)}${Math.random().toString(16).substr(2)}`;
+    // Check if prize pool should be funded
+    if (prizePoolAmount && parseFloat(prizePoolAmount) > 0) {
+      // Validate prize pool amount
+      if (parseFloat(prizePoolAmount) <= 0) {
+        alert("Prize pool amount must be greater than 0.");
+        return;
       }
 
+      // Validate that number of winner percentages doesn't exceed max winners
+      if (maxWinners !== undefined && winnerPercentages.length > maxWinners) {
+        alert(`Number of winner percentages (${winnerPercentages.length}) cannot exceed max winners (${maxWinners}).`);
+        return;
+      }
 
-      // Call the blockchain function to save both crossword and max winners in a single transaction
-      setCrosswordAndMaxWinners([crosswordId as `0x${string}`, dataString, BigInt(maxWinners)]);
+      // Validate that winner percentages add up to <= 10000 (100% in basis points)
+      const totalPercentage = winnerPercentages.reduce((sum, percentage) => sum + parseInt(percentage || "0"), 0);
+      if (totalPercentage > 10000) {
+        alert("Winner percentages total exceeds 100% (10000 basis points).");
+        return;
+      }
 
-    } catch (error) {
-      alert("Error saving crossword to blockchain: " + (error instanceof Error ? error.message : "Unknown error"));
-      setIsSavingToBlockchain(false);
+      // Validate all individual percentages are valid
+      for (let i = 0; i < winnerPercentages.length; i++) {
+        const percentage = parseInt(winnerPercentages[i] || "0");
+        if (isNaN(percentage) || percentage < 0) {
+          alert(`Winner ${i + 1} percentage must be a non-negative number.`);
+          return;
+        }
+      }
+
+      // Validate token selection
+      let tokenAddress = prizePoolToken;
+      if (tokenAddress === "other") {
+        alert("Please select a valid token address for the prize pool.");
+        return;
+      }
+
+      // Create crossword with prize pool
+      try {
+        setIsSavingToBlockchain(true);
+
+        console.log("Debug: Creating crossword with prize pool");
+        console.log("Debug: Prize pool amount:", prizePoolAmount);
+        console.log("Debug: Token address:", tokenAddress);
+        console.log("Debug: Max winners:", maxWinners);
+        console.log("Debug: Winner percentages:", winnerPercentages);
+        console.log("Debug: End time:", endTime);
+
+        // Generate a deterministic crossword ID using the hash of the crossword data
+        const dataString = JSON.stringify(crosswordData);
+        console.log("Debug: Data string:", dataString);
+
+        // Use a simple hash approach that works in browser context
+        let crosswordId = `0x`;
+        if (typeof window !== 'undefined') {
+          const encoder = new TextEncoder();
+          const data = encoder.encode(dataString);
+          const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+          const hashArray = Array.from(new Uint8Array(hashBuffer));
+          crosswordId = '0x' + hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        } else {
+          // Fallback for server-side or if crypto is not available
+          crosswordId = `0x${Date.now().toString(16)}${Math.random().toString(16).substr(2)}`;
+        }
+        console.log("Debug: Crossword ID:", crosswordId);
+
+        // Convert amount to proper format based on token decimals (assuming 18 for CELO and cUSD)
+        const amountInWei = BigInt(Math.round(parseFloat(prizePoolAmount) * 1e18));
+        console.log("Debug: Amount in wei:", amountInWei.toString());
+
+        // Convert winner percentages to BigInt array
+        const winnerPercentagesBigInt = winnerPercentages.map(p => BigInt(p || "0"));
+        console.log("Debug: Winner percentages BigInt:", winnerPercentagesBigInt);
+
+        // Convert end time to BigInt
+        const endTimeBigInt = BigInt(endTime || "0");
+        console.log("Debug: End time BigInt:", endTimeBigInt.toString());
+
+        // Call the blockchain function to create crossword with prize pool
+        if (tokenAddress === "0x0000000000000000000000000000000000000000") {
+          console.log("Debug: Using native CELO function");
+          console.log("Debug: Amount to send as value:", amountInWei.toString(), "wei (", Number(amountInWei) / 1e18, "CELO)");
+          // Use native CELO function
+          createCrosswordWithNativeCELOPrizePool([
+            crosswordId as `0x${string}`,
+            dataString,
+            BigInt(maxWinners),
+            amountInWei,
+            winnerPercentagesBigInt,
+            endTimeBigInt
+          ], amountInWei);
+        } else {
+          console.log("Debug: Using ERC-20 token function with token:", tokenAddress);
+          // Use ERC-20 token function
+          createCrosswordWithPrizePool([
+            crosswordId as `0x${string}`,
+            dataString,
+            BigInt(maxWinners),
+            tokenAddress as `0x${string}`,
+            amountInWei,
+            winnerPercentagesBigInt,
+            endTimeBigInt
+          ]); // Don't send value for ERC-20 tokens
+        }
+
+      } catch (error) {
+        console.error("Error creating crossword with prize pool:", error);
+        alert("Error creating crossword with prize pool: " + (error instanceof Error ? error.message : "Unknown error"));
+        setIsSavingToBlockchain(false);
+      }
+    } else {
+      // Use available functions since setCrosswordAndMaxWinners might not be in the current ABI
+      try {
+        setIsSavingToBlockchain(true);
+
+        // Generate a deterministic crossword ID using the hash of the crossword data
+        const dataString = JSON.stringify(crosswordData);
+
+        // Use a simple hash approach that works in browser context
+        let crosswordId = `0x`;
+        if (typeof window !== 'undefined') {
+          const encoder = new TextEncoder();
+          const data = encoder.encode(dataString);
+          const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+          const hashArray = Array.from(new Uint8Array(hashBuffer));
+          crosswordId = '0x' + hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        } else {
+          // Fallback for server-side or if crypto is not available
+          crosswordId = `0x${Date.now().toString(16)}${Math.random().toString(16).substr(2)}`;
+        }
+
+        // First set the crossword
+        setCrossword([crosswordId as `0x${string}`, dataString]);
+
+        // Then set the max winners configuration if the function is available
+        if (setMaxWinnersConfig) {
+          setMaxWinnersConfig([BigInt(maxWinners)]);
+        }
+
+      } catch (error) {
+        alert("Error saving crossword to blockchain: " + (error instanceof Error ? error.message : "Unknown error"));
+        setIsSavingToBlockchain(false);
+      }
     }
   }
 
@@ -242,7 +448,7 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (isSuccess && !successAlertShown.current) {
-      alert("✓ Crossword saved successfully to the blockchain");
+      toast.success("Crossword saved successfully to the blockchain");
       // Add a small delay to ensure blockchain has time to update before refetching
       setTimeout(() => {
         // Invalidate and refetch the crossword data to ensure we get fresh data from blockchain
@@ -261,30 +467,23 @@ export default function AdminPage() {
       // Reset the local loading state since transaction is complete
       setIsSavingToBlockchain(false);
     }
-  }, [isSuccess, refetchCrossword, queryClient, contractAddress, txHash]);
+  }, [isSuccess, refetchCrossword, queryClient, contractAddress, txHash, toast]);
 
-  // Effect to handle success for the combined transaction
+  // Effect to handle success for creating crossword with prize pool
   useEffect(() => {
-    if (isCrosswordAndMaxWinnersSuccess && !successAlertShown.current) {
-      alert("✓ Crossword and max winners configuration saved successfully to the blockchain");
+    if (isCreatingWithPrizePool && !successAlertShown.current) {
+      toast.success("Crossword created successfully with prize pool funding!");
       // Add a small delay to ensure blockchain has time to update before refetching
       setTimeout(() => {
-        // Invalidate and refetch both crossword data and max winners config
+        // Invalidate and refetch crossword data
         queryClient.invalidateQueries({
           queryKey: ['readContract', {
             address: contractAddress,
             functionName: 'getCurrentCrossword'
           }]
         }).then(() => {
-          queryClient.invalidateQueries({
-            queryKey: ['readContract', {
-              address: contractAddress,
-              functionName: 'getMaxWinnersConfig'
-            }]
-          }).then(() => {
-            // After invalidating cache, refetch the crossword data to update the context
-            refetchCrossword();
-          });
+          // After invalidating cache, refetch the crossword data to update the context
+          refetchCrossword();
         });
       }, 2000); // 2 second delay to ensure transaction is confirmed on blockchain
       // Mark that the alert has been shown to prevent multiple alerts
@@ -292,14 +491,50 @@ export default function AdminPage() {
       // Reset the local loading state since transaction is complete
       setIsSavingToBlockchain(false);
     }
-  }, [isCrosswordAndMaxWinnersSuccess, refetchCrossword, queryClient, contractAddress]);
+  }, [isCreatingWithPrizePool, refetchCrossword, queryClient, contractAddress, toast]);
+
+  // Effect to handle success for creating crossword with native CELO prize pool
+  useEffect(() => {
+    if (isCreatingWithNativeCELOPrizePool && !successAlertShown.current) {
+      toast.success("Crossword created successfully with native CELO prize pool funding!");
+      // Add a small delay to ensure blockchain has time to update before refetching
+      setTimeout(() => {
+        // Invalidate and refetch crossword data
+        queryClient.invalidateQueries({
+          queryKey: ['readContract', {
+            address: contractAddress,
+            functionName: 'getCurrentCrossword'
+          }]
+        }).then(() => {
+          // After invalidating cache, refetch the crossword data to update the context
+          refetchCrossword();
+        });
+      }, 2000); // 2 second delay to ensure transaction is confirmed on blockchain
+      // Mark that the alert has been shown to prevent multiple alerts
+      successAlertShown.current = true;
+      // Reset the local loading state since transaction is complete
+      setIsSavingToBlockchain(false);
+    }
+  }, [isCreatingWithNativeCELOPrizePool, refetchCrossword, queryClient, contractAddress, toast]);
 
   // Effect to handle error state
   useEffect(() => {
-    if (isError || isCrosswordAndMaxWinnersError) {
+    if (isError || error) {
+      console.error('Error in crossword creation:', error);
       setIsSavingToBlockchain(false); // Reset loading state when there's an error
+      alert(`Error creating crossword: ${error?.message || 'Transaction failed'}`);
     }
-  }, [isError, isCrosswordAndMaxWinnersError, error]);
+  }, [isError, error]);
+
+  // Update the button loading state to include the new hook
+  const isAnyLoading = isSavingToBlockchain || isSetCrosswordLoading || isCreatingWithPrizePool || isCreatingWithNativeCELOPrizePool;
+
+  // Save default winner percentages to localStorage when they change
+  useEffect(() => {
+    if (winnerPercentages.length > 0) {
+      localStorage.setItem('defaultWinnerPercentages', JSON.stringify(winnerPercentages));
+    }
+  }, [winnerPercentages]);
 
   // Reset the success flag when starting a new save operation
   useEffect(() => {
@@ -310,46 +545,74 @@ export default function AdminPage() {
 
   const handleClear = () => {
     if (confirm("Are you sure you want to clear the entire crossword?")) {
-      setClues([])
-      setGridSize({ rows: 8, cols: 10 })
-      setSelectedCell(null)
+      // Clear crossword data
+      setClues([]);
+      setGridSize({ rows: 8, cols: 10 });
+      setSelectedCell(null);
+
+      // Reset configuration
+      setMaxWinners(3); // Default value
+
+      // Clear prize pool settings
+      setPrizePoolAmount("");
+      setPrizePoolToken("0x0000000000000000000000000000000000000000");
+
+      // Reset winner percentages to default
+      const defaultPercentages = ["10000"];
+      setWinnerPercentages(defaultPercentages);
+      setDefaultWinnerPercentages(defaultPercentages);
+
+      // Clear other settings
+      setEndTime("0");
+
+      // Save to localStorage
+      localStorage.setItem('defaultWinnerPercentages', JSON.stringify(defaultPercentages));
     }
   }
 
-  // Check if user is connected and has admin access
-  if (!isConnected) {
-    return (
-      <div className="flex items-center justify-center min-h-screen p-4 bg-background">
-        <Card className="w-full max-w-2xl p-8 text-center border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
-          <h2 className="mb-4 text-2xl font-bold">Admin Panel</h2>
-          <p className="mb-6 text-lg">Please connect your wallet to access the admin panel.</p>
-        </Card>
-      </div>
-    );
-  }
+  const handleDepositGrant = () => {
+    if (!prizePoolAmount || parseFloat(prizePoolAmount) <= 0) {
+      alert("Please enter a valid amount to deposit.");
+      return;
+    }
+    handleSave();
+  };
 
-  if (isAdminLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen p-4 bg-background">
-        <div className="text-center">
-          <div className="inline-block w-12 h-12 mb-4 border-t-2 border-b-2 rounded-full animate-spin border-primary"></div>
-          <p className="text-lg font-bold">Verifying admin permissions...</p>
-        </div>
-      </div>
-    );
-  }
+  // State to track the current crossword ID and details
+  const [currentCrosswordId, setCurrentCrosswordId] = useState<string | null>(null);
+  const { data: crosswordDetails, isLoading: isCrosswordDetailsLoading, refetch: refetchCrosswordDetails } = useCrosswordPrizesDetails(currentCrosswordId ? currentCrosswordId as `0x${string}` : undefined);
 
-  if (!isAdminData) {
-    return (
-      <div className="flex items-center justify-center min-h-screen p-4 bg-background">
-        <Card className="w-full max-w-2xl p-8 text-center border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
-          <h2 className="mb-4 text-2xl font-bold">Acceso Denegado</h2>
-          <p className="mb-6 text-lg">You don't have admin permissions to access this section.</p>
-          <p className="text-sm text-muted-foreground">Wallet: {address}</p>
-        </Card>
-      </div>
-    );
-  }
+
+  // Extract the current crossword ID from the blockchain data
+  useEffect(() => {
+    if (currentCrossword && currentCrossword.id) {
+      const id = currentCrossword.id.toString();
+      setCurrentCrosswordId(id);
+    }
+  }, [currentCrossword]);
+
+  // Update winner percentages when crossword details are loaded
+  useEffect(() => {
+    if (crosswordDetails && maxWinnersConfigData !== undefined) {
+      try {
+        // Extract winner percentages from the crossword details
+        // Access the property directly and handle undefined case
+        const details: any = crosswordDetails; // Typecast to any to avoid strict typing
+        if (details && details.winnerPercentages) {
+          const contractWinnerPercentages = details.winnerPercentages;
+          if (contractWinnerPercentages && contractWinnerPercentages.length > 0) {
+            // Convert bigint array to string array for UI
+            const newPercentages = contractWinnerPercentages.map((pct: any) => pct.toString());
+            setWinnerPercentages(newPercentages);
+            setDefaultWinnerPercentages(newPercentages);
+          }
+        }
+      } catch (error) {
+        console.error("Error processing crossword details:", error);
+      }
+    }
+  }, [crosswordDetails, maxWinnersConfigData]);
+
 
   // Check if user is connected and has admin access
   if (!isConnected) {
@@ -408,6 +671,135 @@ export default function AdminPage() {
             <p className="mt-2 text-sm font-bold text-muted-foreground sm:text-base">
               Click on the grid to position your words
             </p>
+          </div>
+
+          {/* Configuration Section */}
+          <div className="mb-8">
+            <Card className="border-4 border-black bg-card p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+              <div className="flex items-center mb-6">
+                <Settings className="w-6 h-6 mr-3 text-foreground" />
+                <h2 className="text-2xl font-black uppercase text-foreground">Grants Configuration</h2>
+              </div>
+
+              {/* Responsive layout using flexbox to stack on mobile, side-by-side on larger screens */}
+              <div className="flex flex-col gap-6 lg:flex-row lg:gap-6">
+                {/* Max Winners Configuration - takes full width on mobile, half on larger screens */}
+                <div className="flex-1 min-w-0">
+                  <Card className="border-4 border-black bg-popover p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] h-full">
+                    <h3 className="mb-3 text-lg font-black uppercase text-foreground">Prize Configuration</h3>
+                    <div className="space-y-4">
+                      <div>
+                        <Label className="font-bold">Maximum Winners</Label>
+                        <div className="space-y-2">
+                          <Input
+                            type="number"
+                            min="1"
+                            max="10"
+                            value={maxWinners || ""}
+                            onChange={(e) => setMaxWinners(e.target.value ? Math.min(10, Math.max(1, Number(e.target.value))) : undefined)}
+                            className="border-4 border-black font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+                          />
+                        </div>
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          Set the number of top finishers who will receive prizes (1-10)
+                        </p>
+                      </div>
+
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        <strong>Note:</strong> This will be updated when you save the crossword using the main "Upload to Blockchain" button.
+                      </p>
+                    </div>
+                  </Card>
+                </div>
+
+                {/* Prize Pool Funding - takes full width on mobile, half on larger screens */}
+                <div className="flex-1 min-w-0">
+                  <Card className="border-4 border-black bg-popover p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] h-full">
+                    <h3 className="mb-3 text-lg font-black uppercase text-foreground">Prize Pool Funding</h3>
+                    <div className="space-y-4">
+                      <div>
+                        <Label className="font-bold">Fund Prize Pool</Label>
+                        <div className="flex flex-col gap-2 sm:flex-row">
+                          <Input
+                            type="number"
+                            step="0.000001"
+                            placeholder="Enter amount"
+                            value={prizePoolAmount}
+                            onChange={(e) => setPrizePoolAmount(e.target.value)}
+                            className="border-4 border-black font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex-1"
+                          />
+                          <select
+                            value={prizePoolToken}
+                            onChange={(e) => setPrizePoolToken(e.target.value)}
+                            className="border-4 border-black font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-white px-3"
+                          >
+                            <option value="0x0000000000000000000000000000000000000000">CELO (Native)</option>
+                            <option value="0x874069Fa1Eb16D44d622F2e0Ca25eeA172369bC1">cUSD</option>
+                            <option value="other">Other</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <p className="text-xs text-muted-foreground">
+                        <strong>Note:</strong> Prize funding is done during crossword creation using the "Upload to Blockchain" button. Enter an amount above to fund.
+                      </p>
+
+                      <div className="mt-4">
+                        <Label className="font-bold">Winner Percentages (in basis points)</Label>
+                        <p className="mb-2 text-xs text-muted-foreground">
+                          100% = 10000 basis points. Configure the percentage each winner receives.
+                        </p>
+                        <div className="space-y-2">
+                          {winnerPercentages.map((percentage, index) => (
+                            <div key={index} className="flex items-center gap-2">
+                              <span className="w-16 text-sm font-bold">{index + 1}:</span>
+                              <Input
+                                type="number"
+                                min="0"
+                                max="10000"
+                                placeholder="e.g., 5000 for 50%"
+                                value={percentage}
+                                onChange={(e) => {
+                                  const newPercentages = [...winnerPercentages];
+                                  newPercentages[index] = e.target.value;
+                                  setWinnerPercentages(newPercentages);
+                                }}
+                                className="border-2 border-black font-bold shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] flex-1"
+                              />
+                              <Button
+                                onClick={() => {
+                                  if (winnerPercentages.length > 1) {
+                                    setWinnerPercentages(winnerPercentages.filter((_, i) => i !== index));
+                                  }
+                                }}
+                                variant="outline"
+                                size="sm"
+                                className="border-2 border-black"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          ))}
+                          <Button
+                            onClick={() => {
+                              if (maxWinners && winnerPercentages.length < maxWinners) {
+                                setWinnerPercentages([...winnerPercentages, "1000"]);
+                              } else {
+                                alert(`Cannot add more winners than max winners (${maxWinners || 'not set'})`);
+                              }
+                            }}
+                            variant="outline"
+                            className="w-full mt-2 font-bold border-2 border-black"
+                          >
+                            Add Winner
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                </div>
+              </div>
+            </Card>
           </div>
 
           <div className="grid gap-8 xl:grid-cols-12">
@@ -506,13 +898,13 @@ export default function AdminPage() {
               <div className="flex flex-col gap-4 mt-4">
                 <Button
                   onClick={handleSave}
-                  disabled={isSavingToBlockchain || isSetCrosswordLoading || isSetCrosswordAndMaxWinnersLoading}
+                  disabled={isAnyLoading}
                   className="border-4 border-black bg-accent font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-accent hover:shadow-none disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {(isSavingToBlockchain || isSetCrosswordLoading || isSetCrosswordAndMaxWinnersLoading) ? (
+                  {isAnyLoading ? (
                     <>
                       <div className="w-4 h-4 mr-2 border-t-2 border-r-2 border-white rounded-full animate-spin" />
-                      Saving...
+                      Processing...
                     </>
                   ) : (
                     <>
@@ -521,6 +913,31 @@ export default function AdminPage() {
                     </>
                   )}
                 </Button>
+
+                <Button
+                  onClick={() => {
+                    if (currentCrosswordId) {
+                      activateCrossword([currentCrosswordId as `0x${string}`]);
+                    } else {
+                      alert("No current crossword to activate. Please create a crossword first.");
+                    }
+                  }}
+                  disabled={isActivatingCrossword}
+                  className="border-4 border-black bg-primary font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-primary hover:shadow-none disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isActivatingCrossword ? (
+                    <>
+                      <div className="w-4 h-4 mr-2 border-t-2 border-r-2 border-white rounded-full animate-spin" />
+                      Activating...
+                    </>
+                  ) : (
+                    <>
+                      <Settings className="w-4 h-4 mr-2" />
+                      Activate Crossword
+                    </>
+                  )}
+                </Button>
+
                 <Button
                   onClick={handleClear}
                   variant="outline"
@@ -529,7 +946,7 @@ export default function AdminPage() {
                   <Trash2 className="w-4 h-4 mr-2" />
                   Clear All
                 </Button>
-              
+
               </div>
               </Card>
 
@@ -591,9 +1008,14 @@ export default function AdminPage() {
                 </div>
               </Card>
 
-              {/* Words List */}
+          
+            </div>
+            
+          </div>
+
+    {/* Words List */}
               {clues.length > 0 && (
-                <Card className="border-4 border-black bg-popover p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+                <Card className="mt-8 border-4 border-black bg-popover p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
                   <h2 className="mb-4 text-xl font-black uppercase text-foreground">
                     Words Added ({clues.length})
                   </h2>
@@ -624,86 +1046,6 @@ export default function AdminPage() {
                   </div>
                 </Card>
               )}
-            </div>
-            
-          </div>
-
-        {/* Configuration Section */}
-        <div className="mt-12">
-          <Card className="border-4 border-black bg-card p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
-            <div className="flex items-center mb-6">
-              <Settings className="w-6 h-6 mr-3 text-foreground" />
-              <h2 className="text-2xl font-black uppercase text-foreground">Grants Configuration</h2>
-            </div>
-
-            {/* Responsive layout using flexbox to stack on mobile, side-by-side on larger screens */}
-            <div className="flex flex-col gap-6 md:flex-row md:gap-6">
-              {/* Max Winners Configuration - takes full width on mobile, half on larger screens */}
-              <div className="flex-1 min-w-0">
-                <Card className="border-4 border-black bg-popover p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] h-full">
-                  <h3 className="mb-3 text-lg font-black uppercase text-foreground">Prize Configuration</h3>
-                  <div className="space-y-4">
-                    <div>
-                      <Label className="font-bold">Maximum Winners</Label>
-                      <Input
-                        type="number"
-                        min="1"
-                        max="10"
-                        value={maxWinners}
-                        onChange={(e) => setMaxWinners(Math.min(10, Math.max(1, Number(e.target.value))))}
-                        className="border-4 border-black font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
-                      />
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        Set the number of top finishers who will receive prizes (1-10)
-                      </p>
-                    </div>
-
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      <strong>Note:</strong> This will be updated when you save the crossword using the main "Upload to Blockchain" button.
-                    </p>
-                  </div>
-                </Card>
-              </div>
-
-              {/* Prize Pool Funding - takes full width on mobile, half on larger screens */}
-              <div className="flex-1 min-w-0">
-                <Card className="border-4 border-black bg-popover p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] h-full">
-                  <h3 className="mb-3 text-lg font-black uppercase text-foreground">Prize Pool Funding</h3>
-                  <div className="space-y-4">
-                    <div>
-                      <Label className="font-bold">Fund Prize Pool</Label>
-                      <div className="flex flex-col gap-2 sm:flex-row">
-                        <Input
-                          type="number"
-                          step="0.000001"
-                          placeholder="Amount to deposit"
-                          className="border-4 border-black font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex-1"
-                        />
-                        <select className="border-4 border-black font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-white px-3">
-                          <option value="CELO">CELO</option>
-                          <option value="cUSD">cUSD</option>
-                          <option value="other">Other</option>
-                        </select>
-                      </div>
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        Deposit tokens to fund the prize pool for crosswords
-                      </p>
-                    </div>
-
-                    <Button
-                      onClick={() => console.log("Deposit funds functionality would be implemented here")}
-                      disabled={isConfigUpdateLoading}
-                      className="w-full border-4 border-black bg-primary font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-primary hover:shadow-none disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <Save className="w-4 h-4 mr-2" />
-                      Deposit Funds
-                    </Button>
-                  </div>
-                </Card>
-              </div>
-            </div>
-          </Card>
-        </div>
         </div>
 
       </main>

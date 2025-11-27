@@ -29,7 +29,7 @@ const ALFAJORES_CONTRACTS = {
 // Sepolia network configuration
 const SEPOLIA_CONTRACTS = {
   CrosswordBoard: {
-    address: "0x6c2d83262ff84cbadb3e416d527403135d757892",
+    address: "0xF12c74B6339290849616afe59DbBFf2a557396dF",
     abi: [
       {
         "inputs": [
@@ -433,7 +433,7 @@ const SEPOLIA_CONTRACTS = {
     ],
   },
   CrosswordPrizes: {
-    address: "0xfd6f7a6a5c21a3f503ebae7a473639974379c351",
+    address: "0xC62bE6f1aCa9c7A4dC7726283A3E027F6cEa5892",
     abi: [
       {
         "inputs": [

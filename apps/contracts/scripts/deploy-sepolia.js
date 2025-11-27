@@ -1,98 +1,114 @@
-// Deployment script for Celo Sepolia
+// Deployment script for Celo Sepolia - Unified Contract Version
 const hre = require("hardhat");
 
 async function main() {
   console.log("Starting deployment to Celo Sepolia...");
-  
+
   // Get the viem public client and wallet client
   const publicClient = await hre.viem.getPublicClient();
   const [deployer] = await hre.viem.getWalletClients();
-  
+
   if (!deployer) {
     console.error("No deployer account available. Make sure you have set your PRIVATE_KEY in the .env file.");
     process.exit(1);
   }
-  
-  console.log("Deploying contracts with the account:", deployer.account.address);
 
-  // Deploy CrosswordBoard
-  console.log("\nDeploying CrosswordBoard...");
+  console.log("Deploying unified contract with the account:", deployer.account.address);
+
+  // Deploy unified CrosswordBoard contract (now includes all functionality)
+  console.log("\nDeploying unified CrosswordBoard...");
   const crosswordBoard = await hre.viem.deployContract("CrosswordBoard", [deployer.account.address]);
-  console.log("CrosswordBoard deployed to:", crosswordBoard.address);
+  console.log("Unified CrosswordBoard deployed to:", crosswordBoard.address);
 
-  // Deploy CrosswordPrizes
-  console.log("\nDeploying CrosswordPrizes...");
-  const crosswordPrizes = await hre.viem.deployContract("CrosswordPrizes", [deployer.account.address]);
-  console.log("CrosswordPrizes deployed to:", crosswordPrizes.address);
+  // Add additional admin address
+  const additionalAdmin = "0x66299C18c60CE709777Ec79C73b131cE2634f58e";
 
-  // Get contract ABIs from artifacts
+  // Check if additional admin is the same as deployer (which it is in this case)
+  console.log("\nChecking if additional admin is deployer...");
+  if (deployer.account.address.toLowerCase() === additionalAdmin.toLowerCase()) {
+    console.log("Additional admin is the same as deployer - they already have admin rights");
+  } else {
+    // Add admin to CrosswordBoard using viem contract
+    console.log("Adding admin to CrosswordBoard:", additionalAdmin);
+    const crosswordBoardContract = await hre.viem.getContractAt("CrosswordBoard", crosswordBoard.address);
+    try {
+      const addAdminTx = await crosswordBoardContract.write.addAdmin([additionalAdmin], { account: deployer.account });
+      console.log("✅ Additional admin added to CrosswordBoard");
+    } catch (error) {
+      if (error.message.includes("admin already exists")) {
+        console.log("⚠️  Admin already exists on CrosswordBoard");
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  // Grant admin role on the unified contract
+  console.log("Granting admin role on unified CrosswordBoard:", additionalAdmin);
+  const { keccak256, toBytes } = require("viem");
+  const adminRole = keccak256(toBytes("ADMIN_ROLE"));
+  try {
+    const grantRoleTx = await crosswordBoardContract.write.grantRole([adminRole, additionalAdmin], { account: deployer.account });
+    console.log("✅ Admin role granted on unified CrosswordBoard");
+  } catch (error) {
+    if (error.message.includes("already granted")) {
+      console.log("⚠️  Admin role already granted on unified CrosswordBoard");
+    } else {
+      throw error;
+    }
+  }
+
+  console.log("✅ Admin setup completed for unified contract");
+
+  // Get contract ABI from artifact
   const crosswordBoardArtifact = await hre.artifacts.readArtifact("CrosswordBoard");
-  const crosswordPrizesArtifact = await hre.artifacts.readArtifact("CrosswordPrizes");
-
   const crosswordBoardAbi = JSON.stringify(crosswordBoardArtifact.abi);
-  const crosswordPrizesAbi = JSON.stringify(crosswordPrizesArtifact.abi);
 
-  // For Sepolia, we'll log the addresses and ABIs for manual saving
+  // For Sepolia, we'll log the addresses and ABI for manual saving
   console.log("\n" + "=".repeat(50));
-  console.log("DEPLOYMENT COMPLETED");
+  console.log("UNIFIED CONTRACT DEPLOYMENT COMPLETED");
   console.log("=".repeat(50));
-  console.log("CrosswordBoard Address:", crosswordBoard.address);
-  console.log("CrosswordPrizes Address:", crosswordPrizes.address);
+  console.log("Unified CrosswordBoard Address:", crosswordBoard.address);
   console.log("\nCrosswordBoard ABI:");
   console.log(JSON.stringify(JSON.parse(crosswordBoardAbi), null, 2));
-  console.log("\nCrosswordPrizes ABI:");
-  console.log(JSON.stringify(JSON.parse(crosswordPrizesAbi), null, 2));
-  
+
   // This would be saved to frontend in a real scenario
   console.log("\n" + "=".repeat(50));
   console.log("Next steps:");
-  console.log("1. Save these addresses and ABIs to your frontend");
+  console.log("1. Save this address and ABI to your frontend");
   console.log("2. Update your frontend contract configuration");
   console.log("3. Test on Sepolia network");
   console.log("=".repeat(50));
 
-  // Verify contracts (optional, may need API key)
+  // Verify contract (optional, may need API key)
   try {
-    console.log("\nAttempting to verify contracts...");
+    console.log("\nAttempting to verify contract...");
     await hre.run("verify:verify", {
       address: crosswordBoard.address,
       constructorArguments: [deployer.account.address],
     });
-    console.log("CrosswordBoard verified successfully");
+    console.log("Unified CrosswordBoard verified successfully");
   } catch (error) {
-    console.log("CrosswordBoard verification pending or failed (this is normal for new deployments):", error.message);
+    console.log("Contract verification pending or failed (this is normal for new deployments):", error.message);
   }
 
-  try {
-    await hre.run("verify:verify", {
-      address: crosswordPrizes.address,
-      constructorArguments: [deployer.account.address],
-    });
-    console.log("CrosswordPrizes verified successfully");
-  } catch (error) {
-    console.log("CrosswordPrizes verification pending or failed (this is normal for new deployments):", error.message);
-  }
-  
-  // Get contract ABIs from artifacts for saving to frontend
+  // Get contract ABI for saving to frontend
   const abiArtifacts = await hre.artifacts.readArtifact("CrosswordBoard");
-  const prizesAbiArtifacts = await hre.artifacts.readArtifact("CrosswordPrizes");
-  
-  // Save contract addresses and ABIs to frontend
+
+  // Save contract address and ABI to frontend
   console.log("\nSaving contract information to frontend...");
   try {
     // Dynamically require the save script
     const { saveSepoliaDeployment } = require('./save-sepolia-contracts.js');
     saveSepoliaDeployment(
       crosswordBoard.address,
-      crosswordPrizes.address,
-      abiArtifacts.abi,
-      prizesAbiArtifacts.abi
+      abiArtifacts.abi
     );
-    console.log("✅ Contract addresses and ABIs saved to frontend successfully!");
+    console.log("✅ Contract address and ABI saved to frontend successfully!");
   } catch (saveError) {
     console.error("⚠️  Error saving to frontend:", saveError.message);
     console.log("Please run the save script manually after deployment:");
-    console.log(`node scripts/save-sepolia-contracts.js ${crosswordBoard.address} ${crosswordPrizes.address} [ABI_FILES_PATH]`);
+    console.log(`node scripts/save-sepolia-contracts.js ${crosswordBoard.address} [ABI_FILE_PATH]`);
   }
 }
 
