@@ -103,11 +103,11 @@ export const useSetCrossword = () => {
         description: 'Your crossword has been successfully saved on the blockchain.',
       });
       // Invalidar directamente la consulta para forzar una actualización inmediata
-      queryClient.invalidateQueries({ 
-        queryKey: ['readContract', { 
-          address: contractConfig.address, 
-          functionName: 'getCurrentCrossword' 
-        }] 
+      queryClient.invalidateQueries({
+        queryKey: ['readContract', {
+          address: contractConfig.address,
+          functionName: 'getCurrentCrossword'
+        }]
       });
       successShown.current = true;
     }
@@ -126,7 +126,7 @@ export const useSetCrossword = () => {
       errorShown.current = false;
     }
   }, [isPending]);
-  
+
   // Also reset when data changes (new transaction initiated)
   useEffect(() => {
     if (data) {
@@ -282,7 +282,7 @@ export const useUserCompletedCrossword = (crosswordId: `0x${string}`, user: `0x$
     query: {
       enabled: !!crosswordId && !!user,
       staleTime: 60000,  // Cache for 1 minute
-      gcTime: 120000,    // Garbage collect after 2 minutes  
+      gcTime: 120000,    // Garbage collect after 2 minutes
       retry: 1,          // Only retry once
       retryDelay: 5000,  // Wait 5 seconds between retries
     },
@@ -329,7 +329,7 @@ export const useIsAdmin = () => {
   // Combine both results - user is admin if they have admin status in either contract
   // (since deployer has admin rights in CrosswordBoard and also has DEFAULT_ADMIN_ROLE in CrosswordPrizes)
   const isAdmin = address && (
-    (boardAdminResult.data === true) || 
+    (boardAdminResult.data === true) ||
     (prizesAdminResult.data === true)
   );
 
@@ -397,7 +397,7 @@ export const useAdminStatus = () => {
 
   return {
     boardAdmin: boardAdminResult,
-    prizesAdmin: prizesAdminResult, 
+    prizesAdmin: prizesAdminResult,
     defaultAdmin: defaultAdminResult,
     isBoardAdmin: boardAdminResult.data === true,
     isPrizesAdmin: prizesAdminResult.data === true,
@@ -483,7 +483,7 @@ export const useClaimPrize = () => {
       errorShown.current = false;
     }
   }, [isPending]);
-  
+
   // Also reset when data changes (new transaction initiated)
   useEffect(() => {
     if (data) {
@@ -556,7 +556,7 @@ export const useCreateCrossword = () => {
       errorShown.current = false;
     }
   }, [isPending]);
-  
+
   // Also reset when data changes (new transaction initiated)
   useEffect(() => {
     if (data) {
@@ -650,7 +650,7 @@ export const useRegisterWinners = () => {
       errorShown.current = false;
     }
   }, [isPending]);
-  
+
   // Also reset when data changes (new transaction initiated)
   useEffect(() => {
     if (data) {
@@ -685,5 +685,214 @@ export const useRegisterWinners = () => {
     isError: !!writeError || isTxError,
     error: writeError || txError,
     txHash: data,
+  };
+};
+
+// Config contract hooks - for managing configuration settings
+const getConfigContractConfig = () => {
+  const chainId = useChainId();
+
+  // Determine which chain configuration to use based on environment
+  let chainConfig = CONTRACTS[celo.id]; // default to mainnet
+
+  if (chainId === celo.id) {
+    chainConfig = CONTRACTS[celo.id];
+  } else if (chainId === celoAlfajores.id) {
+    chainConfig = CONTRACTS[celoAlfajores.id];
+  } else if (chainId === 11142220 || chainId === celoSepolia.id) { // Celo Sepolia testnet
+    chainConfig = CONTRACTS[11142220];
+  } else if (chainId === 44787) { // Legacy testnet ID
+    chainConfig = CONTRACTS[celoAlfajores.id];
+  }
+
+  // Use the CrosswordBoard contract to get the configuration settings
+  const contract = chainConfig['CrosswordBoard'];
+
+  return {
+    address: contract.address as `0x${string}`,
+    abi: contract.abi,
+  };
+};
+
+
+// Hook to get the maximum number of winners configured
+export const useGetMaxWinnersConfig = () => {
+  const contractConfig = getConfigContractConfig();
+
+  return useContractRead({
+    address: contractConfig.address,
+    abi: contractConfig.abi,
+    functionName: 'getMaxWinnersConfig',
+    query: {
+      staleTime: 60000,  // Cache for 1 minute
+      gcTime: 120000,    // Garbage collect after 2 minutes
+      retry: 1,          // Only retry once
+      retryDelay: 5000,  // Wait 5 seconds between retries
+    },
+  });
+};
+
+
+// Hook for setting configuration values
+export const useSetConfig = () => {
+  const contractConfig = getConfigContractConfig();
+  const { data, error: writeError, isPending, writeContract } = useWriteContract();
+
+  const { isLoading: isConfirming, isSuccess, isError: isTxError, error: txError } = useWaitForTransactionReceipt({
+    hash: data,
+  });
+
+  // Track if we've already shown the success/error toasts to prevent duplicates
+  const successShown = useRef(false);
+  const errorShown = useRef(false);
+
+  useEffect(() => {
+    if (isSuccess && !successShown.current) {
+      toast.success('Configuration updated', {
+        description: 'The configuration has been successfully updated on the blockchain.',
+      });
+      successShown.current = true;
+    }
+    if ((isTxError || writeError) && !errorShown.current) {
+      toast.error('Configuration update failed', {
+        description: getErrorMessage(txError || writeError),
+      });
+      errorShown.current = true;
+    }
+  }, [isSuccess, isTxError, txError, writeError]);
+
+  // Reset the flags when a new transaction is initiated
+  useEffect(() => {
+    if (isPending) {
+      successShown.current = false;
+      errorShown.current = false;
+    }
+  }, [isPending]);
+
+  // Also reset when data changes (new transaction initiated)
+  useEffect(() => {
+    if (data) {
+      successShown.current = false;
+      errorShown.current = false;
+    }
+  }, [data]);
+
+  return {
+    setMaxWinnersConfig: (args: [bigint]) =>
+      writeContract({
+        address: contractConfig.address,
+        abi: contractConfig.abi,
+        functionName: 'setMaxWinnersConfig',
+        args
+      }, {
+        onError: (error) => {
+          toast.error('Error updating max winners config', {
+            description: getErrorMessage(error),
+          });
+          // Mark error as shown in case error occurs during writeContract
+          errorShown.current = true;
+        },
+        onSuccess: () => {
+          toast.success('Max winners configuration updated', {
+            description: 'Your max winners configuration change is being processed on the blockchain.',
+          });
+        }
+      }),
+    isLoading: isPending || isConfirming,
+    isSuccess,
+    isError: !!writeError || isTxError,
+    error: writeError || txError,
+    txHash: data,
+  };
+};
+
+// Hook for setting both crossword and max winners in a single transaction
+export const useSetCrosswordAndMaxWinners = () => {
+  const { address, isConnected } = useAccount();
+  const contractConfig = getContractConfig("CrosswordBoard");
+  const queryClient = useQueryClient();
+
+  const { data, error: writeError, isPending, writeContract } = useWriteContract();
+
+  const { isLoading: isConfirming, isSuccess, isError: isTXError, error: txError } = useWaitForTransactionReceipt({
+    hash: data,
+  });
+
+  // Track if we've already shown the success/error toasts to prevent duplicates
+  const successShown = useRef(false);
+  const errorShown = useRef(false);
+
+  useEffect(() => {
+    if (isSuccess && !successShown.current) {
+      toast.success("Transaction confirmed", {
+        description: "Both crossword and max winners configuration have been successfully saved on the blockchain.",
+      });
+      // Invalidar directamente la consulta para forzar una actualización inmediata
+      queryClient.invalidateQueries({
+        queryKey: ["readContract", {
+          address: contractConfig.address,
+          functionName: "getCurrentCrossword"
+        }]
+      });
+      // Also invalidate the max winners config query
+      queryClient.invalidateQueries({
+        queryKey: ["readContract", {
+          address: contractConfig.address,
+          functionName: "getMaxWinnersConfig"
+        }]
+      });
+      successShown.current = true;
+    }
+    if ((isTXError || writeError) && !errorShown.current) {
+      toast.error("Transaction failed", {
+        description: getErrorMessage(txError || writeError),
+      });
+      errorShown.current = true;
+    }
+  }, [isSuccess, isTXError, txError, writeError, queryClient, contractConfig.address]);
+
+  // Reset the flags when a new transaction is initiated
+  useEffect(() => {
+    if (isPending) {
+      successShown.current = false;
+      errorShown.current = false;
+    }
+  }, [isPending]);
+
+  // Also reset when data changes (new transaction initiated)
+  useEffect(() => {
+    if (data) {
+      successShown.current = false;
+      errorShown.current = false;
+    }
+  }, [data]);
+
+  return {
+    setCrosswordAndMaxWinners: (args: [`0x${string}`, string, bigint]) =>
+      writeContract({
+        address: contractConfig.address,
+        abi: contractConfig.abi,
+        functionName: "setCrosswordAndMaxWinners",
+        args
+      }, {
+        onError: (error) => {
+          toast.error("Error setting crossword and max winners", {
+            description: getErrorMessage(error),
+          });
+          // Mark error as shown in case error occurs during writeContract
+          errorShown.current = true;
+        },
+        onSuccess: (hash) => {
+          toast.success("Crossword and max winners set successfully", {
+            description: "Both crossword and max winners configuration have been saved to the blockchain.",
+          });
+        }
+      }),
+    isLoading: isPending || isConfirming,
+    isSuccess,
+    isError: !!writeError || isTXError,
+    error: writeError || txError,
+    txHash: data,
+    contractAddress: contractConfig.address, // Add contract address for cache invalidation
   };
 };

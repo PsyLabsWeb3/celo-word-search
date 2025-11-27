@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Plus, Trash2, Save, AlertCircle, Upload, RefreshCw, Settings, CheckCircle, XCircle } from "lucide-react"
+import { Plus, Trash2, Save, AlertCircle, Upload, RefreshCw, Settings } from "lucide-react"
 import { useAccount } from "wagmi"
-import { useIsAdmin, useSetCrossword, useGetMaxWinnersConfig, useSetConfig, useGetReturnHomeButtonVisible } from "@/hooks/useContract"
+import { useIsAdmin, useSetCrossword, useGetMaxWinnersConfig, useSetConfig, useSetCrosswordAndMaxWinners } from "@/hooks/useContract"
 import { useCrossword } from "@/contexts/crossword-context"
 import { useQueryClient } from "@tanstack/react-query"
 
@@ -31,8 +31,8 @@ export default function AdminPage() {
   const { data: isAdminData, isLoading: isAdminLoading } = useIsAdmin();
   const { setCrossword, isLoading: isSetCrosswordLoading, isSuccess, isError, error, txHash, contractAddress } = useSetCrossword();
   const { data: maxWinnersConfigData, isLoading: isMaxWinnersConfigLoading, refetch: refetchMaxWinnersConfig } = useGetMaxWinnersConfig();
-  const { data: returnHomeButtonVisibleData, isLoading: isReturnHomeVisibleLoading, refetch: refetchReturnHomeVisible } = useGetReturnHomeButtonVisible();
-  const { setMaxWinnersConfig, setReturnHomeButtonVisible: updateReturnHomeButtonVisible, isLoading: isConfigUpdateLoading } = useSetConfig();
+  const { setMaxWinnersConfig, isLoading: isConfigUpdateLoading } = useSetConfig();
+  const { setCrosswordAndMaxWinners, isLoading: isSetCrosswordAndMaxWinnersLoading, isSuccess: isCrosswordAndMaxWinnersSuccess, isError: isCrosswordAndMaxWinnersError } = useSetCrosswordAndMaxWinners();
   const { currentCrossword, refetchCrossword } = useCrossword(); // Added to refetch after saving
   const queryClient = useQueryClient();
 
@@ -46,7 +46,8 @@ export default function AdminPage() {
 
   // Configuration state
   const [maxWinners, setMaxWinners] = useState<number>(3);
-  const [isReturnHomeButtonVisible, setIsReturnHomeButtonVisible] = useState<boolean>(true);
+  const [prizePoolAmount, setPrizePoolAmount] = useState<string>("");
+  const [prizePoolToken, setPrizePoolToken] = useState<string>("CELO");
   const [isUpdatingConfig, setIsUpdatingConfig] = useState(false);
 
   // Initialize with empty state - no saved data from localStorage anymore
@@ -74,10 +75,7 @@ export default function AdminPage() {
     if (maxWinnersConfigData !== undefined) {
       setMaxWinners(Number(maxWinnersConfigData));
     }
-    if (returnHomeButtonVisibleData !== undefined) {
-      setIsReturnHomeButtonVisible(returnHomeButtonVisibleData);
-    }
-  }, [maxWinnersConfigData, returnHomeButtonVisibleData]);
+  }, [maxWinnersConfigData]);
 
   const generateGridPreview = () => {
     const grid: (string | null)[][] = Array(gridSize.rows)
@@ -203,10 +201,16 @@ export default function AdminPage() {
       return;
     }
 
-    // Save directly to blockchain
+    // Validate max winners is set to a valid value
+    if (!maxWinners || maxWinners < 1 || maxWinners > 10) {
+      alert("Please set the number of maximum winners (between 1 and 10) in the Prize Configuration section before saving.")
+      return;
+    }
+
+    // Save both crossword and max winners in a single transaction
     try {
       setIsSavingToBlockchain(true);
-      
+
       // Generate a deterministic crossword ID using the hash of the crossword data
       const dataString = JSON.stringify(crosswordData);
 
@@ -224,9 +228,9 @@ export default function AdminPage() {
       }
 
 
-      // Call the blockchain function to save the crossword
-      setCrossword([crosswordId as `0x${string}`, dataString]);
-      
+      // Call the blockchain function to save both crossword and max winners in a single transaction
+      setCrosswordAndMaxWinners([crosswordId as `0x${string}`, dataString, BigInt(maxWinners)]);
+
     } catch (error) {
       alert("Error saving crossword to blockchain: " + (error instanceof Error ? error.message : "Unknown error"));
       setIsSavingToBlockchain(false);
@@ -235,7 +239,7 @@ export default function AdminPage() {
 
   // Effect to handle success after transaction
   const successAlertShown = useRef(false);
-  
+
   useEffect(() => {
     if (isSuccess && !successAlertShown.current) {
       alert("✓ Crossword saved successfully to the blockchain");
@@ -258,13 +262,44 @@ export default function AdminPage() {
       setIsSavingToBlockchain(false);
     }
   }, [isSuccess, refetchCrossword, queryClient, contractAddress, txHash]);
-  
+
+  // Effect to handle success for the combined transaction
+  useEffect(() => {
+    if (isCrosswordAndMaxWinnersSuccess && !successAlertShown.current) {
+      alert("✓ Crossword and max winners configuration saved successfully to the blockchain");
+      // Add a small delay to ensure blockchain has time to update before refetching
+      setTimeout(() => {
+        // Invalidate and refetch both crossword data and max winners config
+        queryClient.invalidateQueries({
+          queryKey: ['readContract', {
+            address: contractAddress,
+            functionName: 'getCurrentCrossword'
+          }]
+        }).then(() => {
+          queryClient.invalidateQueries({
+            queryKey: ['readContract', {
+              address: contractAddress,
+              functionName: 'getMaxWinnersConfig'
+            }]
+          }).then(() => {
+            // After invalidating cache, refetch the crossword data to update the context
+            refetchCrossword();
+          });
+        });
+      }, 2000); // 2 second delay to ensure transaction is confirmed on blockchain
+      // Mark that the alert has been shown to prevent multiple alerts
+      successAlertShown.current = true;
+      // Reset the local loading state since transaction is complete
+      setIsSavingToBlockchain(false);
+    }
+  }, [isCrosswordAndMaxWinnersSuccess, refetchCrossword, queryClient, contractAddress]);
+
   // Effect to handle error state
   useEffect(() => {
-    if (isError) {
+    if (isError || isCrosswordAndMaxWinnersError) {
       setIsSavingToBlockchain(false); // Reset loading state when there's an error
     }
-  }, [isError, error]);
+  }, [isError, isCrosswordAndMaxWinnersError, error]);
 
   // Reset the success flag when starting a new save operation
   useEffect(() => {
@@ -472,12 +507,12 @@ export default function AdminPage() {
               <div className="flex flex-col gap-4">
                 <Button
                   onClick={handleSave}
-                  disabled={isSavingToBlockchain || isSetCrosswordLoading}
+                  disabled={isSavingToBlockchain || isSetCrosswordLoading || isSetCrosswordAndMaxWinnersLoading}
                   className="border-4 border-black bg-accent font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-accent hover:shadow-none disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {(isSavingToBlockchain || isSetCrosswordLoading) ? (
+                  {(isSavingToBlockchain || isSetCrosswordLoading || isSetCrosswordAndMaxWinnersLoading) ? (
                     <>
-                      <div className="w-4 h-4 mr-2 border-t-2 border-r-2 rounded-full animate-spin border-white" />
+                      <div className="w-4 h-4 mr-2 border-t-2 border-r-2 border-white rounded-full animate-spin" />
                       Saving...
                     </>
                   ) : (
@@ -598,8 +633,8 @@ export default function AdminPage() {
                 </Card>
               )}
             </div>
+            
           </div>
-        </div>
 
         {/* Configuration Section */}
         <div className="mt-12">
@@ -609,78 +644,76 @@ export default function AdminPage() {
               <h2 className="text-2xl font-black uppercase text-foreground">Application Configuration</h2>
             </div>
 
-            <div className="grid gap-6 md:grid-cols-2">
-              {/* Max Winners Configuration */}
-              <Card className="border-4 border-black bg-popover p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                <h3 className="mb-3 text-lg font-black uppercase text-foreground">Prize Configuration</h3>
-                <div className="space-y-4">
-                  <div>
-                    <Label className="font-bold">Maximum Winners</Label>
-                    <Input
-                      type="number"
-                      min="1"
-                      max="10"
-                      value={maxWinners}
-                      onChange={(e) => setMaxWinners(Math.min(10, Math.max(1, Number(e.target.value))))}
-                      className="border-4 border-black font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
-                    />
+            {/* Responsive layout using flexbox to stack on mobile, side-by-side on larger screens */}
+            <div className="flex flex-col gap-6 md:flex-row md:gap-6">
+              {/* Max Winners Configuration - takes full width on mobile, half on larger screens */}
+              <div className="flex-1 min-w-0">
+                <Card className="border-4 border-black bg-popover p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] h-full">
+                  <h3 className="mb-3 text-lg font-black uppercase text-foreground">Prize Configuration</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="font-bold">Maximum Winners</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        max="10"
+                        value={maxWinners}
+                        onChange={(e) => setMaxWinners(Math.min(10, Math.max(1, Number(e.target.value))))}
+                        className="border-4 border-black font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+                      />
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Set the number of top finishers who will receive prizes (1-10)
+                      </p>
+                    </div>
+
                     <p className="mt-2 text-xs text-muted-foreground">
-                      Set the number of top finishers who will receive prizes (1-10)
+                      <strong>Note:</strong> This will be updated when you save the crossword using the main "Upload to Blockchain" button.
                     </p>
                   </div>
+                </Card>
+              </div>
 
-                  <Button
-                    onClick={() => setMaxWinnersConfig([BigInt(maxWinners)])}
-                    disabled={isConfigUpdateLoading}
-                    className="w-full border-4 border-black bg-primary font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-primary hover:shadow-none disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Save className="w-4 h-4 mr-2" />
-                    Update Max Winners
-                  </Button>
-                </div>
-              </Card>
-
-              {/* Return Home Button Configuration */}
-              <Card className="border-4 border-black bg-popover p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                <h3 className="mb-3 text-lg font-black uppercase text-foreground">UI Configuration</h3>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-3 border-2 border-black rounded bg-secondary">
-                    <Label className="font-bold">Show "Return to Home" Button</Label>
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant={isReturnHomeButtonVisible ? "default" : "outline"}
-                        onClick={() => setIsReturnHomeButtonVisible(true)}
-                        className="border-2 border-black font-black"
-                      >
-                        <CheckCircle className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant={!isReturnHomeButtonVisible ? "default" : "outline"}
-                        onClick={() => setIsReturnHomeButtonVisible(false)}
-                        className="border-2 border-black font-black"
-                      >
-                        <XCircle className="w-4 h-4" />
-                      </Button>
+              {/* Prize Pool Funding - takes full width on mobile, half on larger screens */}
+              <div className="flex-1 min-w-0">
+                <Card className="border-4 border-black bg-popover p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] h-full">
+                  <h3 className="mb-3 text-lg font-black uppercase text-foreground">Prize Pool Funding</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="font-bold">Fund Prize Pool</Label>
+                      <div className="flex flex-col gap-2 sm:flex-row">
+                        <Input
+                          type="number"
+                          step="0.000001"
+                          placeholder="Amount to deposit"
+                          className="border-4 border-black font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex-1"
+                        />
+                        <select className="border-4 border-black font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-white px-3">
+                          <option value="CELO">CELO</option>
+                          <option value="cUSD">cUSD</option>
+                          <option value="other">Other</option>
+                        </select>
+                      </div>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Deposit tokens to fund the prize pool for crosswords
+                      </p>
                     </div>
-                  </div>
 
-                  <Button
-                    onClick={() => updateReturnHomeButtonVisible([isReturnHomeButtonVisible])}
-                    disabled={isConfigUpdateLoading}
-                    className="w-full border-4 border-black bg-primary font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-primary hover:shadow-none disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Save className="w-4 h-4 mr-2" />
-                    Update Button Visibility
-                  </Button>
-                </div>
-              </Card>
+                    <Button
+                      onClick={() => console.log("Deposit funds functionality would be implemented here")}
+                      disabled={isConfigUpdateLoading}
+                      className="w-full border-4 border-black bg-primary font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-primary hover:shadow-none disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Save className="w-4 h-4 mr-2" />
+                      Deposit Funds
+                    </Button>
+                  </div>
+                </Card>
+              </div>
             </div>
           </Card>
         </div>
+        </div>
+
       </main>
     </>
   )
