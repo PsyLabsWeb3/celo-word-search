@@ -410,9 +410,9 @@ export default function AdminPage() {
             </p>
           </div>
 
-          <div className="grid gap-8 lg:grid-cols-[400px_1fr]">
+          <div className="grid gap-8 xl:grid-cols-12">
             {/* Controls Panel */}
-            <div className="space-y-6">
+            <div className="space-y-6 xl:col-span-4">
               {/* Grid Size */}
               <Card className="border-4 border-black bg-card p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
                 <h2 className="mb-4 text-xl font-black uppercase text-foreground">Grid Size</h2>
@@ -501,10 +501,9 @@ export default function AdminPage() {
                     Add to Grid
                   </Button>
                 </div>
-              </Card>
-
-              {/* Actions */}
-              <div className="flex flex-col gap-4">
+             
+             {/* Actions */}
+              <div className="flex flex-col gap-4 mt-4">
                 <Button
                   onClick={handleSave}
                   disabled={isSavingToBlockchain || isSetCrosswordLoading || isSetCrosswordAndMaxWinnersLoading}
@@ -530,23 +529,16 @@ export default function AdminPage() {
                   <Trash2 className="w-4 h-4 mr-2" />
                   Clear All
                 </Button>
-                <Button
-                  onClick={() => {
-                    refetchCrossword();
-                    setIsLoadingFromBlockchain(true);
-                  }}
-                  variant="outline"
-                  className="border-4 border-black bg-secondary font-black uppercase text-secondary-foreground shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-secondary hover:shadow-none"
-                >
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  Load Current
-                </Button>
+              
               </div>
+              </Card>
+
+           
             </div>
 
             {/* Grid Preview */}
-            <div className="space-y-6">
-              <Card className="border-4 border-black bg-card p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+            <div className="flex flex-col gap-6 xl:col-span-8">
+              <Card className="flex flex-col border-4 border-black bg-card p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] flex-1">
                 <h2 className="mb-4 text-xl font-black uppercase text-foreground">
                   Grid Preview
                   {conflictCells.size > 0 && (
@@ -556,8 +548,8 @@ export default function AdminPage() {
                   )}
                 </h2>
 
-                <div className="overflow-x-auto">
-                  <div className="inline-block border-4 border-black bg-white p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                <div className="flex items-center justify-center flex-1 overflow-x-auto">
+                  <div className="inline-block border-4 border-black bg-white p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] min-w-min">
                     <div className="grid gap-0" style={{ gridTemplateColumns: `repeat(${gridSize.cols}, 1fr)` }}>
                       {gridPreview.map((row, rowIdx) =>
                         row.map((cell, colIdx) => {
@@ -641,7 +633,7 @@ export default function AdminPage() {
           <Card className="border-4 border-black bg-card p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
             <div className="flex items-center mb-6">
               <Settings className="w-6 h-6 mr-3 text-foreground" />
-              <h2 className="text-2xl font-black uppercase text-foreground">Application Configuration</h2>
+              <h2 className="text-2xl font-black uppercase text-foreground">Grants Configuration</h2>
             </div>
 
             {/* Responsive layout using flexbox to stack on mobile, side-by-side on larger screens */}
