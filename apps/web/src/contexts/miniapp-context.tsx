@@ -63,12 +63,16 @@ export function MiniAppProvider({ children, addMiniAppOnLoad }: MiniAppProviderP
       console.warn("SDK is not available to add a frame.");
       return null;
     }
-  
-    try {
 
+    try {
       const addFrameResult = await sdk.actions.addFrame();
 
-      // Return the result directly, since we don't know its exact structure
+      // Check if addFrameResult has a result property before accessing it
+      if (addFrameResult && typeof addFrameResult === 'object' && 'result' in addFrameResult) {
+        return addFrameResult.result || null;
+      }
+
+      // If no result property, return the result directly or null
       return addFrameResult || null;
     } catch (error) {
       console.error("[error] adding frame:", error);

@@ -3126,11 +3126,38 @@ export const useCreateCrosswordWithNativeCELOPrizePool = () => {
   };
 };
 
+// Define the type for crossword details
+type CrosswordDetails = [
+  string,                    // token (index 0)
+  bigint,                    // totalPrizePool (index 1)
+  bigint[],                  // winnerPercentages (index 2)
+  {                          // completions (index 3)
+    user: string;
+    timestamp: bigint;
+    rank: bigint;
+  }[],
+  bigint,                    // activationTime (index 4)
+  bigint,                    // endTime (index 5)
+  number                     // state (index 6)
+] & {
+  token: string;
+  totalPrizePool: bigint;
+  winnerPercentages: bigint[];
+  completions: {
+    user: string;
+    timestamp: bigint;
+    rank: bigint;
+  }[];
+  activationTime: bigint;
+  endTime: bigint;
+  state: number;
+};
+
 // Hook for getting crossword prizes details
 export const useCrosswordPrizesDetails = (crosswordId: `0x${string}` | undefined) => {
   const contractConfig = getContractConfig('CrosswordBoard');
 
-  return useContractRead({
+  return useContractRead<CrosswordDetails>({
     address: contractConfig.address,
     abi: contractConfig.abi,
     functionName: 'getCrosswordDetails',
