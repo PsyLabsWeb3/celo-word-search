@@ -587,19 +587,32 @@ export default function AdminPage() {
   useEffect(() => {
     if (currentCrossword && currentCrossword.id) {
       const id = currentCrossword.id.toString();
-      setCurrentCrosswordId(id);
+      // Only set the crossword ID if it's a valid non-zero/non-empty ID
+      const isEmptyId = id === "0x0000000000000000000000000000000000000000000000000000000000000000" ||
+                       id === "0x0" ||
+                       id === "0x" ||
+                       !id ||
+                       id.length < 10;
+      if (!isEmptyId) {
+        setCurrentCrosswordId(id);
+      } else {
+        // If it's an empty ID, clear any existing details
+        setCurrentCrosswordId(null);
+      }
     }
   }, [currentCrossword]);
 
-  // Update winner percentages when crossword details are loaded
+  // Update winner percentages and other crossword details when loaded
   useEffect(() => {
-    if (crosswordDetails && maxWinnersConfigData !== undefined) {
+    if (crosswordDetails) { // Removed maxWinnersConfigData requirement to load details
       try {
-        // Extract winner percentages from the crossword details
+        // Extract all details from the crossword details
         // Access the property directly and handle undefined case
         const details: any = crosswordDetails; // Typecast to any to avoid strict typing
-        if (details && details.winnerPercentages) {
-          const contractWinnerPercentages = details.winnerPercentages;
+
+        // Update winner percentages
+        if (details[2]) { // winnerPercentages is at index 2
+          const contractWinnerPercentages = details[2];
           if (contractWinnerPercentages && contractWinnerPercentages.length > 0) {
             // Convert bigint array to string array for UI
             const newPercentages = contractWinnerPercentages.map((pct: any) => pct.toString());
@@ -607,11 +620,27 @@ export default function AdminPage() {
             setDefaultWinnerPercentages(newPercentages);
           }
         }
+
+        // Update prize pool amount (convert from wei to proper format)
+        if (details[1] !== undefined && details[1] !== null) { // totalPrizePool is at index 1
+          // Convert from wei (18 decimals) to display format
+          const prizePoolInCELO = Number(details[1]) / 1e18;
+          setPrizePoolAmount(prizePoolInCELO.toString());
+        }
+
+        // Update token type (token address is at index 0)
+        if (details[0]) { // token is at index 0
+          if (details[0] === "0x0000000000000000000000000000000000000000") {
+            setPrizePoolToken("0x0000000000000000000000000000000000000000"); // Native CELO
+          } else {
+            setPrizePoolToken(details[0]); // Other token
+          }
+        }
       } catch (error) {
         console.error("Error processing crossword details:", error);
       }
     }
-  }, [crosswordDetails, maxWinnersConfigData]);
+  }, [crosswordDetails]); // Removed maxWinnersConfigData from dependencies
 
 
   // Check if user is connected and has admin access
