@@ -30,7 +30,7 @@ const getContractABI = async (contractName: 'CrosswordBoard') => {
       // In a real scenario, you'd import the ABI from the artifacts
       // For now, we'll return an empty array and load it dynamically at runtime
       // This is where the actual ABI would be loaded
-      const response = await fetch('/api/contract-abi'); // This would be an endpoint that serves the ABI
+      const response = await fetch(`/api/contract-abi?contract=${contractName}`); // This calls our endpoint that serves the ABI
       if (response.ok) {
         return await response.json();
       }
@@ -2222,7 +2222,7 @@ export const useCompleteCrossword = () => {
   }, [data]);
 
   return {
-    completeCrossword: (args: [`0x${string}`, bigint, string, string, string]) =>
+    completeCrossword: (args: [bigint, string, string, string]) =>
       writeContract({
         address: contractConfig.address,
         abi: contractConfig.abi,
@@ -2271,6 +2271,8 @@ export const useGetCrosswordCompletions = (crosswordId: `0x${string}`) => {
   });
 };
 
+// Hook para verificar si un usuario es ganador de un crucigrama específico
+
 export const useUserCompletedCrossword = (crosswordId: `0x${string}`, user: `0x${string}`) => {
   const contractConfig = getContractConfig('CrosswordBoard');
 
@@ -2289,6 +2291,8 @@ export const useUserCompletedCrossword = (crosswordId: `0x${string}`, user: `0x$
     },
   });
 };
+
+// Hook para verificar si un usuario es ganador de un crucigrama específico
 
 // Check if current account is admin
 export const useIsAdmin = () => {
@@ -2458,6 +2462,8 @@ export const useGetCrosswordDetails = (crosswordId: `0x${string}`) => {
   });
 };
 
+// Hook para verificar si un usuario es ganador de un crucigrama específico
+
 export const useIsWinner = (crosswordId: `0x${string}`) => {
   const { address } = useAccount();
   const contractConfig = getContractConfig('CrosswordBoard');
@@ -2476,6 +2482,8 @@ export const useIsWinner = (crosswordId: `0x${string}`) => {
     },
   });
 };
+
+// Hook para verificar si un usuario es ganador de un crucigrama específico
 
 export const useClaimPrize = () => {
   const contractConfig = getContractConfig('CrosswordBoard');
@@ -2643,6 +2651,8 @@ export const useGetUserProfile = (userAddress: `0x${string}`) => {
   });
 };
 
+// Hook para verificar si un usuario es ganador de un crucigrama específico
+
 // Hook for activating crossword
 export const useActivateCrossword = () => {
   const contractConfig = getContractConfig('CrosswordBoard');
@@ -2732,6 +2742,8 @@ export const useGetMaxWinnersConfig = () => {
     },
   });
 };
+
+// Hook para verificar si un usuario es ganador de un crucigrama específico
 
 // Hook for setting configuration values
 export const useSetConfig = () => {
@@ -3157,7 +3169,7 @@ type CrosswordDetails = [
 export const useCrosswordPrizesDetails = (crosswordId: `0x${string}` | undefined) => {
   const contractConfig = getContractConfig('CrosswordBoard');
 
-  return useContractRead<CrosswordDetails>({
+  return useContractRead({
     address: contractConfig.address,
     abi: contractConfig.abi,
     functionName: 'getCrosswordDetails',
@@ -3169,5 +3181,33 @@ export const useCrosswordPrizesDetails = (crosswordId: `0x${string}` | undefined
       retry: 1,           // Only retry once
       retryDelay: 5000,   // Wait 5 seconds between retries
     },
+  }) as {
+    data?: CrosswordDetails;
+    isLoading: boolean;
+    isError: boolean;
+    error?: Error;
+    isSuccess: boolean;
+    refetch: () => void;
+  };
+};
+
+// Hook para verificar si un usuario ya completó un crucigrama específico
+export const useHasCompletedCrossword = (crosswordId: `0x${string}` | undefined, userAddress: `0x${string}` | undefined) => {
+  const contractConfig = getContractConfig('CrosswordBoard');
+
+  return useContractRead({
+    address: contractConfig.address,
+    abi: contractConfig.abi,
+    functionName: 'hasCompletedCrossword',
+    args: crosswordId && userAddress ? [crosswordId, userAddress] : undefined,
+    query: {
+      enabled: !!crosswordId && !!userAddress,
+      staleTime: 120000,  // Cache for 2 minutes
+      gcTime: 300000,     // Garbage collect after 5 minutes
+      retry: 1,           // Only retry once
+      retryDelay: 5000,   // Wait 5 seconds between retries
+    },
   });
 };
+
+// Hook para verificar si un usuario es ganador de un crucigrama específico

@@ -12,7 +12,7 @@ import { useCrossword } from "@/contexts/crossword-context"
 import { useAccount, useChainId } from "wagmi";
 import { celo, celoAlfajores } from "wagmi/chains";
 import { defineChain } from "viem";
-import { useCompleteCrossword, useUserCompletedCrossword, useGetCurrentCrossword, useGetUserProfile, useCrosswordPrizesDetails } from "@/hooks/useContract";
+import { useCompleteCrossword, useUserCompletedCrossword, useGetCurrentCrossword, useGetUserProfile, useCrosswordPrizesDetails, useClaimPrize } from "@/hooks/useContract";
 import { useQueryClient } from '@tanstack/react-query';
 import { readContract } from 'wagmi/actions';
 import { config } from '@/contexts/frame-wallet-context';
@@ -84,7 +84,8 @@ interface CrosswordGameProps {
 export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGameProps) {
   const { currentCrossword, isLoading: crosswordLoading, refetchCrossword: refetchCrosswordFromContext } = useCrossword();
   const { address, isConnected } = useAccount();
-  const { completeCrossword, isLoading: isCompleting, isSuccess: isCompleteSuccess, isError: isCompleteError, txHash } = useCompleteCrossword();
+  const { completeCrossword, isLoading: isCompleting, isSuccess: isCompleteSuccess, isError: isCompleteError, error: completeCrosswordError, txHash } = useCompleteCrossword();
+  const { claimPrize, isLoading: isClaiming, isSuccess: isClaimSuccess, isError: isClaimError, error: claimError } = useClaimPrize();
   const getCurrentCrosswordHook = useGetCurrentCrossword(); // This hook will be used to refetch immediately before submission
   const chainId = useChainId();
   
@@ -259,8 +260,8 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
           if (process.env.NODE_ENV === 'development') {
             console.log("Debug: In development mode, setting test profile data");
             setFarcasterProfile({
-              username: "testuser",
-              displayName: "Test User",
+              username: "testuser1",
+              displayName: "Test User1",
               pfpUrl: "https://placehold.co/200x200.png"
             });
           } else {
@@ -411,11 +412,29 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
       }, 2000); // 2 second delay to allow blockchain transaction to be confirmed before cache invalidation
     } else if (waitingForTransaction && isCompleteError) {
       // Transaction failed, reset waiting state and show error
-      console.log("Debug: Transaction failed", { isCompleteError, txHash, error: txHash });
+      console.log("Debug: Transaction failed", { isCompleteError, txHash, error: completeCrosswordError });
       setWaitingForTransaction(false);
-      alert("Error completing the crossword on the blockchain. Transaction failed.");
+
+      // Check for common error messages to provide better guidance
+      const errorMessage = completeCrosswordError?.message || 'Unknown error';
+      if (errorMessage.toLowerCase().includes('insufficient funds') || errorMessage.toLowerCase().includes('gas')) {
+        alert("Insufficient CELO for gas fees. Please get some CELO on Celo Sepolia testnet to complete the crossword on the blockchain.");
+      } else {
+        alert("Error completing the crossword on the blockchain. Transaction failed: " + errorMessage);
+      }
+    } else if (waitingForTransaction && isClaimError) {
+      // Claim transaction failed, reset waiting state and show error
+      console.log("Debug: Claim transaction failed", { isClaimError, error: claimError });
+      setWaitingForTransaction(false);
+
+      const errorMessage = claimError?.message || 'Unknown error';
+      if (errorMessage.toLowerCase().includes('insufficient funds') || errorMessage.toLowerCase().includes('gas')) {
+        alert("Insufficient CELO for gas fees. Please get some CELO on Celo Sepolia testnet to claim your prize.");
+      } else {
+        alert("Error claiming prize: " + errorMessage);
+      }
     }
-  }, [waitingForTransaction, isCompleteSuccess, isCompleteError, txHash, address, farcasterProfile, queryClient, chainId])
+  }, [waitingForTransaction, isCompleteSuccess, isCompleteError, isClaimSuccess, isClaimError, txHash, address, farcasterProfile, queryClient, chainId])
 
   const handleCellClick = (row: number, col: number) => {
     if (alreadyCompleted) {
@@ -693,19 +712,70 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
     }
 
     try {
+      console.log("Debug: Starting completion check", {
+        contractCrosswordId,
+        address,
+        chainId
+      });
+
       if (contractCrosswordId && address) {
-        // Use readContract for a direct, non-cached check
+        // Use the same approach as the hooks to get the contract config with proper ABI
         const contractInfo = (CONTRACTS as any)[chainId]?.['CrosswordBoard'];
+        console.log("Debug: Contract info", { contractInfo, chainId });
+
         if (!contractInfo) {
+          console.error("Debug: Contract configuration not found", { chainId, CONTRACTS });
           throw new Error(`Contract configuration not found for chain ID: ${chainId}`);
         }
 
+        // Import the ABI from the same function used by the hooks
+        // We need the minimal ABI with only the function we're calling
+        const getCrosswordBoardABI = () => {
+          return [
+            {
+              "inputs": [
+                {
+                  "internalType": "bytes32",
+                  "name": "crosswordId",
+                  "type": "bytes32"
+                },
+                {
+                  "internalType": "address",
+                  "name": "user",
+                  "type": "address"
+                }
+              ],
+              "name": "userCompletedCrossword",
+              "outputs": [
+                {
+                  "internalType": "bool",
+                  "name": "",
+                  "type": "bool"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            }
+          ];
+        };
+
+        const abi = getCrosswordBoardABI();
+
+        console.log("Debug: About to call readContract with params", {
+          address: contractInfo.address,
+          functionName: 'userCompletedCrossword',
+          args: [contractCrosswordId as `0x${string}`, address as `0x${string}`],
+          abi: abi
+        });
+
         const hasCompleted = await readContract(config, {
           address: contractInfo.address as `0x${string}`,
-          abi: contractInfo.abi,
+          abi: abi,
           functionName: 'userCompletedCrossword',
-          args: [contractCrosswordId as `0x${string}`, address],
+          args: [contractCrosswordId as `0x${string}`, address as `0x${string}`],
         });
+
+        console.log("Debug: Completion check result", { hasCompleted });
 
         if (hasCompleted) {
           alert("You have already completed this crossword. You can only submit it once.");
@@ -715,9 +785,22 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
           return;
         }
       } else {
+        console.log("Debug: No contractCrosswordId or address, skipping completion check", {
+          contractCrosswordId,
+          address
+        });
         // No currentCrossword.id found, skipping completion check.
       }
     } catch (error) {
+      console.error("Debug: Error in completion check", {
+        error,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : 'No stack available',
+        contractCrosswordId,
+        address,
+        chainId
+      });
+
       setIsSubmitting(false);
       alert("There was an unexpected error checking if you have completed this crossword. Please try again.");
       return;
@@ -754,7 +837,9 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
       }
 
       // Call completeCrossword and log the result
-      const txPromise = completeCrossword([crosswordId, durationBigInt, username, displayName, pfpUrl]);
+      // Only send 4 parameters as expected by the contract: duration, username, displayName, pfpUrl
+      // The crosswordId is retrieved automatically from contract state (currentCrosswordId)
+      const txPromise = completeCrossword([durationBigInt, username, displayName, pfpUrl]);
       console.log("Debug: Transaction initiated", txPromise);
       setWaitingForTransaction(true);
     } else {
@@ -763,6 +848,30 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
   }
 
   // handleSaveUsername is no longer needed since we use Farcaster username directly
+
+  // Function to handle manual prize claiming
+  const handleClaimPrize = async () => {
+    if (!currentCrossword?.id) {
+      alert("No active crossword to claim prize for.");
+      return;
+    }
+
+    if (isClaiming || isClaimSuccess || waitingForTransaction) {
+      return; // Prevent multiple simultaneous claims
+    }
+
+    setWaitingForTransaction(true);
+
+    try {
+      // Call the claimPrize function with the current crossword ID
+      const txPromise = claimPrize([currentCrossword.id as `0x${string}`]);
+      console.log("Debug: Claim prize transaction initiated", txPromise);
+    } catch (error) {
+      console.error("Debug: Error initiating claim transaction", error);
+      setWaitingForTransaction(false);
+      alert("Error initiating prize claim: " + (error instanceof Error ? error.message : "Unknown error"));
+    }
+  };
 
   const handleReset = () => {
     if (crosswordData) {
@@ -834,6 +943,7 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
   
   // Check if user is connected and on correct Celo network
   const isOnCeloNetwork = chainId === celo.id || chainId === celoAlfajores.id || chainId === celoSepolia.id;
+  const isOnCeloSepolia = chainId === celoSepolia.id;
 
   // Show network connection message if not connected to Celo
   if (!isConnected) {
@@ -853,7 +963,7 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
       </div>
     );
   }
-  
+
   // Show network switch message if connected but not on Celo network
   if (!isOnCeloNetwork) {
     return (
@@ -866,6 +976,73 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
           <p>Current network: {chainId}</p>
           <p>Compatible networks: Celo Mainnet, Celo Alfajores, Celo Sepolia</p>
         </div>
+        <button
+          onClick={async () => {
+            try {
+              // Try to add Celo Sepolia network to wallet if it doesn't exist
+              await window.ethereum.request({
+                method: 'wallet_addEthereumChain',
+                params: [
+                  {
+                    chainId: '0xA7A660', // 0xA7A660 is 11142220 in hex
+                    chainName: 'Celo Sepolia Testnet',
+                    nativeCurrency: {
+                      name: 'CELO',
+                      symbol: 'CELO',
+                      decimals: 18,
+                    },
+                    rpcUrls: ['https://forno.celo-sepolia.celo-testnet.org'],
+                    blockExplorerUrls: ['https://sepolia.celoscan.io'],
+                  },
+                ],
+              });
+
+              // Then switch to that network
+              await window.ethereum.request({
+                method: 'wallet_switchEthereumChain',
+                params: [{ chainId: '0xA7A660' }],
+              });
+            } catch (addError) {
+              console.error('Error adding or switching to Celo Sepolia:', addError);
+              alert('Please manually add Celo Sepolia Testnet to your wallet and switch to it.');
+            }
+          }}
+          className="px-4 py-2 mt-2 text-sm rounded-md bg-primary text-primary-foreground hover:opacity-90"
+        >
+          Add & Switch to Celo Sepolia
+        </button>
+      </div>
+    );
+  }
+
+  // Even if on a Celo network, make sure we're on Sepolia for this app
+  if (!isOnCeloSepolia) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 text-center">
+        <h2 className="mb-4 text-xl font-bold">Switch to Celo Sepolia</h2>
+        <p className="mb-4">
+          Please switch to Celo Sepolia Testnet to play this crossword.
+        </p>
+        <div className="mb-4 text-sm text-muted-foreground">
+          <p>Current network: {chainId}</p>
+          <p>Required network: Celo Sepolia (ID: {celoSepolia.id})</p>
+        </div>
+        <button
+          onClick={async () => {
+            try {
+              await window.ethereum.request({
+                method: 'wallet_switchEthereumChain',
+                params: [{ chainId: '0xA7A660' }], // 0xA7A660 is 11142220 in hex
+              });
+            } catch (switchError) {
+              console.error('Error switching to Celo Sepolia:', switchError);
+              alert('Please manually switch to Celo Sepolia Testnet in your wallet.');
+            }
+          }}
+          className="px-4 py-2 text-sm rounded-md bg-primary text-primary-foreground hover:opacity-90"
+        >
+          Switch to Celo Sepolia
+        </button>
       </div>
     );
   }
@@ -900,7 +1077,7 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
                 <div className="flex items-center justify-center gap-2 text-foreground">
                   <Trophy className="w-5 h-5" />
                   <span className="text-lg font-bold">Prize Pool: </span>
-                  <span className="text-lg font-mono font-bold">
+                  <span className="font-mono text-lg font-bold">
                     {Number(crosswordPrizesDetails[1]) / 1e18}
                     {crosswordPrizesDetails[0] === "0x0000000000000000000000000000000000000000"
                       ? " CELO"
@@ -913,7 +1090,7 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
                     <p className="text-sm font-bold text-muted-foreground">Top {crosswordPrizesDetails[2].length} winners share the prize:</p>
                     <div className="flex flex-wrap justify-center gap-2 mt-1">
                       {crosswordPrizesDetails[2].map((pct: any, idx: number) => (
-                        <span key={idx} className="px-3 py-1 text-xs font-bold bg-secondary rounded-full">
+                        <span key={idx} className="px-3 py-1 text-xs font-bold rounded-full bg-secondary">
                           {idx + 1}{idx === 0 ? 'st' : idx === 1 ? 'nd' : idx === 2 ? 'rd' : 'th'} place: {Number(pct) / 100}%
                         </span>
                       ))}
@@ -982,8 +1159,8 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
                 Reset
               </Button>
               <Button
-                onClick={handleSaveCompletion}
-                disabled={!isComplete || alreadyCompleted || isCompleting || isSubmitting}
+                onClick={alreadyCompleted ? handleClaimPrize : handleSaveCompletion}
+                disabled={(!isComplete && !alreadyCompleted) || (alreadyCompleted && (isClaiming || isClaimSuccess)) || isCompleting || isSubmitting}
                 className="w-full md:w-auto border-4 border-black bg-primary font-black uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-0.5 hover:translate-y-0.5 sm:hover:translate-x-1 sm:hover:translate-y-1 active:translate-x-0.5 active:translate-y-0.5 sm:active:translate-y-1 hover:bg-primary active:bg-primary hover:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] disabled:active:translate-x-0 disabled:active:translate-y-0 disabled:active:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
               >
                 {isSubmitting || isCompleting ? (
@@ -996,10 +1173,24 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
                     <Check className="w-4 h-4 mr-2" />
                     Saved!
                   </>
+                ) : isClaiming || isClaimSuccess ? (
+                  <>
+                    {isClaimSuccess ? (
+                      <>
+                        <Check className="w-4 h-4 mr-2" />
+                        Claimed!
+                      </>
+                    ) : (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Claiming...
+                      </>
+                    )}
+                  </>
                 ) : (
                   <>
                     <Save className="w-4 h-4 mr-2" />
-                    {alreadyCompleted ? "Completed!" : (isComplete ? "Save Result" : "Mark as Complete")}
+                    {alreadyCompleted ? "Claim Prize" : (isComplete ? "Save Result" : "Mark as Complete")}
                   </>
                 )}
               </Button>

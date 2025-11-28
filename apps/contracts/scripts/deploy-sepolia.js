@@ -20,6 +20,9 @@ async function main() {
   const crosswordBoard = await hre.viem.deployContract("CrosswordBoard", [deployer.account.address]);
   console.log("Unified CrosswordBoard deployed to:", crosswordBoard.address);
 
+  // Get contract instance to interact with it
+  const crosswordBoardContract = await hre.viem.getContractAt("CrosswordBoard", crosswordBoard.address);
+
   // Add additional admin address
   const additionalAdmin = "0x66299C18c60CE709777Ec79C73b131cE2634f58e";
 
@@ -30,7 +33,6 @@ async function main() {
   } else {
     // Add admin to CrosswordBoard using viem contract
     console.log("Adding admin to CrosswordBoard:", additionalAdmin);
-    const crosswordBoardContract = await hre.viem.getContractAt("CrosswordBoard", crosswordBoard.address);
     try {
       const addAdminTx = await crosswordBoardContract.write.addAdmin([additionalAdmin], { account: deployer.account });
       console.log("✅ Additional admin added to CrosswordBoard");

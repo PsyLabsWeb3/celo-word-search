@@ -2,7 +2,7 @@
   "network": "sepolia",
   "contracts": {
     "CrosswordBoard": {
-      "address": "0xC65D88d46Df1D68e2EcB3a0bb32d81D159D753f1",
+      "address": "0x0c7cf17265a6b1330119584c23b9c1b12a8550ab",
       "abi": [
         {
           "inputs": [
@@ -1946,5 +1946,7 @@
         }
       ]
     }
-  }
+  },
+  "deployer": "DEPLOYER_WALLET_ADDRESS",
+  "timestamp": "2025-11-28T05:21:31.274Z"
 }

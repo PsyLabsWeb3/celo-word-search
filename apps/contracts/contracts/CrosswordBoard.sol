@@ -415,7 +415,6 @@ contract CrosswordBoard is Ownable, AccessControl, ReentrancyGuard, Pausable {
         Crossword storage crossword = crosswords[crosswordId];
         require(crossword.state == CrosswordState.Active, "CrosswordBoard: crossword not active");
         require(user != address(0), "CrosswordBoard: user address cannot be zero");
-        require(!crossword.hasClaimed[user], "CrosswordBoard: already received prize");
 
         // Check if past endTime (if set)
         if (crossword.endTime > 0) {
@@ -427,6 +426,13 @@ contract CrosswordBoard is Ownable, AccessControl, ReentrancyGuard, Pausable {
             return false; // User was too late, no prize
         }
 
+        // Check if user has already been added to completions (to prevent duplicates)
+        for (uint256 i = 0; i < crossword.completions.length; i++) {
+            if (crossword.completions[i].user == user) {
+                return false; // User already completed
+            }
+        }
+
         // Create completion record with current rank
         uint256 rank = crossword.completions.length + 1;
         CompletionRecord memory completion = CompletionRecord({
@@ -436,13 +442,13 @@ contract CrosswordBoard is Ownable, AccessControl, ReentrancyGuard, Pausable {
         });
 
         crossword.completions.push(completion);
-        crossword.hasClaimed[user] = true;
 
         // Calculate prize amount
         uint256 prizeAmount = (crossword.totalPrizePool * crossword.winnerPercentages[rank - 1]) / MAX_PERCENTAGE;
 
         // Transfer the prize - handle both ERC20 and native CELO
-        if (prizeAmount > 0) {
+        // Only if the user hasn't already claimed (to handle cases where they may have called claimPrize directly)
+        if (prizeAmount > 0 && !crossword.hasClaimed[user]) {
             if (crossword.token == address(0)) {
                 // Native CELO transfer
                 require(address(this).balance >= crossword.claimedAmount + prizeAmount, "CrosswordBoard: insufficient native CELO balance");
@@ -454,6 +460,7 @@ contract CrosswordBoard is Ownable, AccessControl, ReentrancyGuard, Pausable {
                 IERC20 tokenContract = IERC20(crossword.token);
                 tokenContract.safeTransfer(user, prizeAmount);
             }
+            crossword.hasClaimed[user] = true; // Mark as claimed after payment
         }
 
         // Emit event
@@ -468,12 +475,12 @@ contract CrosswordBoard is Ownable, AccessControl, ReentrancyGuard, Pausable {
     }
 
     /**
-     * @dev Allow winners to claim their prizes (fallback if automatic distribution failed)
+     * @dev Allow winners to claim their prizes
      * @param crosswordId The ID of the crossword
      */
     function claimPrize(bytes32 crosswordId) external nonReentrant whenNotPaused {
         Crossword storage crossword = crosswords[crosswordId];
-        require(crossword.state == CrosswordState.Complete, "CrosswordBoard: crossword not complete or prizes already distributed");
+        require(crossword.state != CrosswordState.Inactive, "CrosswordBoard: crossword not active yet");
         require(!crossword.hasClaimed[_msgSender()], "CrosswordBoard: already claimed");
 
         // Find the user's completion record
@@ -799,10 +806,18 @@ contract CrosswordBoard is Ownable, AccessControl, ReentrancyGuard, Pausable {
         hasCompletedCrossword[crosswordId][msg.sender] = true;
 
         // Record completion in prizes contract - calling directly
-        // Note: This call will revert if conditions aren't met, which stops the completion
-        // In production, this would be handled with proper error checking
-        // For now, we'll skip this call to avoid potential reversion
-        // recordCompletion(crosswordId, msg.sender);
+        // This will distribute prizes if user is among the top finishers
+        try this.recordCompletion(crosswordId, msg.sender) returns (bool rewarded) {
+            // If user was rewarded, the prize was distributed automatically
+            // If not rewarded (e.g., too late, not in top winners), that's fine
+        } catch Error(string memory reason) {
+            // If recordCompletion fails (e.g., crossword not active, etc.),
+            // we still want to complete the crossword, just without the prize
+            // This prevents the entire completion from failing due to prize issues
+        } catch {
+            // Catch any other errors from recordCompletion
+            // The completion will still be recorded, just without prize distribution
+        }
 
         emit CrosswordCompleted(crosswordId, msg.sender, block.timestamp, durationMs);
     }

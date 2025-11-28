@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button"
 import { Trophy, Medal, Award, Home, Clock } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useCrossword } from "@/contexts/crossword-context"
-import { useGetCrosswordCompletions } from "@/hooks/useContract"
+import { useGetCrosswordCompletions, useClaimPrize } from "@/hooks/useContract"
+import { useAccount } from "wagmi";
 import { sdk } from "@farcaster/frame-sdk";
 import FarcasterUserDisplay from "@/components/farcaster-user-display";
 
@@ -16,6 +17,8 @@ export default function LeaderboardPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const { currentCrossword } = useCrossword()
+  const { address: connectedAddress, isConnected } = useAccount();
+  const { claimPrize, isLoading: isClaiming, isSuccess: isClaimSuccess, isError: isClaimError, error: claimError } = useClaimPrize();
   const router = useRouter()
   
 
@@ -42,6 +45,42 @@ export default function LeaderboardPage() {
     isError,
     refetch
   } = useGetCrosswordCompletions(currentCrossword?.id as `0x${string}` || `0x0000000000000000000000000000000000000000000000000000000000000000`)
+
+  // Handle claim prize errors
+  useEffect(() => {
+    if (isClaimError) {
+      console.log("Debug: Claim transaction failed", {
+        isClaimError,
+        error: claimError,
+        errorMessage: claimError?.message,
+        errorName: claimError?.name,
+        fullError: claimError
+      });
+
+      const errorMessage = claimError?.message || claimError?.name || 'Unknown error';
+
+      if (errorMessage.toLowerCase().includes('crossword not complete') || errorMessage.toLowerCase().includes('prizes already distributed')) {
+        console.log("Debug: Prizes already distributed or crossword not complete");
+        alert("Cannot claim prize: " + errorMessage +
+              "\nThis means:\n" +
+              "- The prizes have already been distributed to winners\n" +
+              "- You may have already claimed your prize\n" +
+              "- The claiming period has ended\n\n" +
+              "Note: You are seeing this message because the contract has already processed prize distribution.");
+      } else if (errorMessage.toLowerCase().includes('insufficient funds') || errorMessage.toLowerCase().includes('gas')) {
+        console.log("Debug: Insufficient funds error");
+        alert("Insufficient CELO for gas fees. Please get some CELO on Celo Sepolia testnet to claim your prize.");
+      } else {
+        console.log("Debug: Other claim error", errorMessage);
+        alert("Error claiming prize: " + errorMessage);
+      }
+    } else if (isClaimSuccess) {
+      console.log("Debug: Prize claimed successfully");
+      alert("Prize claimed successfully!");
+      // Refetch the completions to update the UI after claiming
+      refetch();
+    }
+  }, [isClaimError, isClaimSuccess, claimError, refetch]);
 
   useEffect(() => {
     if (currentCrossword?.id) {
@@ -174,6 +213,83 @@ export default function LeaderboardPage() {
 
   
 
+  // Function to handle prize claiming for user's own completion
+  const handleClaimPrize = async () => {
+    console.log("Debug: handleClaimPrize called", {
+      currentCrosswordId: currentCrossword?.id,
+      connectedAddress,
+      isConnected,
+      completionsCount: completions.length,
+      completions: completions.map((c, i) => ({
+        index: i,
+        user: getCompletionUser(c),
+        isUser: getCompletionUser(c).toLowerCase() === connectedAddress?.toLowerCase()
+      })),
+      isClaiming,
+      isClaimSuccess
+    });
+
+    if (!currentCrossword?.id) {
+      console.log("Debug: No current crossword id");
+      alert("No active crossword to claim prize for.");
+      return;
+    }
+
+    if (!connectedAddress) {
+      console.log("Debug: No connected address");
+      alert("Please connect your wallet to claim your prize.");
+      return;
+    }
+
+    if (isClaiming) {
+      console.log("Debug: Already claiming");
+      alert("Already processing a claim transaction. Please wait.");
+      return;
+    }
+
+    if (isClaimSuccess) {
+      console.log("Debug: Already claimed successfully");
+      alert("Prize already claimed successfully!");
+      return;
+    }
+
+    // Find user's position in completions (they're sorted by completion time)
+    const userCompletionIndex = completions.findIndex(completion =>
+      getCompletionUser(completion).toLowerCase() === connectedAddress?.toLowerCase()
+    );
+
+    console.log("Debug: User completion index", {
+      userCompletionIndex,
+      isUserWinner: userCompletionIndex !== -1 && userCompletionIndex < 10,
+      userAddress: connectedAddress
+    });
+
+    if (userCompletionIndex === -1) {
+      console.log("Debug: User not in completions");
+      alert("You have not completed this crossword yet. You cannot claim a prize.");
+      return;
+    }
+
+    if (userCompletionIndex >= 10) {
+      console.log("Debug: User not in top 10");
+      alert("You are not in the top 10 winners, so you cannot claim a prize.");
+      return;
+    }
+
+    // Verify if the current crossword is still active for claiming
+    // This is just a pre-check - the actual validation happens in the contract
+    console.log("Debug: Pre-claim validation passed, calling claimPrize with parameters:", [currentCrossword.id as `0x${string}`]);
+
+    try {
+      const txPromise = claimPrize([currentCrossword.id as `0x${string}`]);
+      console.log("Debug: Claim prize transaction initiated", txPromise);
+    } catch (error) {
+      console.error("Debug: Error initiating claim transaction", error);
+      const errorMessage = (error instanceof Error ? error.message : "Unknown error");
+      alert("Error initiating prize claim: " + errorMessage);
+    }
+  };
+
   return (
     <>
       <main className="min-h-screen p-4 bg-background sm:p-6 md:p-8">
@@ -247,6 +363,44 @@ export default function LeaderboardPage() {
                   </Card>
                 )
               })}
+            </div>
+          )}
+
+          {/* Claim Prize Button - Only show if user is connected, has completed the crossword, and is in top winners */}
+          {isConnected && connectedAddress && completions.length > 0 && currentCrossword && (
+            <div className="flex justify-center mt-4">
+              {(() => {
+                const userCompletionIndex = completions.findIndex(completion =>
+                  getCompletionUser(completion).toLowerCase() === connectedAddress?.toLowerCase()
+                );
+
+                const isTopWinner = userCompletionIndex !== -1 && userCompletionIndex < 10;
+
+                console.log("Debug: Claim button visibility", {
+                  userCompletionIndex,
+                  isTopWinner,
+                  isClaiming,
+                  isClaimSuccess,
+                  connectedAddress,
+                  completions: completions.map((c, i) => ({ index: i, user: getCompletionUser(c), isCurrentUser: getCompletionUser(c).toLowerCase() === connectedAddress?.toLowerCase() }))
+                });
+
+                // Show the button if user is in top 10, even if we can't determine if prizes are still available
+                // The actual validation happens in the contract
+                if (isTopWinner && !isClaimSuccess) {
+                  return (
+                    <Button
+                      onClick={handleClaimPrize}
+                      disabled={isClaiming}
+                      className="border-4 border-black bg-primary font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none"
+                    >
+                      {isClaiming ? 'Claiming...' : 'Claim Prize'}
+                    </Button>
+                  );
+                }
+
+                return null;
+              })()}
             </div>
           )}
 
