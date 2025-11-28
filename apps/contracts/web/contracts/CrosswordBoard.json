@@ -1,5 +1,5 @@
 {
-  "address": "0x0c7cf17265a6b1330119584c23b9c1b12a8550ab",
+  "address": "0x534faf42dcd9bd13b76c7fd8f30ecd2e6bf821b5",
   "abi": [
     {
       "inputs": [
@@ -1208,6 +1208,45 @@
           "internalType": "enum CrosswordBoard.CrosswordState",
           "name": "state",
           "type": "uint8"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "crosswordId",
+          "type": "bytes32"
+        }
+      ],
+      "name": "getCrosswordFundingStatus",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "totalPrizePool",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "claimedAmount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "availableBalance",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bool",
+          "name": "hasFunding",
+          "type": "bool"
+        },
+        {
+          "internalType": "bool",
+          "name": "isSufficientBalance",
+          "type": "bool"
         }
       ],
       "stateMutability": "view",

@@ -107,6 +107,8 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
 
   const [alreadyCompleted, setAlreadyCompleted] = useState(false);
   const [checkingCompletionStatus, setCheckingCompletionStatus] = useState(false);
+  const [isPrizeWinner, setIsPrizeWinner] = useState(false);
+  const [checkingPrizeStatus, setCheckingPrizeStatus] = useState(false);
 
   // Fetch crossword prizes details
   const { data: crosswordPrizesDetails, isLoading: isLoadingPrizes } = useCrosswordPrizesDetails(
@@ -166,6 +168,125 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
       }
     }
   }, [userCompletedData]);
+
+  // Effect to check if user is a prize winner when crossword or address changes
+  useEffect(() => {
+    const checkPrizeWinnerStatus = async () => {
+      if (!currentCrossword?.id || !address || !isConnected) {
+        setIsPrizeWinner(false);
+        return;
+      }
+
+      setCheckingPrizeStatus(true);
+
+      try {
+        const contractInfo = (CONTRACTS as any)[chainId]?.['CrosswordBoard'];
+        if (!contractInfo) {
+          console.error("Contract configuration not found for chain ID:", chainId);
+          setIsPrizeWinner(false);
+          return;
+        }
+
+        // Use the same approach as in the handleClaimPrize function
+        const getCrosswordBoardABI = () => {
+          return [
+            {
+              "inputs": [
+                {
+                  "internalType": "bytes32",
+                  "name": "crosswordId",
+                  "type": "bytes32"
+                }
+              ],
+              "name": "getCrosswordDetails",
+              "outputs": [
+                {
+                  "internalType": "address",
+                  "name": "token",
+                  "type": "address"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "totalPrizePool",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "uint256[]",
+                  "name": "winnerPercentages",
+                  "type": "uint256[]"
+                },
+                {
+                  "components": [
+                    {
+                      "internalType": "address",
+                      "name": "user",
+                      "type": "address"
+                    },
+                    {
+                      "internalType": "uint256",
+                      "name": "timestamp",
+                      "type": "uint256"
+                    },
+                    {
+                      "internalType": "uint256",
+                      "name": "rank",
+                      "type": "uint256"
+                    }
+                  ],
+                  "internalType": "struct CrosswordBoard.CompletionRecord[]",
+                  "name": "completions",
+                  "type": "tuple[]"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "activationTime",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "endTime",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "uint8",
+                  "name": "state",
+                  "type": "uint8"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            }
+          ];
+        };
+
+        const abi = getCrosswordBoardABI();
+
+        const crosswordDetails = await readContract(config, {
+          address: contractInfo.address as `0x${string}`,
+          abi: abi,
+          functionName: 'getCrosswordDetails',
+          args: [currentCrossword.id as `0x${string}`],
+        });
+
+        // Check if user is in the completions array (meaning they are a prize winner)
+        const completionsArray = Array.isArray(crosswordDetails) ? (crosswordDetails[3] as any[]) : []; // completions is at index 3
+        const userIsPrizeWinner = completionsArray.some(completion => {
+          const completionUser = completion.user || completion[0]; // Handle both object and tuple formats
+          return completionUser.toLowerCase() === address.toLowerCase();
+        });
+
+        setIsPrizeWinner(userIsPrizeWinner);
+        console.log("Debug: Updated prize winner status", { userIsPrizeWinner, address, completionsCount: completionsArray.length });
+      } catch (error) {
+        console.error("Error checking prize winner status:", error);
+        setIsPrizeWinner(false);
+      } finally {
+        setCheckingPrizeStatus(false);
+      }
+    };
+
+    checkPrizeWinnerStatus();
+  }, [currentCrossword?.id, address, isConnected, chainId]);
 
 
 
@@ -860,9 +981,134 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
       return; // Prevent multiple simultaneous claims
     }
 
-    setWaitingForTransaction(true);
-
+    // Check if the user has actually completed this crossword and is eligible for a prize
+    // (in the crossword completions array with a rank)
     try {
+      // Use the same approach as in leaderboard to check if user is a prize winner
+      if (currentCrossword?.id && address) {
+        // Get the full crossword details to check if user is in the prize winners
+        const contractInfo = (CONTRACTS as any)[chainId]?.['CrosswordBoard'];
+        if (!contractInfo) {
+          throw new Error(`Contract configuration not found for chain ID: ${chainId}`);
+        }
+
+        // Import the ABI from the same function used by the hooks
+        const getCrosswordBoardABI = () => {
+          return [
+            {
+              "inputs": [
+                {
+                  "internalType": "bytes32",
+                  "name": "crosswordId",
+                  "type": "bytes32"
+                }
+              ],
+              "name": "getCrosswordDetails",
+              "outputs": [
+                {
+                  "internalType": "address",
+                  "name": "token",
+                  "type": "address"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "totalPrizePool",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "uint256[]",
+                  "name": "winnerPercentages",
+                  "type": "uint256[]"
+                },
+                {
+                  "components": [
+                    {
+                      "internalType": "address",
+                      "name": "user",
+                      "type": "address"
+                    },
+                    {
+                      "internalType": "uint256",
+                      "name": "timestamp",
+                      "type": "uint256"
+                    },
+                    {
+                      "internalType": "uint256",
+                      "name": "rank",
+                      "type": "uint256"
+                    }
+                  ],
+                  "internalType": "struct CrosswordBoard.CompletionRecord[]",
+                  "name": "completions",
+                  "type": "tuple[]"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "activationTime",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "endTime",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "uint8",
+                  "name": "state",
+                  "type": "uint8"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            }
+          ];
+        };
+
+        const abi = getCrosswordBoardABI();
+
+        console.log("Debug: About to call getCrosswordDetails to check if user is eligible for prize", {
+          address: contractInfo.address,
+          functionName: 'getCrosswordDetails',
+          args: [currentCrossword.id as `0x${string}`],
+          abi: abi
+        });
+
+        const crosswordDetails = await readContract(config, {
+          address: contractInfo.address as `0x${string}`,
+          abi: abi,
+          functionName: 'getCrosswordDetails',
+          args: [currentCrossword.id as `0x${string}`],
+        });
+
+        console.log("Debug: Crossword details received", { crosswordDetails });
+
+        // Check if user is in the completions array (meaning they are a prize winner)
+        const completionsArray = Array.isArray(crosswordDetails) ? (crosswordDetails[3] as any[]) : []; // completions is at index 3
+        const isPrizeWinner = completionsArray.some(completion => {
+          const completionUser = completion.user || completion[0]; // Handle both object and tuple formats
+          return completionUser.toLowerCase() === address.toLowerCase();
+        });
+
+        console.log("Debug: Prize winner check result", {
+          isPrizeWinner,
+          userAddress: address,
+          completions: completionsArray.map((c, i) => ({
+            index: i,
+            user: c.user || c[0],
+            isCurrentUser: (c.user || c[0]).toLowerCase() === address.toLowerCase()
+          }))
+        });
+
+        if (!isPrizeWinner) {
+          console.log("Debug: User is not eligible for prize");
+          setWaitingForTransaction(false);
+          alert("You are not eligible for a prize in this crossword. Only the top finishers can claim prizes, and you may have completed it after the prize slots were filled or were not fast enough.");
+          return;
+        }
+      }
+
+      setWaitingForTransaction(true);
+
       // Call the claimPrize function with the current crossword ID
       const txPromise = claimPrize([currentCrossword.id as `0x${string}`]);
       console.log("Debug: Claim prize transaction initiated", txPromise);
@@ -1159,7 +1405,7 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
                 Reset
               </Button>
               <Button
-                onClick={alreadyCompleted ? handleClaimPrize : handleSaveCompletion}
+                onClick={alreadyCompleted ? () => alert("Prize can be claimed from the Leaderboard page after completion.") : handleSaveCompletion}
                 disabled={(!isComplete && !alreadyCompleted) || (alreadyCompleted && (isClaiming || isClaimSuccess)) || isCompleting || isSubmitting}
                 className="w-full md:w-auto border-4 border-black bg-primary font-black uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-0.5 hover:translate-y-0.5 sm:hover:translate-x-1 sm:hover:translate-y-1 active:translate-x-0.5 active:translate-y-0.5 sm:active:translate-y-1 hover:bg-primary active:bg-primary hover:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] disabled:active:translate-x-0 disabled:active:translate-y-0 disabled:active:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
               >
@@ -1190,7 +1436,7 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
                 ) : (
                   <>
                     <Save className="w-4 h-4 mr-2" />
-                    {alreadyCompleted ? "Claim Prize" : (isComplete ? "Save Result" : "Mark as Complete")}
+                    {alreadyCompleted ? "Go to Leaderboard" : (isComplete ? "Save Result" : "Mark as Complete")}
                   </>
                 )}
               </Button>

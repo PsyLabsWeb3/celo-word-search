@@ -33,7 +33,7 @@ const CONTRACTS = {
   },
   [celoSepolia.id]: {
     CrosswordBoard: {
-      address: "0x0c7cf17265a6b1330119584c23b9c1b12a8550ab", // Deployed unified contract with claim fixes
+      address: "0x5516d6bc563270Cbe27ca7Ed965cAA597130954A", // Updated contract with hasClaimedPrize function
       // The ABI will be loaded dynamically to keep this file small
     }
   }
