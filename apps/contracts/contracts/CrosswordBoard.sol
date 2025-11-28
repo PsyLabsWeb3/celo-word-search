@@ -982,9 +982,8 @@ contract CrosswordBoard is Ownable, AccessControl, ReentrancyGuard, Pausable {
         // Update max winners in internal storage
         _setMaxWinners(newMaxWinners);
 
-        // Create the crossword with native CELO prize pool using the external function
-        // Internal functions can't receive value directly
-        this.createCrosswordWithNativeCELO{value: msg.value}(crosswordId, msg.value, winnerPercentages, endTime);
+        // Create the crossword with native CELO prize pool using the internal function
+        _createCrosswordWithNativeCELO(crosswordId, prizePool, winnerPercentages, endTime);
 
         emit CrosswordUpdated(crosswordId, crosswordData, _msgSender());
     }

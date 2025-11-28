@@ -648,6 +648,19 @@ export default function AdminPage() {
     );
   }
 
+  // Show loading state while checking admin status
+  if (isAdminLoading && address) {
+    return (
+      <div className="flex items-center justify-center min-h-screen p-4 bg-background">
+        <Card className="w-full max-w-2xl p-8 text-center border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+          <h2 className="mb-4 text-2xl font-bold">Verifying Admin Access</h2>
+          <p className="mb-6 text-lg">Checking admin permissions on the blockchain...</p>
+          <p className="text-sm text-muted-foreground">Wallet: {address}</p>
+        </Card>
+      </div>
+    );
+  }
+
   if (!isAdminData) {
     return (
       <div className="flex items-center justify-center min-h-screen p-4 bg-background">
@@ -658,6 +671,7 @@ export default function AdminPage() {
         </Card>
       </div>
     );
+  } else {
   }
 
   return (

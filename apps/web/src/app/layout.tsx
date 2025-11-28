@@ -57,7 +57,7 @@ export default function RootLayout({
               {children}
             </main>
             <footer className="p-4 text-center text-gray-600">
-              Made with passion ❤️ by Psylabs
+              Made for CELO with passion ❤️ by Psylabs
             </footer>
           </Providers>
         </div>
