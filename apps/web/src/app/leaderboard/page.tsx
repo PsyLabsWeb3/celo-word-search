@@ -246,7 +246,7 @@ export default function LeaderboardPage() {
               <Trophy className="w-16 h-16 text-primary" />
             </div>
             <h1 className="text-3xl font-black tracking-tight uppercase text-foreground sm:text-4xl md:text-5xl">
-              Top 10 Winners (On-Chain)
+              Winners (On-Chain)
             </h1>
           </div>
 
@@ -338,7 +338,7 @@ export default function LeaderboardPage() {
               <Trophy className="w-16 h-16 text-primary" />
             </div>
             <h1 className="text-3xl font-black tracking-tight uppercase text-foreground sm:text-4xl md:text-5xl">
-              Top 10 Winners (On-Chain)
+              Winners (On-Chain)
             </h1>
             <p className="mt-2 text-sm font-bold text-muted-foreground sm:text-base">
               The first 10 users to complete the current crossword (stored on blockchain)

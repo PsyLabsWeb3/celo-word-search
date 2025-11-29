@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import Link from "next/link";
 import { useAccount } from "wagmi";
 import CrosswordGame from "@/components/crossword-game"
@@ -9,6 +9,7 @@ import { AlertCircle, Wallet } from "lucide-react"
 import { useCrossword } from "@/contexts/crossword-context";
 import { useCeloNetworkValidation } from "@/hooks/useCeloNetworkValidation";
 import { CeloNetworkButton } from "@/components/celo-network-button";
+import { useUserCompletedCrossword, useGetCrosswordCompletions } from "@/hooks/useContract";
 
 const AlphabetAnimation = () => {
   const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split('');
@@ -44,10 +45,53 @@ export default function Page() {
   const [gameStarted, setGameStarted] = useState(false)
   // Estado para controlar si se debe ignorar los datos guardados
   const [ignoreSavedData, setIgnoreSavedData] = useState(false)
+  const [alreadyCompletedLocal, setAlreadyCompleted] = useState(false)
 
   // Use actual wallet connection state
-  const { isConnected } = useAccount();
-  const { refetchCrossword } = useCrossword();
+  const { isConnected, address } = useAccount();
+  const { refetchCrossword, currentCrossword } = useCrossword();
+
+  // Check completions for the current crossword to see if user has completed it
+  const { data: onChainCompletions, isLoading: isCompletionsLoading } = useGetCrosswordCompletions(
+    currentCrossword?.id as `0x${string}` || `0x0000000000000000000000000000000000000000000000000000000000000000`
+  );
+
+  // Helper functions to handle both tuple-style and object-style completion data (same as in leaderboard)
+  const getCompletionUser = useCallback((completion: any): string => {
+    return completion.user ?? completion[0];
+  }, []);
+
+  // Check if user is in the completions list
+  const userHasCompletedCrossword = useMemo(() => {
+    if (!isConnected || !address || !Array.isArray(onChainCompletions) || onChainCompletions.length === 0) {
+      return false;
+    }
+
+    // Normalize addresses for comparison (handle potential case differences)
+    const normalizedAddress = address.toLowerCase();
+
+    return onChainCompletions.some(completion => {
+      const completionUser = getCompletionUser(completion).toLowerCase();
+      return completionUser === normalizedAddress;
+    });
+  }, [isConnected, address, onChainCompletions]);
+
+  // For strict requirement (only after completing current crossword), check if user is in completions
+  const alreadyCompleted = (currentCrossword?.id && userHasCompletedCrossword) || alreadyCompletedLocal;
+
+  // Debug logs to understand leaderboard visibility
+  console.log("Debug: Leaderboard visibility check", {
+    isConnected,
+    hasSavedCrossword,
+    alreadyCompleted,
+    userHasCompletedCrossword,
+    onChainCompletions,
+    isCompletionsLoading,
+    alreadyCompletedLocal,
+    currentCrosswordId: currentCrossword?.id,
+    currentCrossword: currentCrossword,
+    completionsLoaded: onChainCompletions !== undefined
+  });
   
   // Validate Celo network connection
   const { 
@@ -87,8 +131,9 @@ export default function Page() {
                 Click a cell to select, then start typing.
               </p>
             </div>
-            <CrosswordGame 
-              ignoreSavedData={ignoreSavedData} 
+            <CrosswordGame
+              ignoreSavedData={ignoreSavedData}
+              onCrosswordCompleted={() => setAlreadyCompleted(true)}
             />
           </div>
         </main>
@@ -129,7 +174,7 @@ export default function Page() {
             </h1>
 
             <p className="max-w-lg mx-auto text-lg font-bold text-pretty text-muted-foreground md:text-xl">
-              Complete the crossword and compete for amazing rewards. The first 10 winners take it all!
+              Complete the crossword and compete for amazing rewards. The winners take it all!
             </p>
           </div>
 
@@ -140,14 +185,16 @@ export default function Page() {
             >
               Start
             </CeloNetworkButton>
-            <Link href="/leaderboard" passHref>
-              <CeloNetworkButton
-                variant="secondary"
-                className="md:ml-2 h-auto w-full border-4 border-black bg-blue-500 px-8 py-6 text-2xl font-black uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-2 hover:translate-y-2 active:translate-x-2 active:translate-y-2 hover:bg-blue-500 active:bg-blue-500 hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary sm:w-auto"
-              >
-                Leaderboard
-              </CeloNetworkButton>
-            </Link>
+            {isConnected && (hasSavedCrossword || alreadyCompleted) && currentCrossword?.id && (
+              <Link href="/leaderboard" passHref>
+                <CeloNetworkButton
+                  variant="secondary"
+                  className="md:ml-2 h-auto w-full border-4 border-black bg-blue-500 px-8 py-6 text-2xl font-black uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-2 hover:translate-y-2 active:translate-x-2 active:translate-y-2 hover:bg-blue-500 active:bg-blue-500 hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary sm:w-auto"
+                >
+                  Leaderboard
+                </CeloNetworkButton>
+              </Link>
+            )}
             {hasSavedCrossword && (
               <CeloNetworkButton
                 variant="secondary"

@@ -79,9 +79,10 @@ interface MobileInputPopup {
 
 interface CrosswordGameProps {
   ignoreSavedData?: boolean;
+  onCrosswordCompleted?: () => void;
 }
 
-export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGameProps) {
+export default function CrosswordGame({ ignoreSavedData = false, onCrosswordCompleted }: CrosswordGameProps) {
   const { currentCrossword, isLoading: crosswordLoading, refetchCrossword: refetchCrosswordFromContext } = useCrossword();
   const { address, isConnected } = useAccount();
   const { completeCrossword, isLoading: isCompleting, isSuccess: isCompleteSuccess, isError: isCompleteError, error: completeCrosswordError, txHash } = useCompleteCrossword();
@@ -382,8 +383,8 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
           if (process.env.NODE_ENV === 'development') {
             console.log("Debug: In development mode, setting test profile data");
             setFarcasterProfile({
-              username: "testuser1",
-              displayName: "Test User1",
+              username: "unknownUser",
+              displayName: "Unknown user",
               pfpUrl: "https://placehold.co/200x200.png"
             });
           } else {
@@ -632,10 +633,20 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
           // Only show the congratulations dialog if the user is a prize winner
           if (updatedIsPrizeWinner) {
             console.log("Debug: Showing congratulations dialog for prize winner after re-check");
+            // Call the callback when crossword is completed to update parent state
+            if (onCrosswordCompleted) {
+              console.log("Debug: Calling onCrosswordCompleted callback (prize winner)");
+              onCrosswordCompleted();
+            }
             // Show the congratulations dialog instead of redirecting
             setShowCongratulations(true);
           } else {
             console.log("Debug: User is not a winner after re-check, redirecting to leaderboard directly");
+            // Call the callback when crossword is completed to update parent state
+            if (onCrosswordCompleted) {
+              console.log("Debug: Calling onCrosswordCompleted callback (non-winner)");
+              onCrosswordCompleted();
+            }
             // For non-winners, still redirect to leaderboard
             setTimeout(() => {
               console.log("Debug: Redirecting to leaderboard now");
@@ -647,10 +658,20 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
           // Check if user is a prize winner before deciding whether to show congratulations
           if (isPrizeWinner) {
             console.log("Debug: Cache invalidation failed, but showing congratulations anyway since user is a winner");
+            // Call the callback when crossword is completed to update parent state
+            if (onCrosswordCompleted) {
+              console.log("Debug: Calling onCrosswordCompleted callback (cache failure - winner)");
+              onCrosswordCompleted();
+            }
             setShowCongratulations(true);
           } else {
             // Still redirect even if cache invalidation fails for non-winners
             console.log("Debug: Cache invalidation failed, but redirecting anyway for non-winner");
+            // Call the callback when crossword is completed to update parent state
+            if (onCrosswordCompleted) {
+              console.log("Debug: Calling onCrosswordCompleted callback (cache failure - non-winner)");
+              onCrosswordCompleted();
+            }
             router.push("/leaderboard");
           }
         });
@@ -1442,12 +1463,12 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
         {/* Prize Pool Information */}
         {crosswordPrizesDetails && (
           <div className="px-2">
-            <Card className="border-4 border-yellow-400 bg-yellow-200 p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+            <Card className="border-4 border-black bg-card p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
               <div className="flex flex-col items-center">
                 <div className="flex items-center justify-center gap-2 text-foreground">
-                  <Trophy className="w-6 h-6 text-yellow-700" />
-                  <span className="text-lg font-black text-black">Prize Pool: </span>
-                  <span className="px-2 py-1 text-xl font-black text-yellow-900 bg-yellow-300 rounded-md">
+                  <Trophy className="w-5 h-5" />
+                  <span className="text-lg font-black">Prize Pool: </span>
+                  <span className="text-lg font-black">
                     {Number(crosswordPrizesDetails[1]) / 1e18}
                     {crosswordPrizesDetails[0] === "0x0000000000000000000000000000000000000000"
                       ? " CELO"
@@ -1457,10 +1478,10 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
 
                 {crosswordPrizesDetails[2] && crosswordPrizesDetails[2].length > 0 && (
                   <div className="mt-2 text-center">
-                    <p className="text-sm font-black text-yellow-800">Top {crosswordPrizesDetails[2].length} winners share the prize:</p>
+                    <p className="text-sm font-bold text-muted-foreground">Top {crosswordPrizesDetails[2].length} winners share the prize:</p>
                     <div className="flex flex-wrap justify-center gap-2 mt-1">
                       {crosswordPrizesDetails[2].map((pct: any, idx: number) => (
-                        <span key={idx} className="px-3 py-1 text-xs font-black text-yellow-900 bg-green-400 rounded-full">
+                        <span key={idx} className="px-3 py-1 text-xs font-bold rounded-full bg-secondary">
                           {idx + 1}{idx === 0 ? 'st' : idx === 1 ? 'nd' : idx === 2 ? 'rd' : 'th'} place: {Number(pct) / 100}%
                         </span>
                       ))}
