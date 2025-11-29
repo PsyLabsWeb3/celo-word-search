@@ -1442,12 +1442,12 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
         {/* Prize Pool Information */}
         {crosswordPrizesDetails && (
           <div className="px-2">
-            <Card className="border-4 border-black bg-card p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+            <Card className="border-4 border-yellow-400 bg-yellow-200 p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
               <div className="flex flex-col items-center">
                 <div className="flex items-center justify-center gap-2 text-foreground">
-                  <Trophy className="w-5 h-5" />
-                  <span className="text-lg font-bold">Prize Pool: </span>
-                  <span className="font-mono text-lg font-bold">
+                  <Trophy className="w-6 h-6 text-yellow-700" />
+                  <span className="text-lg font-black text-black">Prize Pool: </span>
+                  <span className="px-2 py-1 text-xl font-black text-yellow-900 bg-yellow-300 rounded-md">
                     {Number(crosswordPrizesDetails[1]) / 1e18}
                     {crosswordPrizesDetails[0] === "0x0000000000000000000000000000000000000000"
                       ? " CELO"
@@ -1457,10 +1457,10 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
 
                 {crosswordPrizesDetails[2] && crosswordPrizesDetails[2].length > 0 && (
                   <div className="mt-2 text-center">
-                    <p className="text-sm font-bold text-muted-foreground">Top {crosswordPrizesDetails[2].length} winners share the prize:</p>
+                    <p className="text-sm font-black text-yellow-800">Top {crosswordPrizesDetails[2].length} winners share the prize:</p>
                     <div className="flex flex-wrap justify-center gap-2 mt-1">
                       {crosswordPrizesDetails[2].map((pct: any, idx: number) => (
-                        <span key={idx} className="px-3 py-1 text-xs font-bold rounded-full bg-secondary">
+                        <span key={idx} className="px-3 py-1 text-xs font-black text-yellow-900 bg-green-400 rounded-full">
                           {idx + 1}{idx === 0 ? 'st' : idx === 1 ? 'nd' : idx === 2 ? 'rd' : 'th'} place: {Number(pct) / 100}%
                         </span>
                       ))}
@@ -1609,15 +1609,17 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
         </div>
       </div>
 
-  <Button
-                    onClick={() => {
-                    window.location.href = "/";
-                  }}
-              className="border-4 border-black bg-accent font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-accent hover:shadow-none"
-                >
-                  <Home className="w-4 h-4 mr-2" />
-                  Return to Home
-                </Button>
+      <div className="flex justify-center mt-6">
+        <Button
+          onClick={() => {
+            window.location.href = "/";
+          }}
+          className="border-4 border-black bg-accent font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-accent hover:shadow-none"
+        >
+          <Home className="w-4 h-4 mr-2" />
+          Return to Home
+        </Button>
+      </div>
 
 
       {mobilePopup && (
