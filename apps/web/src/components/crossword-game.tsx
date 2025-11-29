@@ -1531,7 +1531,7 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
               <Button
                 onClick={alreadyCompleted ? () => alert("Prize can be claimed from the Leaderboard page after completion.") : handleSaveCompletion}
                 disabled={(!isComplete && !alreadyCompleted) || (alreadyCompleted && (isClaiming || isClaimSuccess)) || isCompleting || isSubmitting}
-                className="w-full md:w-auto border-4 border-black bg-primary font-black uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-0.5 hover:translate-y-0.5 sm:hover:translate-x-1 sm:hover:translate-y-1 active:translate-x-0.5 active:translate-y-0.5 sm:active:translate-y-1 hover:bg-primary active:bg-primary hover:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] disabled:active:translate-x-0 disabled:active:translate-y-0 disabled:active:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+                className="mb-4 w-full md:w-auto border-4 border-black bg-primary font-black uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-0.5 hover:translate-y-0.5 sm:hover:translate-x-1 sm:hover:translate-y-1 active:translate-x-0.5 active:translate-y-0.5 sm:active:translate-y-1 hover:bg-primary active:bg-primary hover:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] disabled:active:translate-x-0 disabled:active:translate-y-0 disabled:active:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
               >
                 {isSubmitting || isCompleting ? (
                   <>
@@ -1560,11 +1560,15 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
                 ) : (
                   <>
                     <Save className="w-4 h-4 mr-2" />
-                    {alreadyCompleted ? "Go to Leaderboard" : (isComplete ? "Save Result" : "Mark as Complete")}
+                    {(isComplete ? "Save Result" : "Mark as Complete")}
                   </>
                 )}
               </Button>
-                <Button
+               
+            </div>
+          </Card>
+        </div>
+         <Button
                     onClick={() => {
                     window.location.href = "/";
                   }}
@@ -1574,9 +1578,6 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
                   Return to Home
                 </Button>
             
-            </div>
-          </Card>
-        </div>
 
         {/* Clues Panel */}
         <div className="px-2 space-y-4 sm:space-y-6">
@@ -1595,6 +1596,8 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
               ))}
             </div>
           </Card>
+
+          
 
           <Card className="border-4 border-black bg-card p-3 sm:p-4 md:p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] sm:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
             <h2 className="mb-2 text-lg font-black uppercase sm:mb-3 md:mb-4 sm:text-xl text-foreground">Vertical</h2>
@@ -1681,14 +1684,14 @@ export default function CrosswordGame({ ignoreSavedData = false }: CrosswordGame
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
           <Card className="w-full max-w-md border-4 border-black bg-card p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
             <div className="flex flex-col items-center text-center">
-              <Trophy className="w-16 h-16 text-yellow-500 mb-4" />
-              <h2 className="text-2xl font-black uppercase text-foreground mb-2">
+              <Trophy className="w-16 h-16 mb-4 text-yellow-500" />
+              <h2 className="mb-2 text-2xl font-black uppercase text-foreground">
                 Congratulations!
               </h2>
-              <p className="text-lg font-bold text-muted-foreground mb-4">
+              <p className="mb-4 text-lg font-bold text-muted-foreground">
                 You won! 🎉
               </p>
-              <p className="text-sm font-medium text-muted-foreground mb-6">
+              <p className="mb-6 text-sm font-medium text-muted-foreground">
                 Your completion has been recorded on the blockchain.
               </p>
               <Button
