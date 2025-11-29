@@ -1,6 +1,6 @@
 
 
-[dotenv@17.2.3] injecting env (5) from .env -- tip: 👥 sync secrets across teammates & machines: https://dotenvx.com/ops
+[dotenv@17.2.3] injecting env (5) from .env -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`
 // Sources flattened with hardhat v2.27.0 https://hardhat.org
 
 // SPDX-License-Identifier: MIT

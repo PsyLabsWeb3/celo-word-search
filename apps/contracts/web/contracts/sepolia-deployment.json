@@ -2,7 +2,7 @@
   "network": "sepolia",
   "contracts": {
     "CrosswordBoard": {
-      "address": "0xF1d8D722cD9aa9f79F6EDFbb0Eb83b005f868cBd",
+      "address": "0x62ADF6a2E788Fbbd66B5da641cAD08Fd96115B8B",
       "abi": [
         {
           "inputs": [

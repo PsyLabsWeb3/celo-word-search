@@ -1,0 +1,104 @@
+WARNING: You are currently using Node.js v25.2.1, which is not supported by Hardhat. This can lead to unexpected behavior. See https://v2.hardhat.org/nodejs-versions
+
+
+[dotenv@17.2.3] injecting env (5) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+Warning: Unused local variable.
+    --> contracts/CrosswordBoard.sol:1028:9:
+     |
+1028 |         bool rewarded = _recordCompletionInternal(crosswordId, msg.sender);
+     |         ^^^^^^^^^^^^^
+
+
+Warning: Function state mutability can be restricted to pure
+    --> contracts/CrosswordBoard.sol:1081:5:
+     |
+1081 |     function isReturnHomeButtonVisible() external view returns (bool) {
+     |     ^ (Relevant source part starts here and spans across multiple lines).
+
+
+Compiled 20 Solidity files successfully (evm target: paris).
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 📡 add observability to secrets: https://dotenvx.com/ops
+🧪 Starting Prize Distribution Test with 7 players and 5 winners...
+
+👥 Accounts:
+  - Admin: 0x70997970c51812dc3a010c7d01b50e0d17dc79c8
+  - User1: 0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc
+  - User2: 0x90f79bf6eb2c4f870365e785982e1f101e93b906
+  - User3: 0x15d34aaf54267db7d7c367839aaf71a00a2c6a65
+  - User4: 0x9965507d1a55bcc2695c58ba16fb37d819b0a4dc
+  - User5: 0x976ea74026e726554db657fa54763abd0c3a0aa9
+  - User6: 0x14dc79964da2c08b23698b3d3cc7ca32193d9955
+  - User7: 0x23618e81e3f5cdf7f54c3d65f7fbc0abf5b21e8f
+
+🚀 Deploying CrosswordBoard contract...
+  - Contract deployed at: 0x5fbdb2315678afecb367f032d93f642f64180aa3
+
+🔑 Setting up roles...
+  - Admin roles granted
+
+⚙️  Configuring Crossword...
+  - Max winners set to: 5
+  - Prize Pool: 2 CELO
+  - Winner Percentages: 4000, 2500, 1500, 1000, 1000
+
+📝 Creating Crossword...
+  - Crossword created and activated
+
+🎮 Simulating Gameplay...
+  - user1 completing crossword...
+  - user2 completing crossword...
+  - user3 completing crossword...
+  - user4 completing crossword...
+  - user5 completing crossword...
+  - user6 completing crossword...
+  - user7 completing crossword...
+
+✅ Verifying Results...
+  Checking Winners and Ranks:
+    - User1: Winner (Rank 1)
+    - User2: Winner (Rank 2)
+    - User3: Winner (Rank 3)
+    - User4: Winner (Rank 4)
+    - User5: Winner (Rank 5)
+    - User6: Not a winner
+    - User7: Not a winner
+
+  Checking Balances:
+    - User1:
+      Initial: 10000 CELO
+      Final:   10000.799377495892 CELO
+      Diff:    0.7993774958917848 CELO
+      Expected Prize: 0.8 CELO
+    - User2:
+      Initial: 10000 CELO
+      Final:   10000.499474421642 CELO
+      Diff:    0.49947442164123224 CELO
+      Expected Prize: 0.5 CELO
+    - User3:
+      Initial: 10000 CELO
+      Final:   10000.299493239174 CELO
+      Diff:    0.2994932391746298 CELO
+      Expected Prize: 0.3 CELO
+    - User4:
+      Initial: 10000 CELO
+      Final:   10000.199509762728 CELO
+      Diff:    0.1995097627281608 CELO
+      Expected Prize: 0.2 CELO
+    - User5:
+      Initial: 10000 CELO
+      Final:   10000.199526697896 CELO
+      Diff:    0.19952669789457744 CELO
+      Expected Prize: 0.2 CELO
+    - User6:
+      Initial: 10000 CELO
+      Final:   9999.999723982963 CELO
+      Diff:    -0.000276017038573288 CELO
+      Expected Prize: 0 CELO
+    - User7:
+      Initial: 10000 CELO
+      Final:   9999.999730720694 CELO
+      Diff:    -0.000269279305005272 CELO
+      Expected Prize: 0 CELO
+
+  Remaining Contract Segregated Balance: 0 CELO
+  ✅ All prizes distributed correctly.

@@ -1,0 +1,26 @@
+WARNING: You are currently using Node.js v25.2.1, which is not supported by Hardhat. This can lead to unexpected behavior. See https://v2.hardhat.org/nodejs-versions
+
+
+[dotenv@17.2.3] injecting env (5) from .env -- tip: ⚙️  suppress all logs with { quiet: true }
+[?25l[2K[1G[36m?[39m [1mConfirm deploy to network celoSepolia (11142220)?[22m [90m›[39m [90m(y/N)[39m[2K[1G[2K[1G[32m✔[39m [1mConfirm deploy to network celoSepolia (11142220)?[22m [90m…[39m yes
+[?25hHardhat Ignition starting for [ CrosswordBoardModule ]...[2K[1GHardhat Ignition 🚀
+
+Deploying [ CrosswordBoardModule ]
+
+Batch #1
+  Executing CrosswordBoardModule#CrosswordBoard...
+
+[3A[0JBatch #1
+  Executing CrosswordBoardModule#CrosswordBoard...
+
+[3A[0JBatch #1
+  Executed CrosswordBoardModule#CrosswordBoard
+
+[3A[0JBatch #1
+  Executed CrosswordBoardModule#CrosswordBoard
+
+[ CrosswordBoardModule ] successfully deployed 🚀
+
+Deployed Addresses
+
+CrosswordBoardModule#CrosswordBoard - 0x62ADF6a2E788Fbbd66B5da641cAD08Fd96115B8B

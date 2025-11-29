@@ -1,0 +1,20 @@
+WARNING: You are currently using Node.js v25.2.1, which is not supported by Hardhat. This can lead to unexpected behavior. See https://v2.hardhat.org/nodejs-versions
+
+
+[dotenv@17.2.3] injecting env (5) from .env -- tip: ⚙️  override existing env vars with { override: true }
+[INFO] Sourcify Verification Skipped: Sourcify verification is currently disabled. To enable it, add the following entry to your Hardhat configuration:
+
+sourcify: {
+  enabled: true
+}
+
+Or set 'enabled' to false to hide this message.
+
+For more information, visit https://v2.hardhat.org/hardhat-runner/plugins/nomicfoundation-hardhat-verify#verifying-on-sourcify
+Successfully submitted source code for contract
+contracts/CrosswordBoard.sol:CrosswordBoard at 0x62ADF6a2E788Fbbd66B5da641cAD08Fd96115B8B
+for verification on the block explorer. Waiting for verification result...
+
+Successfully verified contract CrosswordBoard on the block explorer.
+https://sepolia.celoscan.io/address/0x62ADF6a2E788Fbbd66B5da641cAD08Fd96115B8B#code
+
