@@ -419,12 +419,21 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
       const storeFarcasterProfile = async () => {
         try {
           // Get the user's Farcaster profile info from the SDK context
-          if (farcasterProfile && farcasterProfile.username) {
+          if (farcasterProfile) {
+            // Prepare data with fallbacks to ensure non-empty username for API
+            const apiUsername = farcasterProfile?.username && farcasterProfile.username.trim() !== ""
+              ? farcasterProfile.username
+              : "unknownuser";
+            const apiDisplayName = farcasterProfile?.displayName && farcasterProfile.displayName.trim() !== ""
+              ? farcasterProfile.displayName
+              : "Unknown User";
+            const apiPfpUrl = farcasterProfile?.pfpUrl || "";
+
             console.log("Debug: Storing Farcaster profile", {
               address,
-              username: farcasterProfile.username,
-              displayName: farcasterProfile.displayName,
-              pfpUrl: farcasterProfile.pfpUrl,
+              username: apiUsername,
+              displayName: apiDisplayName,
+              pfpUrl: apiPfpUrl,
               txHash
             });
 
@@ -433,9 +442,9 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 address: address,
-                username: farcasterProfile.username,
-                displayName: farcasterProfile.displayName,
-                pfpUrl: farcasterProfile.pfpUrl,
+                username: apiUsername,
+                displayName: apiDisplayName,
+                pfpUrl: apiPfpUrl,
                 txHash: txHash,
                 timestamp: Date.now()
               }),
@@ -1081,9 +1090,14 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
       const crosswordId = contractCrosswordId as `0x${string}`;
       const durationBigInt = BigInt(durationMs);
 
-      // Use Farcaster profile data if available, otherwise use empty strings
-      const username = farcasterProfile?.username || "";
-      const displayName = farcasterProfile?.displayName || "";
+      // Use Farcaster profile data if available, otherwise use fallback values
+      // The contract requires non-empty username, so we provide a fallback
+      const username = farcasterProfile?.username && farcasterProfile.username.trim() !== ""
+        ? farcasterProfile.username
+        : "unknownuser";
+      const displayName = farcasterProfile?.displayName && farcasterProfile.displayName.trim() !== ""
+        ? farcasterProfile.displayName
+        : "Unknown User";
       const pfpUrl = farcasterProfile?.pfpUrl || "";
 
       // Debug logs to check what values are being sent
@@ -1098,8 +1112,11 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
 
       // Validate that we have at least a username before sending to contract
       if (!username || username.trim() === "") {
-        console.warn("Debug: No username available, sending empty values to contract", { farcasterProfile });
-        // Optionally, we could prompt the user or use a default
+        console.error("Debug: Critical error - no username available after fallback logic", { farcasterProfile, address });
+        alert("Unable to submit crossword completion: no valid username available.");
+        setIsSubmitting(false);
+        setWaitingForTransaction(false);
+        return;
       }
 
       // Call completeCrossword and log the result
