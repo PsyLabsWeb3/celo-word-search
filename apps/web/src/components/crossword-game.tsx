@@ -1708,16 +1708,16 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
       {/* Congratulations Dialog for Winners */}
       {showCongratulations && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-          <Card className="w-full max-w-md border-4 border-black bg-card p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
-            <div className="flex flex-col items-center text-center">
-              <Trophy className="w-16 h-16 mb-4 text-yellow-500" />
-              <h2 className="mb-2 text-2xl font-black uppercase text-foreground">
+          <Card className="w-full max-w-[95vw] sm:max-w-sm md:max-w-md lg:max-w-lg border-4 border-black bg-card p-4 sm:p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+            <div className="flex flex-col items-center text-center space-y-3 sm:space-y-4">
+              <Trophy className="w-12 h-12 sm:w-16 sm:h-16 mb-2 sm:mb-4 text-yellow-500" />
+              <h2 className="mb-1 sm:mb-2 text-xl sm:text-2xl font-black uppercase text-foreground">
                 Congratulations!
               </h2>
-              <p className="mb-4 text-lg font-bold text-muted-foreground">
+              <p className="mb-1 sm:mb-2 text-base sm:text-lg font-bold text-muted-foreground">
                 You won! 🎉
               </p>
-              <p className="mb-6 text-sm font-medium text-muted-foreground">
+              <p className="mb-4 sm:mb-6 text-xs sm:text-sm font-medium text-muted-foreground px-2">
                 Your completion has been recorded on the blockchain.
               </p>
               <Button
@@ -1725,9 +1725,9 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
                   setShowCongratulations(false);
                   router.push("/leaderboard");
                 }}
-                className="border-4 border-black bg-primary font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-primary hover:shadow-none"
+                className="w-full max-w-[200px] border-4 border-black bg-primary font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-primary hover:shadow-none"
               >
-                Continue to Leaderboard
+                Continue
               </Button>
             </div>
           </Card>
