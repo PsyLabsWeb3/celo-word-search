@@ -1351,7 +1351,7 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
   
   // Check if user is connected and on correct Celo network
   const isOnCeloNetwork = chainId === celo.id || chainId === celoAlfajores.id || chainId === celoSepolia.id;
-  const isOnCeloSepolia = chainId === celoSepolia.id;
+  const isOnCeloMainnet = chainId === celo.id;
 
   // Show network connection message if not connected to Celo
   if (!isConnected) {
@@ -1365,7 +1365,7 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
           <p>Requirements:</p>
           <ul className="max-w-md mx-auto mt-2 text-left list-disc list-inside">
             <li>Celo compatible wallet (MetaMask, Valora, etc.)</li>
-            <li>Connected to Celo Sepolia network</li>
+            <li>Connected to Celo Mainnet</li>
           </ul>
         </div>
       </div>
@@ -1378,78 +1378,84 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
       <div className="flex flex-col items-center justify-center p-8 text-center">
         <h2 className="mb-4 text-xl font-bold">Incompatible Network</h2>
         <p className="mb-4">
-          This application requires the Celo network. Please switch to Celo Sepolia Testnet.
+          This application requires the Celo network. Please switch to Celo Mainnet.
         </p>
         <div className="mb-4 text-sm text-muted-foreground">
           <p>Current network: {chainId}</p>
-          <p>Compatible networks: Celo Mainnet, Celo Alfajores, Celo Sepolia</p>
+          <p>Compatible networks: Celo Mainnet</p>
         </div>
         <button
           onClick={async () => {
             try {
-              // Try to add Celo Sepolia network to wallet if it doesn't exist
-              await window.ethereum.request({
-                method: 'wallet_addEthereumChain',
-                params: [
-                  {
-                    chainId: '0xA7A660', // 0xA7A660 is 11142220 in hex
-                    chainName: 'Celo Sepolia Testnet',
-                    nativeCurrency: {
-                      name: 'CELO',
-                      symbol: 'CELO',
-                      decimals: 18,
-                    },
-                    rpcUrls: ['https://forno.celo-sepolia.celo-testnet.org'],
-                    blockExplorerUrls: ['https://sepolia.celoscan.io'],
-                  },
-                ],
-              });
-
-              // Then switch to that network
+              // Try to switch to Celo Mainnet
               await window.ethereum.request({
                 method: 'wallet_switchEthereumChain',
-                params: [{ chainId: '0xA7A660' }],
+                params: [{ chainId: '0xA4EC' }], // 0xA4EC is 42220 in hex
               });
-            } catch (addError) {
-              console.error('Error adding or switching to Celo Sepolia:', addError);
-              alert('Please manually add Celo Sepolia Testnet to your wallet and switch to it.');
+            } catch (switchError: any) {
+              // This error code indicates that the chain has not been added to MetaMask.
+              if (switchError.code === 4902) {
+                try {
+                  await window.ethereum.request({
+                    method: 'wallet_addEthereumChain',
+                    params: [
+                      {
+                        chainId: '0xA4EC',
+                        chainName: 'Celo Mainnet',
+                        nativeCurrency: {
+                          name: 'CELO',
+                          symbol: 'CELO',
+                          decimals: 18,
+                        },
+                        rpcUrls: ['https://forno.celo.org'],
+                        blockExplorerUrls: ['https://celoscan.io'],
+                      },
+                    ],
+                  });
+                } catch (addError) {
+                  console.error('Error adding Celo Mainnet:', addError);
+                }
+              } else {
+                console.error('Error switching to Celo Mainnet:', switchError);
+                alert('Please manually switch to Celo Mainnet in your wallet.');
+              }
             }
           }}
           className="px-4 py-2 mt-2 text-sm rounded-md bg-primary text-primary-foreground hover:opacity-90"
         >
-          Add & Switch to Celo Sepolia
+          Switch to Celo Mainnet
         </button>
       </div>
     );
   }
 
-  // Even if on a Celo network, make sure we're on Sepolia for this app
-  if (!isOnCeloSepolia) {
+  // Enforce Celo Mainnet for production
+  if (!isOnCeloMainnet) {
     return (
       <div className="flex flex-col items-center justify-center p-8 text-center">
-        <h2 className="mb-4 text-xl font-bold">Switch to Celo Sepolia</h2>
+        <h2 className="mb-4 text-xl font-bold">Switch to Celo Mainnet</h2>
         <p className="mb-4">
-          Please switch to Celo Sepolia Testnet to play this crossword.
+          Please switch to Celo Mainnet to play this crossword.
         </p>
         <div className="mb-4 text-sm text-muted-foreground">
           <p>Current network: {chainId}</p>
-          <p>Required network: Celo Sepolia (ID: {celoSepolia.id})</p>
+          <p>Required network: Celo Mainnet (ID: {celo.id})</p>
         </div>
         <button
           onClick={async () => {
             try {
               await window.ethereum.request({
                 method: 'wallet_switchEthereumChain',
-                params: [{ chainId: '0xA7A660' }], // 0xA7A660 is 11142220 in hex
+                params: [{ chainId: '0xA4EC' }], // 0xA4EC is 42220 in hex
               });
             } catch (switchError) {
-              console.error('Error switching to Celo Sepolia:', switchError);
-              alert('Please manually switch to Celo Sepolia Testnet in your wallet.');
+              console.error('Error switching to Celo Mainnet:', switchError);
+              alert('Please manually switch to Celo Mainnet in your wallet.');
             }
           }}
           className="px-4 py-2 text-sm rounded-md bg-primary text-primary-foreground hover:opacity-90"
         >
-          Switch to Celo Sepolia
+          Switch to Celo Mainnet
         </button>
       </div>
     );

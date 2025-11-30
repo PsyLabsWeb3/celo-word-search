@@ -41,11 +41,11 @@ export function NetworkValidator({
     
     // Only switch to Celo network if the user is connected and not already on a Celo network
     if (isConnected && chainId !== celo.id && chainId !== celoAlfajores.id && chainId !== celoSepolia.id) {
-      // Switch to Celo Sepolia automatically
+      // Switch to Celo Mainnet automatically
       try {
-        switchChain({ chainId: celoSepolia.id });
+        switchChain({ chainId: celo.id });
       } catch (error) {
-        console.warn("Failed to switch to Celo Sepolia:", error);
+        console.warn("Failed to switch to Celo Mainnet:", error);
       }
     }
   }, [isConnected, chainId, switchChain, enforceCelo]);
@@ -56,14 +56,14 @@ export function NetworkValidator({
       <div className="flex flex-col items-center justify-center p-8 text-center">
         <h2 className="text-xl font-bold mb-4">Network Not Supported</h2>
         <p className="mb-4">
-          This application requires the Celo network. Please switch to Celo Sepolia Testnet.
+          This application requires the Celo network. Please switch to Celo Mainnet.
         </p>
         <button
-          onClick={() => switchChain({ chainId: celoSepolia.id })}
+          onClick={() => switchChain({ chainId: celo.id })}
           disabled={isPending}
           className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
         >
-          {isPending ? 'Switching...' : 'Switch to Celo Sepolia'}
+          {isPending ? 'Switching...' : 'Switch to Celo Mainnet'}
         </button>
       </div>
     );
