@@ -21,7 +21,7 @@ const celoSepolia = defineChain({
 const CONTRACTS = {
   [celo.id]: {
     CrosswordBoard: {
-      address: process.env.NEXT_PUBLIC_CROSSWORD_BOARD_ADDRESS || "0x0000000000000000000000000000000000000000",
+      address: "0xdC2a624dFFC1f6343F62A02001906252e3cA8fD2", // Mainnet deployment
       // The ABI will be loaded dynamically to keep this file small
     }
   },
@@ -33,7 +33,7 @@ const CONTRACTS = {
   },
   [celoSepolia.id]: {
     CrosswordBoard: {
-      address: "0xF1d8D722cD9aa9f79F6EDFbb0Eb83b005f868cBd", // Updated contract with hasClaimedPrize function
+      address: "0x62ADF6a2E788Fbbd66B5da641cAD08Fd96115B8B", // Latest Hardhat Ignition deployment
       // The ABI will be loaded dynamically to keep this file small
     }
   }

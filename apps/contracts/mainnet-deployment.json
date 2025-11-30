@@ -1,0 +1,14 @@
+{
+  "network": "celo-mainnet",
+  "chainId": 42220,
+  "contractAddress": "0xdC2a624dFFC1f6343F62A02001906252e3cA8fD2",
+  "ownerAddress": "0x66299C18c60CE709777Ec79C73b131cE2634f58e",
+  "deploymentTime": "2025-11-30T03:06:00Z",
+  "compiler": "0.8.28",
+  "optimization": {
+    "enabled": true,
+    "runs": 1,
+    "viaIR": true
+  },
+  "celoscan": "https://celoscan.io/address/0xdC2a624dFFC1f6343F62A02001906252e3cA8fD2"
+}
