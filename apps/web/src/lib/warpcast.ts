@@ -55,15 +55,17 @@ export async function getFarcasterManifest() {
       subtitle: "A crossword in the celo chain ", // 30 characters, no emojis or special characters, short description under app name
       description: "A crossword in the celo chain ", // 170 characters, no emojis or special characters, promotional message displayed on Mini App Page
       primaryCategory: "social",
-      tags: ["mini-app", "celo"], // up to 5 tags, filtering/search tags
+      tags: ["mini-app", "celo", "miniapp","crossword","onchain"], // up to 5 tags, filtering/search tags
       tagline: "Built on Celo", // 30 characters, marketing tagline should be punchy and descriptive
-      ogTitle: `${frameName}`, // 30 characters, app name + short tag, Title case, no emojis
-      ogDescription: "A crossword in the celo chain ", // 100 characters, summarize core benefits in 1-2 lines
+      ogTitle: "Onchain Crossword", // 30 characters, app name + short tag, Title case, no emojis
+      ogDescription: "Solve puzzles, earn rewards on Celo blockchain", // 100 characters, summarize core benefits in 1-2 lines
       screenshotUrls: [
         // 1284 x 2778, visual previews of the app, max 3 screenshots
-        `${appUrl}/opengraph-image.png`,
+        `${appUrl}/homeimage.png`,
       ],
-      heroImageUrl: `${appUrl}/opengraph-image.png`, // 1200 x 630px (1.91:1), promotional display image on top of the mini app store
+      heroImageUrl: `${appUrl}/homeimage.png`, // 1200 x 630px (1.91:1), promotional display image on top of the mini app store
+      ogImageUrl: `${appUrl}/opengraph-image.png`, // URL of the image to use for embeds when sharing the mini app
+      castShareUrl: `${appUrl}/share`, // URL to use when sharing casts about the mini app
       noindex,
     },
   };
