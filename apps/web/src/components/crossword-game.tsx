@@ -19,6 +19,7 @@ import { config } from '@/contexts/frame-wallet-context';
 import { CONTRACTS } from "@/lib/contracts";
 import { sdk } from "@farcaster/frame-sdk";
 import { useMiniApp } from '@/contexts/miniapp-context';
+import confetti from 'canvas-confetti';
 
 // Define Celo Sepolia chain
 const celoSepolia = defineChain({
@@ -320,6 +321,48 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
       mobileInputRef.current.focus()
     }
   }, [mobilePopup])
+
+  // Trigger confetti when congratulations modal shows
+  useEffect(() => {
+    if (showCongratulations) {
+      const count = 500;
+      const defaults = {
+        origin: { y: 0.5, x: 0.5 },
+      };
+
+      function fire(particleRatio: number, opts: any) {
+        confetti({
+          ...defaults,
+          ...opts,
+          particleCount: Math.floor(count * particleRatio)
+        });
+      }
+
+      // Fire multiple confetti bursts with different patterns
+      fire(0.25, {
+        spread: 26,
+        startVelocity: 55,
+      });
+      fire(0.2, {
+        spread: 60,
+      });
+      fire(0.35, {
+        spread: 100,
+        decay: 0.91,
+        scalar: 0.4
+      });
+      fire(0.1, {
+        spread: 120,
+        startVelocity: 25,
+        decay: 0.92,
+        scalar: 1.2
+      });
+      fire(0.1, {
+        spread: 120,
+        startVelocity: 45,
+      });
+    }
+  }, [showCongratulations])
 
   // The storage change listener that updates crossword from localStorage has been removed
   // to ensure the crossword data comes exclusively from the blockchain.
@@ -1582,7 +1625,7 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
                 <div className="flex items-center p-4 text-red-800 bg-red-100 border-l-4 border-red-500 rounded-r shadow-md">
                   <AlertCircle className="w-6 h-6 mr-4 text-red-500" />
                   <div>
-                    <p className="font-bold">Insufficient Funds</p>
+                    <p className="font-bold ">Insufficient Funds</p>
                     <p className="text-sm">
                       You need at least 0.07 CELO to pay for gas fees. Current balance: {balance ? Number(balance.value) / 1e18 : 0} CELO.
                     </p>
