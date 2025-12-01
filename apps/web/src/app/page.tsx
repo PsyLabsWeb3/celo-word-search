@@ -225,7 +225,19 @@ export default function Page() {
                 text: "Powered by CELO" 
               },
               { emoji: "🏆", text: "Prizes for the first solves" },
-              { emoji: "⚡", text: "Instant Answers" },
+              { 
+                emoji: (
+                  <div className="relative w-full h-12">
+                    <Image 
+                      src="/psylabs-logo.webp" 
+                      alt="Psylabs Logo" 
+                      fill
+                      className="object-contain"
+                    />
+                  </div>
+                ), 
+                text: "Built by" 
+              },
             ].map((feature, i) => (
               <div
                 key={i}
