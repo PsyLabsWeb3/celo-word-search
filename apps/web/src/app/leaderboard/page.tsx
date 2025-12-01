@@ -354,8 +354,7 @@ export default function LeaderboardPage() {
               Winners (On-Chain)
             </h1>
             <p className="mt-2 text-sm font-bold text-muted-foreground sm:text-base">
-              The first 10 users to complete the current crossword (stored on blockchain)
-            </p>
+              The first users to complete the current crossword puzzle (stored on the blockchain).            </p>
           </div>
 
           {completions.length === 0 ? (

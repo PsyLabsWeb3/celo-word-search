@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react"
 import Link from "next/link";
+import Image from "next/image";
 import { useAccount } from "wagmi";
 import CrosswordGame from "@/components/crossword-game"
 import { Button } from "@/components/ui/button"
@@ -209,15 +210,28 @@ export default function Page() {
           {/* Features */}
           <div className="grid gap-4 mt-12 sm:grid-cols-3">
             {[
+              { 
+                emoji: (
+                  <div className="flex items-center justify-center">
+                    <Image 
+                      src="/celo-logo-new.png" 
+                      alt="Celo Logo" 
+                      width={32} 
+                      height={32} 
+                      className="object-contain"
+                    />
+                  </div>
+                ), 
+                text: "Powered by CELO" 
+              },
               { emoji: "🏆", text: "Prizes for the first solves" },
               { emoji: "⚡", text: "Instant Answers" },
-              { emoji: "🎯", text: "Daily Challenges" },
             ].map((feature, i) => (
               <div
                 key={i}
                 className="border-4 border-black bg-white p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 active:translate-x-1 active:translate-y-1 hover:bg-secondary active:bg-secondary hover:shadow-none active:shadow-none"
               >
-                <div className="text-3xl">{feature.emoji}</div>
+                <div className="text-3xl flex justify-center">{feature.emoji}</div>
                 <p className="mt-2 text-sm font-black uppercase text-foreground">{feature.text}</p>
               </div>
             ))}
