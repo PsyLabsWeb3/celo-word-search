@@ -5,11 +5,11 @@ import type React from "react"
 import { useState, useEffect, useRef } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { RotateCcw, X, Trophy, Save, Check, Loader2, Home } from "lucide-react"
+import { RotateCcw, X, Trophy, Save, Check, Loader2, Home, AlertCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useRouter } from "next/navigation"
 import { useCrossword } from "@/contexts/crossword-context"
-import { useAccount, useChainId } from "wagmi";
+import { useAccount, useChainId, useBalance } from "wagmi";
 import { celo, celoAlfajores } from "wagmi/chains";
 import { defineChain } from "viem";
 import { useCompleteCrossword, useUserCompletedCrossword, useGetCurrentCrossword, useGetUserProfile, useCrosswordPrizesDetails, useClaimPrize } from "@/hooks/useContract";
