@@ -23,7 +23,7 @@ const frame = {
       name: "celo-crossword",
       url: appUrl,
       splashImageUrl: `${appUrl}/icon.png`,
-      splashBackgroundColor: "#ffffff",
+      splashBackgroundColor: "#FEEF89",
     },
   },
 };
@@ -57,7 +57,7 @@ export default function RootLayout({
               {children}
             </main>
             <footer className="p-4 text-center text-gray-600">
-              Powered by CELO, made with passion ❤️ by Psylabs
+              Powered by CELO Blockchain, made with passion ❤️ by Psylabs
             </footer>
           </Providers>
         </div>

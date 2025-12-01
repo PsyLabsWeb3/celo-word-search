@@ -49,7 +49,7 @@ export async function getFarcasterManifest() {
       imageUrl: `${appUrl}/opengraph-image.png`,
       buttonTitle: `Launch App`,
       splashImageUrl: `${appUrl}/opengraph-image.png`,
-      splashBackgroundColor: "#FFFFFF",
+      splashBackgroundColor: "#FEEF89",
       webhookUrl: `${appUrl}/api/webhook`,
       // Metadata https://github.com/farcasterxyz/miniapps/discussions/191
       subtitle: "A crossword in the celo chain ", // 30 characters, no emojis or special characters, short description under app name
