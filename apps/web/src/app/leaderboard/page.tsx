@@ -378,8 +378,8 @@ export default function LeaderboardPage() {
                       getRankColor(index),
                     )}
                   >
-                    <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
-                      <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center self-center rounded-none border-4 border-black bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] sm:self-auto">
+                    <div className="flex flex-row items-center gap-4">
+                      <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-none border-4 border-black bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] sm:h-16 sm:w-16">
                         {getRankIcon(index)}
                       </div>
                       <div className="flex-1">
@@ -407,7 +407,7 @@ export default function LeaderboardPage() {
                         </div>
                       </div>
                       {index < maxWinnersAllowed && (
-                        <div className="hidden flex-shrink-0 self-end rounded-none border-4 border-black bg-primary px-4 py-2 font-black uppercase text-primary-foreground shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] sm:self-auto sm:block">
+                        <div className="flex-shrink-0 self-center rounded-none border-4 border-black bg-primary px-2 py-1 text-xs font-black uppercase text-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] sm:px-4 sm:py-2 sm:text-base sm:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
                           Winner
                         </div>
                       )}
