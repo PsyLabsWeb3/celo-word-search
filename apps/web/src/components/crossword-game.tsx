@@ -175,9 +175,23 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
       setAlreadyCompleted(!!userCompletedData);
       if (userCompletedData) {
         setIsComplete(true);
+        
+        // If the user has already completed the crossword, pre-fill the grid with the solution
+        if (crosswordData) {
+          try {
+            const solutionGrid = buildGridFromClues(crosswordData.clues, crosswordData.gridSize);
+            // Convert the solution grid to the format expected by userGrid (strings instead of nulls for empty cells)
+            const filledGrid = solutionGrid.map(row => 
+              row.map(cell => cell === null ? null : cell)
+            );
+            setUserGrid(filledGrid);
+          } catch (e) {
+            console.error("Error pre-filling completed crossword:", e);
+          }
+        }
       }
     }
-  }, [userCompletedData]);
+  }, [userCompletedData, crosswordData]);
 
   // Effect to check if user is a prize winner when crossword or address changes
   useEffect(() => {
