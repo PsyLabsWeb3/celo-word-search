@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils"
 import { useEffect, useState, useCallback } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Trophy, Medal, Award, Home, Clock } from "lucide-react"
+import { Trophy, Medal, Award, Home, Clock, ChevronDown } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useCrossword } from "@/contexts/crossword-context"
 import { useGetCrosswordCompletions, useClaimPrize, useCrosswordPrizesDetails } from "@/hooks/useContract"
@@ -22,6 +22,7 @@ export default function LeaderboardPage() {
   const [error, setError] = useState<string | null>(null)
   const [userHasClaimed, setUserHasClaimed] = useState<boolean | null>(null); // null = not checked yet
   const [checkingClaimStatus, setCheckingClaimStatus] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(10);
   const { currentCrossword } = useCrossword()
   const { address: connectedAddress, isConnected } = useAccount();
   const { claimPrize, isLoading: isClaiming, isSuccess: isClaimSuccess, isError: isClaimError, error: claimError } = useClaimPrize();
@@ -216,7 +217,7 @@ export default function LeaderboardPage() {
     if (index === 0) return <Trophy className="w-8 h-8 text-yellow-500" />
     if (index === 1) return <Medal className="w-8 h-8 text-gray-400" />
     if (index === 2) return <Award className="w-8 h-8 text-amber-600" />
-    return <span className="text-2xl font-black text-primary">#{index + 1}</span>
+    return <span className="text-2xl font-black text-primary">{index + 1}</span>
   }
 
   const getRankColor = (index: number) => {
@@ -354,7 +355,7 @@ export default function LeaderboardPage() {
             </Card>
           ) : (
             <div className="space-y-4">
-              {completions.slice(0, 10).map((completion, index) => {
+              {completions.slice(0, visibleCount).map((completion, index) => {
                 const userAddress = getCompletionUser(completion);
                 
                 return (
@@ -402,6 +403,19 @@ export default function LeaderboardPage() {
                   </Card>
                 )
               })}
+            </div>
+          )}
+
+          {/* See More Button */}
+          {completions.length > visibleCount && (
+            <div className="flex justify-center mt-8">
+              <Button
+                onClick={() => setVisibleCount((prev) => prev + 10)}
+                className="border-4 border-black bg-purple-500 font-black uppercase text-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-purple-600 hover:shadow-none"
+              >
+                See More
+                <ChevronDown className="w-4 h-4 ml-2" />
+              </Button>
             </div>
           )}
 
