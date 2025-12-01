@@ -1661,7 +1661,7 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
                     {isClaimSuccess ? (
                       <>
                         <Check className="w-4 h-4 mr-2" />
-                        Claimed!
+                        Prize Claimed!
                       </>
                     ) : (
                       <>

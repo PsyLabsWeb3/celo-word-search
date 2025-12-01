@@ -476,7 +476,7 @@ export default function LeaderboardPage() {
                 // Show "Claiming..." when processing, "Claimed!" when confirmed from contract,
                 // "Checking..." when verifying contract status, "Claim Prize" when available
                 const buttonLabel = isClaiming ? 'Claiming...' :
-                                  contractHasClaimed ? 'Claimed!' :
+                                  contractHasClaimed ? 'Prize Claimed!' :
                                   checkingClaimStatusFromContract ? 'Checking...' :
                                   'Claim Prize';
 
