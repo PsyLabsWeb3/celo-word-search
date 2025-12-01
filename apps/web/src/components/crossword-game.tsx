@@ -1537,7 +1537,7 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
   const downClues = crosswordData?.clues.filter((c: any) => c.direction === "down") || [];
   const currentGrid = buildGridFromClues(crosswordData.clues, crosswordData.gridSize);
 
-  return (
+ return (
     <>
       <div className="flex flex-col gap-4 sm:gap-6 md:gap-8">
         {/* Prize Pool Information */}
@@ -1545,23 +1545,21 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
           <div className="px-2">
             <Card className="border-4 border-black bg-card p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
               <div className="flex flex-col items-center">
-                <div className="flex items-center justify-center gap-2 text-foreground">
-                  <Trophy className="w-5 h-5" />
-                  <span className="text-lg font-black">Prize Pool: </span>
-                  <span className="text-lg font-black">
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-2 text-foreground">
+                  <Trophy className="w-5 h-5 flex-shrink-0" />
+                  <span className="font-black text-lg sm:text-base">Prize Pool: </span>
+                  <span className="font-black text-white text-lg sm:text-base bg-primary px-2 py-1 rounded-full">
                     {Number(crosswordPrizesDetails[1]) / 1e18}
-                    {crosswordPrizesDetails[0] === "0x0000000000000000000000000000000000000000"
-                      ? " CELO"
-                      : " Tokens"}
+                    {crosswordPrizesDetails[0] === "0x0000000000000000000000000000000000000000" ? " CELO" : " Tokens"}
                   </span>
                 </div>
 
                 {crosswordPrizesDetails[2] && crosswordPrizesDetails[2].length > 0 && (
-                  <div className="mt-2 text-center">
-                    <p className="text-sm font-bold text-muted-foreground">Top {crosswordPrizesDetails[2].length} winners share the prize:</p>
-                    <div className="flex flex-wrap justify-center gap-2 mt-1">
+                  <div className="mt-4 sm:mt-6 text-center w-full">
+                    <p className="text-xs sm:text-sm font-bold text-muted-foreground mb-3">Top {crosswordPrizesDetails[2].length} winners share the prize:</p>
+                    <div className="flex flex-wrap justify-center gap-2 sm:gap-3">
                       {crosswordPrizesDetails[2].map((pct: any, idx: number) => (
-                        <span key={idx} className="px-3 py-1 text-xs font-bold rounded-full bg-secondary">
+                        <span key={idx} className="px-2 sm:px-3 py-1 text-xs font-bold rounded-full bg-secondary whitespace-nowrap">
                           {idx + 1}{idx === 0 ? 'st' : idx === 1 ? 'nd' : idx === 2 ? 'rd' : 'th'} place: {Number(pct) / 100}%
                         </span>
                       ))}
@@ -1625,8 +1623,8 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
                 <div className="flex items-center p-4 text-red-800 bg-red-100 border-l-4 border-red-500 rounded-r shadow-md">
                   <AlertCircle className="w-6 h-6 mr-4 text-red-500" />
                   <div>
-                    <p className="font-bold ">Insufficient Funds</p>
-                    <p className="text-sm">
+                    <p className="font-bold text-sm">Insufficient Funds</p>
+                    <p className="text-sm text-foreground">
                       You need at least 0.07 CELO to pay for gas fees. Current balance: {balance ? Number(balance.value) / 1e18 : 0} CELO.
                     </p>
                   </div>

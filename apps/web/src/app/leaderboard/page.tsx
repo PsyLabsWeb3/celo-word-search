@@ -347,7 +347,7 @@ export default function LeaderboardPage() {
             <div className="flex justify-center mb-4">
               <Trophy className="w-16 h-16 text-primary" />
             </div>
-            <h1 className="text-3xl font-black tracking-tight uppercase text-foreground sm:text-4xl md:text-5xl">
+            <h1 className="text-lg font-black tracking-tight uppercase text-foreground sm:text-4xl md:text-5xl">
               Winners (On-Chain)
             </h1>
             <p className="mt-2 text-sm font-bold text-muted-foreground sm:text-base">
