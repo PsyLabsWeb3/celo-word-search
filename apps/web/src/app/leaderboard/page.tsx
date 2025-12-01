@@ -226,9 +226,6 @@ export default function LeaderboardPage() {
   }
 
   const getRankIcon = (index: number) => {
-    if (index === 0) return <Trophy className="w-8 h-8 text-yellow-500" />
-    if (index === 1) return <Medal className="w-8 h-8 text-gray-400" />
-    if (index === 2) return <Award className="w-8 h-8 text-amber-600" />
     return <span className="text-2xl font-black text-primary">{index + 1}</span>
   }
 
@@ -373,15 +370,15 @@ export default function LeaderboardPage() {
                   <Card
                     key={`${userAddress}-${getCompletionTimestamp(completion).toString()}`}
                     className={cn(
-                      "border-4 border-black p-4 sm:p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none",
+                      "border-4 border-black p-3 sm:p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none overflow-hidden",
                       getRankColor(index),
                     )}
                   >
-                    <div className="flex flex-row items-center gap-4">
-                      <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-none border-4 border-black bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] sm:h-16 sm:w-16">
+                    <div className="flex flex-row items-center gap-3 sm:gap-4">
+                      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-none border-4 border-black bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] sm:h-16 sm:w-16">
                         {getRankIcon(index)}
                       </div>
-                      <div className="flex-1">
+                      <div className="flex-1 min-w-0">
                         <FarcasterUserDisplay
                           address={userAddress}
                           fallbackUsername={
@@ -391,22 +388,20 @@ export default function LeaderboardPage() {
                           }
                           size="md"
                         />
-                        <div className="flex flex-wrap items-center mt-1 text-sm font-bold gap-x-2 gap-y-1 text-muted-foreground">
-                          <div className="flex items-center gap-2">
-                            <Clock className="w-4 h-4" />
+                        <div className="flex flex-wrap items-center mt-1.5 sm:mt-1 text-xs sm:text-sm font-bold gap-x-2 gap-y-0.5 text-muted-foreground">
+                          <div className="flex items-center gap-1.5">
                             <span>
                               {formatDate(getCompletionTimestamp(completion))}
                             </span>
                           </div>
-                          <span className="hidden sm:inline">•</span>
+                          <span className="hidden sm:inline"></span>
                           <span>
-                            Duration: {Number(getCompletionDuration(completion))}
-                            ms
+                            Duration {(Number(getCompletionDuration(completion)) / 60000).toFixed(1)} min
                           </span>
                         </div>
                       </div>
                       {index < maxWinnersAllowed && (
-                        <div className="flex-shrink-0 self-center rounded-none border-4 border-black bg-primary px-2 py-1 text-xs font-black uppercase text-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] sm:px-4 sm:py-2 sm:text-base sm:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                        <div className="self-center rounded-none border-2 border-black bg-primary px-1.5 py-0.5 text-[10px] font-black uppercase leading-tight text-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] min-[420px]:border-3 min-[420px]:px-2 min-[420px]:py-1 min-[420px]:text-xs sm:border-4 sm:px-4 sm:py-2 sm:text-base sm:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
                           Winner
                         </div>
                       )}
