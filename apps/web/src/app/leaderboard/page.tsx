@@ -226,7 +226,9 @@ export default function LeaderboardPage() {
   }
 
   const getRankIcon = (index: number) => {
-    return <span className="text-2xl font-black text-primary">{index + 1}</span>
+    const rank = index + 1;
+    const fontSize = rank >= 10 ? "text-lg" : "text-2xl";
+    return <span className={`${fontSize} font-black text-primary`}>{rank}</span>
   }
 
   const getRankColor = (index: number) => {
