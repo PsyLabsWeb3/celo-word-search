@@ -29,11 +29,18 @@ const frame = {
 };
 
 export const metadata: Metadata = {
+  metadataBase: new URL(appUrl),
   title: 'celo-crossword',
   description: 'A crossword in the celo chain ',
   openGraph: {
     title: 'celo-crossword',
     description: 'A crossword in the celo chain ',
+    images: [`${appUrl}/homeimage.png`],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "celo-crossword",
+    description: "A crossword in the celo chain ",
     images: [`${appUrl}/homeimage.png`],
   },
   other: {

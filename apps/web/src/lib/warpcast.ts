@@ -65,7 +65,7 @@ export async function getFarcasterManifest() {
       ],
       heroImageUrl: `${appUrl}/homeimage.png`, // 1200 x 630px (1.91:1), promotional display image on top of the mini app store
       ogImageUrl: `${appUrl}/homeimage.png`, // URL of the image to use for embeds when sharing the mini app
-      castShareUrl: `${appUrl}/share`, // URL to use when sharing casts about the mini app
+      castShareUrl: appUrl, // URL to use when sharing casts about the mini app
       noindex,
     },
   };
