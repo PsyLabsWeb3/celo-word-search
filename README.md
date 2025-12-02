@@ -2,7 +2,7 @@
 
 A decentralized crossword game built on the Celo blockchain for educational purposes with reward distribution.
 
-## 🚀 Features
+## Features
 
 - **On-chain Crosswords**: Crosswords stored in smart contracts for all users to see
 - **Prize Distribution**: Token rewards for top solvers
@@ -11,20 +11,175 @@ A decentralized crossword game built on the Celo blockchain for educational purp
 - **Admin Panel**: Control over crossword content
 - **Farcaster Integration**: Ready for Farcaster frames
 
-## 🏗️ Architecture
+## Architecture
 
-### Smart Contracts
-- **CrosswordBoard.sol**: Stores the current crossword for all users
-- **CrosswordPrizes.sol**: Manages reward pools and distribution
+Crossword Board is a DApp built on the Celo blockchain that enables users to complete crosswords with rewards based on completion speed. The system awards automatic prizes to the first X completers of each crossword, with on-chain verification and immediate prize distribution.
 
-### Frontend
-- Next.js 16 with TypeScript
-- wagmi/viem for wallet integration
-- Supabase for leaderboards
-- Tailwind CSS for styling
-- Farcaster MiniApp compatible
+### System Architecture
+```
+┌─────────────────────────────────────┐
+│              Frontend               │
+├─────────────────────────────────────┤
+│ • Next.js App Router (React)        │
+│ • Wagmi + Viem Integration          │
+│ • Farcaster Frame SDK               │
+│ • Tailwind CSS + shadcn/ui          │
+└─────────────────────────────────────┘
+                   │
+                   ▼
+┌─────────────────────────────────────┐
+│           Blockchain Layer          │
+├─────────────────────────────────────┤
+│ • Celo Sepolia Testnet              │
+│ • Contract: CrosswordBoard          │
+│ • ABI dynamic (imported in hooks)   │
+└─────────────────────────────────────┘
+                   │
+                   ▼
+┌─────────────────────────────────────┐
+│         Infrastructure              │
+├─────────────────────────────────────┤
+│ • Hardhat (development)              │
+│ • Viem (contract interaction)        │
+│ • Wagmi (wallet integration)         │
+└─────────────────────────────────────┘
+```
 
-## 🛠️ Development Setup
+### Technology Stack:
+- **Frontend**: Next.js 14+, React 18+, TypeScript
+- **Blockchain**: Celo Sepolia, Solidity 0.8.28
+- **Web3**: Wagmi, Viem 2.x, Hardhat
+- **Styling**: Tailwind CSS, shadcn/ui
+- **Infrastructure**: Celo Forum Nodes
+
+### Smart Contract: `CrosswordBoard.sol`
+
+#### Main Data Structures:
+
+```solidity
+struct Crossword {
+    address token;                    // Token ERC20 or address(0) for native CELO
+    uint256 totalPrizePool;           // Total prize pool
+    uint256[] winnerPercentages;      // Percentages for winners (basis points)
+    CompletionRecord[] completions;   // List of completers with rank
+    mapping(address => bool) hasClaimed; // Claim records
+    uint256 activationTime;           // Activation time
+    uint256 endTime;                  // Deadline (0 = no limit)
+    CrosswordState state;             // Crossword state
+    uint256 createdAt;                // Creation date
+    uint256 claimedAmount;            // Total claimed amount
+}
+
+struct CompletionRecord {
+    address user;                     // User who completed
+    uint256 timestamp;                // Completion timestamp
+    uint256 rank;                     // Completion rank
+}
+```
+
+#### Access Roles:
+- `DEFAULT_ADMIN_ROLE`: Contract owner
+- `ADMIN_ROLE`: System administrators
+- `OPERATOR_ROLE`: Operators who can register completions
+
+### Key Public Functions:
+
+#### `setCrossword(bytes32 crosswordId, string memory crosswordData)`
+
+**Required Role**: `ADMIN_ROLE`
+**Purpose**: Sets the active crossword for all users
+**Parameters**:
+- `crosswordId`: Unique identifier for the crossword (keccak256 hash)
+- `crosswordData`: JSON string with crossword configuration
+**Event emitted**: `CrosswordUpdated`
+
+#### `createCrosswordWithNativeCELO(bytes32 crosswordId, uint256 prizePool, uint256[] memory winnerPercentages, uint256 endTime)`
+
+**Required Role**: `ADMIN_ROLE`
+**Purpose**: Creates a new crossword with native CELO rewards
+**Parameters**:
+- `crosswordId`: Crossword ID
+- `prizePool`: Total prize amount (wei)
+- `winnerPercentages`: Array of percentages by position (in basis points)
+- `endTime`: Deadline timestamp for completions or 0 for no limit
+**Required Payment**: `msg.value == prizePool`
+**Event emitted**: `CrosswordCreated`, `CrosswordActivated`
+
+#### `completeCrossword(uint256 durationMs, string username, string displayName, string pfpUrl)`
+
+**Access**: Public
+**Purpose**: Completes a crossword and awards automatic prize if eligible
+**Parameters**:
+- `durationMs`: Duration in milliseconds
+- `username`: Username (Farcaster)
+- `displayName`: Display name
+- `pfpUrl`: Profile image URL
+**Functionality**:
+- Records completion in global state
+- Automatically calls `recordCompletion` for potential prizes
+- Emits `CrosswordCompleted`
+**Requirements**:
+- User must not have completed this crossword before
+- Crossword must be active
+- Duration must be > 0
+
+#### `recordCompletion(bytes32 crosswordId, address user) external onlyRole(OPERATOR_ROLE) returns (bool rewarded)`
+
+**Required Role**: `OPERATOR_ROLE`
+**Purpose**: Records completion and distributes automatic prizes
+**Internal access**: Called from `completeCrossword` using try-catch
+**Logic**:
+- Verifies crossword is active
+- Verifies prize limits (no more than `winnerPercentages.length`)
+- Prevents duplicates
+- Calculates prize: `(totalPrizePool * winnerPercentages[rank - 1]) / MAX_PERCENTAGE`
+- Transfers prize (native CELO or ERC20)
+- Marks as claimed: `crossword.hasClaimed[user] = true`
+
+#### `claimPrize(bytes32 crosswordId)`
+
+**Access**: Public
+**Purpose**: Allow manual prize claiming (for UX feedback)
+**Logic**:
+- Verifies crossword has prizes
+- Verifies user completed (`hasCompletedCrossword`)
+- Finds user position in `completions` array
+- Verifies not claimed before (`crossword.hasClaimed`)
+- Important: If already claimed, allows transaction for feedback but no double payment
+- Emits `PrizeDistributed`
+**Common errors**:
+- "no prize pool available" - Crossword has no prizes
+- "not a verified winner" - User did not complete
+- "completion record not found" - User not in `completions` array
+
+#### `hasClaimedPrize(bytes32 crosswordId, address user) external view returns (bool)`
+
+**Access**: Public (view)
+**Purpose**: Direct verification of claim status
+**Return**: `true` if user already claimed for this crossword
+**Usage**: Verification by frontend to show correct status
+
+### Crossword States and Validations:
+
+#### Crossword States:
+
+```solidity
+enum CrosswordState {
+    Inactive, // Not active
+    Active,   // Active for completion
+    Complete  // Prizes distributed
+}
+```
+
+#### Security Validations:
+- Access control using `AccessControl`
+- Reentrancy protection with `ReentrancyGuard`
+- Pausable with `Pausable`
+- Percentage validation total ≤ 10000 (100%)
+- Balance verification before transfers
+- Duplicate prevention with `hasClaimed` mapping
+
+## Development Setup
 
 ### Prerequisites
 - Node.js 18+
@@ -97,7 +252,7 @@ npx hardhat node
 npx hardhat run scripts/deploy-local.js --network localhost
 ```
 
-## 🌐 Deployment
+## Deployment
 
 ### Deploying Contracts to Celo Sepolia
 
@@ -110,7 +265,7 @@ npx hardhat run scripts/deploy-sepolia.js --network sepolia
 
 4. **Automatic frontend update**: The deployment script will automatically save the deployed addresses and ABIs to the frontend configuration files.
 
-5. **Manual verification**: Check the saved files in `apps/web/contracts/` to confirm all addresses and ABIs are properly configured (see FRONTEND_SETUP_GUIDE.md)
+5. **Manual verification**: Check the saved files in `apps/web/contracts/` to confirm all addresses and ABIs are properly configured
 
 ### Deploying Frontend
 
@@ -119,7 +274,7 @@ The frontend can be deployed to:
 - Netlify
 - Any static hosting service
 
-## 📦 Deployed Contract Addresses (Celo Sepolia)
+## Deployed Contract Addresses (Celo Sepolia)
 
 ### Deployment Information:
 - **Deployer Wallet**: `0x66299c18c60ce709777ec79c73b131ce2634f58e` (automatic admin)
@@ -134,7 +289,7 @@ The frontend can be deployed to:
 - **CrosswordBoard Contract**: `0x5fbdb2315678afecb367f032d93f642f64180aa3` (Local)
 - **CrosswordPrizes Contract**: `0xe7f1725e7734ce288f8367e1bb143e90bb3f0512` (Local)
 
-## 🎮 How It Works
+## How It Works
 
 1. **Admin** sets crossword via admin panel (writes to CrosswordBoard contract)
 2. **All users** see the same crossword (reads from CrosswordBoard contract)
@@ -142,7 +297,46 @@ The frontend can be deployed to:
 4. **Admin** distributes prizes to top solvers via CrosswordPrizes contract
 5. **Winners** claim their rewards from the prize pool
 
-## 🔐 Admin Functions
+## User Completion Flow
+
+### Complete User Winner Flow:
+
+1. **User accesses crossword**
+   - Reads crossword from `currentCrosswordId` of contract
+   - Displays data in JSON format through UI
+2. **User completes quickly**
+   - Interface verifies completeness
+   - Calculates duration (time to complete)
+   - Prepares user data (Farcaster profile)
+3. **Calls `completeCrossword()`**
+   - Transaction with duration and user metadata
+   - Contract records completion in `hasCompletedCrossword`
+   - Contract internally calls `recordCompletion`
+4. **Automatic prize if eligible**
+   - If within top X finishers → receives immediate prize
+   - Contract marks `hasClaimed[user] = true`
+   - Token/CELO transfer executed
+5. **Redirect to leaderboard**
+   - User appears as "Winner" and "Claimed!"
+6. **State persists after reload**
+   - Frontend queries `hasClaimedPrize` from contract
+   - Button shows "Claimed!" based on actual contract state
+
+### Non-Winner Completion Flow:
+
+1. **User completes after slots filled**
+2. **Receives completion confirmation** but no prize
+3. **Appears on leaderboard** but without winner status
+4. **Cannot claim prize** (not in top winners)
+
+### Manual Claim Flow (special case):
+
+1. **User was winner but did not receive automatic payment**
+2. **"Claim Prize" button visible** with eligibility verification
+3. **Calls `claimPrize()`** with validation in contract
+4. **Receives prize** if eligible and not claimed
+
+## Admin Functions
 
 ### To become an admin:
 - The deployer (`0x66299c18c60ce709777ec79c73b131ce2634f58e`) is automatically an admin
@@ -154,7 +348,7 @@ The frontend can be deployed to:
 - Distribute rewards to winners
 - Pause/unpause contracts in emergencies
 
-## 💰 Token Rewards
+## Token Rewards
 
 The system supports:
 - cUSD, cEUR, and other Celo stablecoins
@@ -162,18 +356,18 @@ The system supports:
 - Up to 10 winners per crossword
 - Recovery of unclaimed prizes after 30 days
 
-## 📊 Leaderboard System
+## Leaderboard System
 
 - Supabase-powered leaderboard
 - Wallet verification prevents bot submissions
 - Time-based rankings
 - Historical data tracking
 
-## 🧪 Testing
+## Testing
 
 Comprehensive test suites are available:
 - `scripts/manual-test.js` - Core functionality
-- `scripts/crossword-specific-test.js` - Workflow testing  
+- `scripts/crossword-specific-test.js` - Workflow testing
 - `scripts/security-edge-test.js` - Security and edge cases
 
 Run with:
@@ -182,7 +376,7 @@ cd apps/contracts
 npx hardhat run scripts/manual-test.js --network localhost
 ```
 
-## 🔧 Configuration
+## Configuration
 
 ### Crossword Format
 Crosswords follow this JSON format:
@@ -220,7 +414,7 @@ Crosswords follow this JSON format:
 CROSSWORD_BOARD_ADDRESS=your_contract_address npx hardhat run scripts/add-admin.js --network sepolia
 ```
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch
@@ -228,14 +422,10 @@ CROSSWORD_BOARD_ADDRESS=your_contract_address npx hardhat run scripts/add-admin.
 4. Add tests if applicable
 5. Submit a pull request
 
-## 📄 License
+## License
 
 MIT License - see LICENSE file for details.
 
-## 🆘 Support
+## Support
 
 For support, please open an issue in the GitHub repository.
-
----
-
-Built with ❤️ for the Celo ecosystem
