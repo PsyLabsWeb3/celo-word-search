@@ -372,10 +372,15 @@ export default function LeaderboardPage() {
                   <Card
                     key={`${userAddress}-${getCompletionTimestamp(completion).toString()}`}
                     className={cn(
-                      "border-4 border-black p-3 sm:p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none overflow-hidden",
+                      "relative border-4 border-black p-3 sm:p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none overflow-hidden",
                       getRankColor(index),
                     )}
                   >
+                    {index < maxWinnersAllowed && (
+                      <div className="absolute bottom-2 right-2 rounded-none border-2 border-black bg-primary px-1.5 py-0.5 text-[10px] font-black uppercase leading-tight text-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] min-[420px]:border-3 min-[420px]:px-2 min-[420px]:py-1 min-[420px]:text-xs sm:border-4 sm:px-4 sm:py-2 sm:text-base sm:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                        Winner
+                      </div>
+                    )}
                     <div className="flex flex-row items-center gap-3 sm:gap-4">
                       <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-none border-4 border-black bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] sm:h-16 sm:w-16">
                         {getRankIcon(index)}
@@ -402,11 +407,6 @@ export default function LeaderboardPage() {
                           </span>
                         </div>
                       </div>
-                      {index < maxWinnersAllowed && (
-                        <div className="self-center rounded-none border-2 border-black bg-primary px-1.5 py-0.5 text-[10px] font-black uppercase leading-tight text-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] min-[420px]:border-3 min-[420px]:px-2 min-[420px]:py-1 min-[420px]:text-xs sm:border-4 sm:px-4 sm:py-2 sm:text-base sm:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                          Winner
-                        </div>
-                      )}
                     </div>
                   </Card>
                 )
