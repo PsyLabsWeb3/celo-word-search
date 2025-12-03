@@ -22,18 +22,21 @@ const CONTRACTS = {
   [celo.id]: {
     CrosswordBoard: {
       address: "0xdC2a624dFFC1f6343F62A02001906252e3cA8fD2", // Mainnet deployment
+      currentCrosswordId: "0xdb4764000c54b9390a601e96783d76e3e3e9d06329637cdd119045bf32624e32",
       // The ABI will be loaded dynamically to keep this file small
     }
   },
   [celoAlfajores.id]: {
     CrosswordBoard: {
       address: process.env.NEXT_PUBLIC_CROSSWORD_BOARD_ADDRESS || "0x0000000000000000000000000000000000000000",
+      currentCrosswordId: "0x0000000000000000000000000000000000000000000000000000000000000000",
       // The ABI will be loaded dynamically to keep this file small
     }
   },
   [celoSepolia.id]: {
     CrosswordBoard: {
       address: "0x62ADF6a2E788Fbbd66B5da641cAD08Fd96115B8B", // Latest Hardhat Ignition deployment
+      currentCrosswordId: "0x0000000000000000000000000000000000000000000000000000000000000000",
       // The ABI will be loaded dynamically to keep this file small
     }
   }

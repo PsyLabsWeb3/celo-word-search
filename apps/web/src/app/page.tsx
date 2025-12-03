@@ -183,6 +183,15 @@ export default function Page() {
                 </CeloNetworkButton>
               </Link>
             )}
+            
+            <Link href="/history" passHref>
+              <CeloNetworkButton
+                variant="secondary"
+                className="md:ml-2 h-auto w-full border-4 border-black bg-purple-500 px-8 py-6 text-2xl font-black uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-2 hover:translate-y-2 active:translate-x-2 active:translate-y-2 hover:bg-purple-500 active:bg-purple-500 hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary sm:w-auto"
+              >
+                History
+              </CeloNetworkButton>
+            </Link>
             {hasSavedCrossword && (
               <CeloNetworkButton
                 variant="secondary"

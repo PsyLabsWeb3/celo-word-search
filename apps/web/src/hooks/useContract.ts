@@ -3206,3 +3206,30 @@ export const useHasCompletedCrossword = (crosswordId: `0x${string}` | undefined,
 };
 
 // Hook para verificar si un usuario es ganador de un crucigrama específico
+
+// Hook to get crossword details by ID (for history page)
+export const useGetCrosswordDetailsById = (crosswordId: `0x${string}` | undefined) => {
+  const contractConfig = getContractConfig('CrosswordBoard');
+
+  const { data, isLoading, isError, error, refetch } = useContractRead({
+    address: contractConfig.address,
+    abi: contractConfig.abi,
+    functionName: 'getCrosswordDetails',
+    args: crosswordId ? [crosswordId] : undefined,
+    query: {
+      enabled: !!crosswordId,
+      staleTime: 60000,  // Cache for 1 minute
+      gcTime: 120000,    // Garbage collect after 2 minutes
+      retry: 1,
+      retryDelay: 5000,
+    },
+  });
+
+  return {
+    data,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  };
+};

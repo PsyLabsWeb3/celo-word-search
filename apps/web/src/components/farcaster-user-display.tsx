@@ -206,11 +206,11 @@ export default function FarcasterUserDisplay({
         </AvatarFallback>
       </Avatar>
 
-      <div className="flex flex-col">
-        <span className="font-black text-foreground">
+      <div className="flex flex-col min-w-0 overflow-hidden">
+        <span className="font-black text-foreground truncate">
           {userData && userData.username && userData.username !== "" ? userData.username : formatAddress(address)}
         </span>
-        <span className="text-xs font-bold text-muted-foreground">
+        <span className="text-xs font-bold text-muted-foreground truncate">
           {formatAddress(address)}
         </span>
       </div>
