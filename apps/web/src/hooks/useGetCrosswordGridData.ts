@@ -25,16 +25,52 @@ export function useGetCrosswordGridData(crosswordId: `0x${string}` | undefined) 
 
       try {
         const contractAddress = (CONTRACTS as any)[chainId]?.['CrosswordBoard']?.address as `0x${string}` | undefined;
+        const currentCrosswordId = (CONTRACTS as any)[chainId]?.['CrosswordBoard']?.currentCrosswordId as `0x${string}` | undefined;
         
         if (!contractAddress) {
           throw new Error('Contract address not found');
         }
 
+        // If this is the current crossword, try to get data directly from contract
+        if (crosswordId === currentCrosswordId) {
+          try {
+            const data = await publicClient.readContract({
+              address: contractAddress,
+              abi: [{
+                "inputs": [],
+                "name": "currentCrosswordData",
+                "outputs": [{ "internalType": "string", "name": "", "type": "string" }],
+                "stateMutability": "view",
+                "type": "function"
+              }],
+              functionName: 'currentCrosswordData'
+            }) as string;
+
+            if (data) {
+              try {
+                const parsedData = JSON.parse(data);
+                setGridData({
+                  clues: parsedData.clues,
+                  gridSize: parsedData.gridSize
+                });
+                setIsLoading(false);
+                return; // Success! Exit early
+              } catch (e) {
+                console.error('Error parsing current crossword data JSON:', e);
+                // Fall through to event-based approach
+              }
+            }
+          } catch (err) {
+            console.warn('Failed to fetch current crossword data, trying events:', err);
+            // Fall through to event-based approach
+          }
+        }
+
         // Fetch CrosswordUpdated events for this ID
-        // Limit the block range to avoid RPC errors
-        // Query only the last 10k blocks instead of from block 0
+        // For historical crosswords, use a larger block range (100k blocks)
         const currentBlock = await publicClient.getBlockNumber();
-        const fromBlock = currentBlock > 10000n ? currentBlock - 10000n : 0n;
+        const blockRange = 100000n; // Increased from 10k to 100k
+        const fromBlock = currentBlock > blockRange ? currentBlock - blockRange : 0n;
         
         const logs = await publicClient.getLogs({
           address: contractAddress,
@@ -64,7 +100,8 @@ export function useGetCrosswordGridData(crosswordId: `0x${string}` | undefined) 
             }
           }
         } else {
-          // No update event found
+          // No update event found in the block range
+          console.warn(`No CrosswordUpdated event found for ${crosswordId} in the last ${blockRange} blocks`);
           setGridData(null);
         }
       } catch (err) {

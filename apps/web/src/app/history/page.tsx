@@ -282,8 +282,13 @@ export default function HistoryPage() {
     crosswordIds
   })
 
+  // Filter out the current crossword - only show past/historical crosswords
+  const historicalCrosswords = crosswords.filter(
+    crossword => crossword.crosswordId !== currentCrossword?.id
+  )
+
   
-  if (isLoading && crosswords.length === 0) {
+  if (isLoading && historicalCrosswords.length === 0) {
     return (
       <main className="flex items-center justify-center min-h-screen p-4 bg-background">
         <div className="text-center">
@@ -348,7 +353,7 @@ export default function HistoryPage() {
           </p>
         </div>
 
-        {crosswords.length === 0 ? (
+        {historicalCrosswords.length === 0 ? (
           <Card className="border-4 border-black bg-card p-8 text-center shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
             <Trophy className="w-12 h-12 mx-auto text-muted-foreground" />
             <p className="mt-4 font-bold text-muted-foreground">
@@ -357,7 +362,7 @@ export default function HistoryPage() {
           </Card>
         ) : (
           <div className="space-y-4">
-            {crosswords.map((crossword) => (
+            {historicalCrosswords.map((crossword) => (
               <CrosswordHistoryCard
                 key={crossword.crosswordId}
                 crosswordId={crossword.crosswordId}
@@ -370,7 +375,7 @@ export default function HistoryPage() {
         )}
 
         {/* Load More Button */}
-        {hasMore && crosswords.length > 0 && (
+        {hasMore && historicalCrosswords.length > 0 && (
           <div className="flex justify-center mt-8">
             <Button
               onClick={loadMore}
