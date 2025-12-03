@@ -50,17 +50,61 @@ export function useGetCrosswordHistory(
         setIsLoading(true);
         setIsError(false);
 
-        // If specific crossword IDs are provided, use them
+        // If specific crossword IDs are provided, fetch details for each
         if (crosswordIdsFilter && crosswordIdsFilter.length > 0) {
-          const crosswords: CrosswordHistoryItem[] = crosswordIdsFilter.map((id) => ({
-            crosswordId: id,
-            token: '0x0000000000000000000000000000000000000000',
-            prizePool: 0n,
-            creator: '0x0000000000000000000000000000000000000000',
-            blockNumber: 999999999999n,
-            timestamp: Date.now() / 1000
-          }));
+          const crosswordPromises = crosswordIdsFilter.map(async (id) => {
+            try {
+              // Fetch details from contract
+              const details = await publicClient.readContract({
+                address: contractAddress,
+                abi: [{
+                  "inputs": [{ "internalType": "bytes32", "name": "crosswordId", "type": "bytes32" }],
+                  "name": "getCrosswordDetails",
+                  "outputs": [
+                    { "internalType": "address", "name": "token", "type": "address" },
+                    { "internalType": "uint256", "name": "totalPrizePool", "type": "uint256" },
+                    { "internalType": "uint256[]", "name": "winnerPercentages", "type": "uint256[]" },
+                    { "internalType": "tuple[]", "name": "completions", "type": "tuple[]", "components": [
+                      { "internalType": "address", "name": "user", "type": "address" },
+                      { "internalType": "uint256", "name": "timestamp", "type": "uint256" },
+                      { "internalType": "uint256", "name": "rank", "type": "uint256" }
+                    ]},
+                    { "internalType": "uint256", "name": "activationTime", "type": "uint256" },
+                    { "internalType": "uint256", "name": "endTime", "type": "uint256" },
+                    { "internalType": "enum CrosswordBoard.CrosswordState", "name": "state", "type": "uint8" }
+                  ],
+                  "stateMutability": "view",
+                  "type": "function"
+                }],
+                functionName: 'getCrosswordDetails',
+                args: [id]
+              }) as [string, bigint, bigint[], any[], bigint, bigint, number];
 
+              const [token, prizePool, , , activationTime] = details;
+
+              return {
+                crosswordId: id,
+                token: token,
+                prizePool: prizePool,
+                creator: '0x0000000000000000000000000000000000000000', // Creator not stored in details, but not critical
+                blockNumber: 0n, // Not needed for display
+                timestamp: Number(activationTime)
+              };
+            } catch (err) {
+              console.error(`Error fetching details for crossword ${id}:`, err);
+              // Fallback to basic info if fetch fails
+              return {
+                crosswordId: id,
+                token: '0x0000000000000000000000000000000000000000',
+                prizePool: 0n,
+                creator: '0x0000000000000000000000000000000000000000',
+                blockNumber: 0n,
+                timestamp: Date.now() / 1000
+              };
+            }
+          });
+
+          const crosswords = await Promise.all(crosswordPromises);
           setCrosswords(crosswords);
           setIsLoading(false);
           return;
