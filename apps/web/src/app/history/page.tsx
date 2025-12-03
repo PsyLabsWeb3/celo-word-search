@@ -27,7 +27,7 @@ function CrosswordHistoryCard({
 }) {
   const [isExpanded, setIsExpanded] = useState(false)
   const { data: details, isLoading: isDetailsLoading } = useGetCrosswordDetailsById(isExpanded ? crosswordId : undefined)
-  const { data: completionsData, isLoading: isCompletionsLoading } = useGetCrosswordCompletions(isExpanded ? crosswordId : undefined)
+  const { data: completionsData, isLoading: isCompletionsLoading } = useGetCrosswordCompletions(isExpanded ? crosswordId : `0x0000000000000000000000000000000000000000000000000000000000000000`)
   const { gridData, isLoading: isGridLoading } = useGetCrosswordGridData(isExpanded ? crosswordId : undefined)
   const { currentCrossword } = useCrossword()
   
@@ -35,7 +35,7 @@ function CrosswordHistoryCard({
   const [customLimit, setCustomLimit] = useState<number | null>(null)
   
   // Determine number of winners based on winnerPercentages length
-  const winnerCount = details && details[2] ? details[2].length : 3
+  const winnerCount = details && Array.isArray(details) && details[2] ? (details[2] as any[]).length : 3
   
   // Calculate effective limit: use custom limit if set, otherwise default to winner count
   const visibleCompletions = customLimit ?? winnerCount
@@ -72,7 +72,7 @@ function CrosswordHistoryCard({
   }
 
   // Use prize pool from details if available, otherwise use prop
-  const effectivePrizePool = details && details[1] ? details[1] : prizePool
+  const effectivePrizePool = details && Array.isArray(details) && details[1] ? details[1] : prizePool
 
   const formatPrizePool = (amount: bigint) => {
     const formatted = Number(amount) / 1e18
@@ -127,20 +127,16 @@ function CrosswordHistoryCard({
         {/* Header - Always visible */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2">
-              <Trophy className="w-5 h-5 text-primary" />
-              <h3 className="text-sm font-black uppercase sm:text-base">
-                Crossword {crosswordId.substring(0, 10)}...
-              </h3>
-            </div>
             <div className="flex flex-wrap gap-3 text-xs font-bold sm:text-sm text-muted-foreground">
+              <p className="text-sm font-black sm:text-base">
+                 {crosswordId.substring(0, 12)}..{crosswordId.substring(crosswordId.length - 6)}
+              </p>
               {timestamp && (
                 <div className="flex items-center gap-1.5">
                   <Calendar className="w-4 h-4" />
                   <span>{formatDate(timestamp)}</span>
                 </div>
               )}
-              
             </div>
           </div>
           <Button
@@ -162,7 +158,6 @@ function CrosswordHistoryCard({
         {/* Expanded content */}
         {isExpanded && (
           <div className="pt-4 mt-4 space-y-6 border-t-4 border-black">
-            
             {/* Grid Section */}
             <div>
               {isGridLoading && !effectiveGridData ? (
@@ -242,7 +237,7 @@ function CrosswordHistoryCard({
                                 address={userAddress}
                                 fallbackUsername={
                                   userAddress.substring(0, 6) +
-                                  "..." +
+                                  ".." +
                                   userAddress.substring(userAddress.length - 4)
                                 }
                                 size="sm"
@@ -363,6 +358,7 @@ export default function HistoryPage() {
                 crosswordId={crossword.crosswordId}
                 token={crossword.token}
                 prizePool={crossword.prizePool}
+                timestamp={crossword.timestamp}
               />
             ))}
           </div>
