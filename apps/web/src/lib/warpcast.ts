@@ -44,12 +44,12 @@ export async function getFarcasterManifest() {
     miniapp: {
       version: "1",
       name: frameName,
-      iconUrl: `${appUrl}/iconn.png`,
+      iconUrl: `${appUrl}/iconn.png?v=2`, // v=2 forces cache refresh
       homeUrl: appUrl,
-      imageUrl: `${appUrl}/image.png`,
+      imageUrl: `${appUrl}/embed-image.png`, // 3:2 aspect ratio required for embed
       buttonTitle: `Launch App`,
-      splashImageUrl: `${appUrl}/image.png`,
-      splashBackgroundColor: "#FCE53C",
+      splashImageUrl: `${appUrl}/image.png?v=2`, // v=2 forces cache refresh
+      splashBackgroundColor: "#FEEF89",
       webhookUrl: `${appUrl}/api/webhook`,
       // Metadata https://github.com/farcasterxyz/miniapps/discussions/191
       subtitle: "A crossword in the celo chain ", // 30 characters, no emojis or special characters, short description under app name
@@ -65,7 +65,6 @@ export async function getFarcasterManifest() {
       ],
       heroImageUrl: `${appUrl}/homeimage.png`, // 1200 x 630px (1.91:1), promotional display image on top of the mini app store
       ogImageUrl: `${appUrl}/homeimage.png`, // URL of the image to use for embeds when sharing the mini app
-      castShareUrl: appUrl, // URL to use when sharing casts about the mini app
       noindex,
     },
   };

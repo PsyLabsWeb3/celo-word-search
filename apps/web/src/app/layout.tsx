@@ -15,14 +15,14 @@ const appUrl = process.env.NEXT_PUBLIC_URL || "http://localhost:3000";
 // Embed metadata for Farcaster sharing
 const frame = {
   version: "1",
-  imageUrl: `${appUrl}/homeimage.png`,
+  imageUrl: `${appUrl}/embed-image.png`, // Must be 3:2 aspect ratio
   button: {
-    title: "Launch celo-crossword",
+    title: "Launch Onchain Crossword",
     action: {
       type: "launch_frame",
-      name: "celo-crossword",
+      name: "Onchain Crossword",
       url: appUrl,
-      splashImageUrl: `${appUrl}/icon.png`,
+      splashImageUrl: `${appUrl}/image.png?v=2`, // Must be 200x200px - v=2 forces cache refresh
       splashBackgroundColor: "#FEEF89",
     },
   },
@@ -44,7 +44,8 @@ export const metadata: Metadata = {
     images: [`${appUrl}/homeimage.png`],
   },
   other: {
-    "fc:frame": JSON.stringify(frame),
+    "fc:miniapp": JSON.stringify(frame), // Primary meta tag for Mini Apps
+    "fc:frame": JSON.stringify(frame),   // Backward compatibility for legacy Mini Apps
   },
 };
 
