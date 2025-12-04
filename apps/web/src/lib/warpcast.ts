@@ -11,18 +11,18 @@ export async function getFarcasterManifest() {
   const noindex = appUrl.includes("localhost") || appUrl.includes("ngrok") || appUrl.includes("https://dev.");
 
   // Check if account association is properly configured
-  const hasValidAccountAssociation = 
+  const hasValidAccountAssociation =
     env.NEXT_PUBLIC_FARCASTER_HEADER !== "build-time-placeholder" &&
     env.NEXT_PUBLIC_FARCASTER_PAYLOAD !== "build-time-placeholder" &&
     env.NEXT_PUBLIC_FARCASTER_SIGNATURE !== "build-time-placeholder";
 
   // In development mode, allow placeholder values for testing
   const isDevelopment = env.NEXT_PUBLIC_APP_ENV === "development" || appUrl.includes("localhost");
-  
+
   if (!hasValidAccountAssociation && !isDevelopment) {
     throw new Error(
-      "Account association not configured. Please generate your account association at: https://farcaster.xyz/~/developers/mini-apps/manifest?domain=" + 
-      new URL(appUrl).hostname + 
+      "Account association not configured. Please generate your account association at: https://farcaster.xyz/~/developers/mini-apps/manifest?domain=" +
+      new URL(appUrl).hostname +
       " and set the NEXT_PUBLIC_FARCASTER_HEADER, NEXT_PUBLIC_FARCASTER_PAYLOAD, and NEXT_PUBLIC_FARCASTER_SIGNATURE environment variables."
     );
   }
@@ -49,13 +49,13 @@ export async function getFarcasterManifest() {
       imageUrl: `${appUrl}/image.png`,
       buttonTitle: `Launch App`,
       splashImageUrl: `${appUrl}/image.png`,
-      splashBackgroundColor: "#FEEF89",
+      splashBackgroundColor: "#FCE53C",
       webhookUrl: `${appUrl}/api/webhook`,
       // Metadata https://github.com/farcasterxyz/miniapps/discussions/191
       subtitle: "A crossword in the celo chain ", // 30 characters, no emojis or special characters, short description under app name
       description: "A crossword in the celo chain ", // 170 characters, no emojis or special characters, promotional message displayed on Mini App Page
       primaryCategory: "social",
-      tags: ["mini-app", "celo", "miniapp","crossword","onchain"], // up to 5 tags, filtering/search tags
+      tags: ["mini-app", "celo", "miniapp", "crossword", "onchain"], // up to 5 tags, filtering/search tags
       tagline: "Built on Celo", // 30 characters, marketing tagline should be punchy and descriptive
       ogTitle: "Onchain Crossword", // 30 characters, app name + short tag, Title case, no emojis
       ogDescription: "Solve puzzles, earn rewards on Celo blockchain", // 100 characters, summarize core benefits in 1-2 lines
