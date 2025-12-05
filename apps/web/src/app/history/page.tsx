@@ -14,12 +14,12 @@ import ReadOnlyCrosswordGrid from "@/components/readonly-crossword-grid"
 import { useCrossword } from "@/contexts/crossword-context"
 
 // Component for individual crossword history item
-function CrosswordHistoryCard({ 
-  crosswordId, 
-  token, 
-  prizePool, 
-  timestamp 
-}: { 
+function CrosswordHistoryCard({
+  crosswordId,
+  token,
+  prizePool,
+  timestamp
+}: {
   crosswordId: `0x${string}`
   token: string
   prizePool: bigint
@@ -28,15 +28,16 @@ function CrosswordHistoryCard({
   const [isExpanded, setIsExpanded] = useState(false)
   const { data: details, isLoading: isDetailsLoading } = useGetCrosswordDetailsById(isExpanded ? crosswordId : undefined)
   const { data: completionsData, isLoading: isCompletionsLoading } = useGetCrosswordCompletions(isExpanded ? crosswordId : `0x0000000000000000000000000000000000000000000000000000000000000000`)
-  const { gridData, isLoading: isGridLoading } = useGetCrosswordGridData(isExpanded ? crosswordId : undefined)
+  // Always load grid data for preview
+  const { gridData, isLoading: isGridLoading } = useGetCrosswordGridData(crosswordId)
   const { currentCrossword } = useCrossword()
-  
+
   // Pagination for completions
   const [customLimit, setCustomLimit] = useState<number | null>(null)
-  
+
   // Determine number of winners based on winnerPercentages length
   const winnerCount = details && Array.isArray(details) && details[2] ? (details[2] as any[]).length : 3
-  
+
   // Calculate effective limit: use custom limit if set, otherwise default to winner count
   const visibleCompletions = customLimit ?? winnerCount
 
@@ -47,15 +48,15 @@ function CrosswordHistoryCard({
       setCustomLimit(visibleCompletions + 10)
     }
   }
-  
+
   // Fallback grid data from context if it's the current crossword
-  const contextGridData = (currentCrossword?.id === crosswordId && currentCrossword?.data) 
+  const contextGridData = (currentCrossword?.id === crosswordId && currentCrossword?.data)
     ? (() => {
-        try {
-          const parsed = JSON.parse(currentCrossword.data)
-          return { clues: parsed.clues, gridSize: parsed.gridSize }
-        } catch (e) { return null }
-      })()
+      try {
+        const parsed = JSON.parse(currentCrossword.data)
+        return { clues: parsed.clues, gridSize: parsed.gridSize }
+      } catch (e) { return null }
+    })()
     : null
 
   const effectiveGridData = gridData || contextGridData
@@ -113,12 +114,12 @@ function CrosswordHistoryCard({
   }
 
   // Sort completions by timestamp
-  const sortedCompletions = completionsData 
+  const sortedCompletions = completionsData
     ? [...(Array.isArray(completionsData) ? completionsData : [])].sort((a, b) => {
-        const timeA = getCompletionTimestamp(a)
-        const timeB = getCompletionTimestamp(b)
-        return Number(timeA - timeB)
-      })
+      const timeA = getCompletionTimestamp(a)
+      const timeB = getCompletionTimestamp(b)
+      return Number(timeA - timeB)
+    })
     : []
 
   return (
@@ -129,7 +130,7 @@ function CrosswordHistoryCard({
           <div className="flex-1">
             <div className="flex flex-wrap gap-3 text-xs font-bold sm:text-sm text-muted-foreground">
               <p className="text-sm font-black sm:text-base">
-                 {crosswordId.substring(0, 12)}..{crosswordId.substring(crosswordId.length - 6)}
+                {crosswordId.substring(0, 12)}..{crosswordId.substring(crosswordId.length - 6)}
               </p>
               {timestamp && (
                 <div className="flex items-center gap-1.5">
@@ -138,6 +139,23 @@ function CrosswordHistoryCard({
                 </div>
               )}
             </div>
+          </div>
+          {/* Grid Section */}
+          <div>
+            {isGridLoading && !effectiveGridData ? (
+              <div className="py-8 text-center">
+                <div className="inline-block w-8 h-8 border-t-2 border-b-2 rounded-full animate-spin border-primary"></div>
+                <p className="mt-2 text-sm font-bold">Loading grid...</p>
+              </div>
+            ) : effectiveGridData ? (
+              <div className="flex justify-center">
+                <ReadOnlyCrosswordGrid clues={effectiveGridData.clues} gridSize={effectiveGridData.gridSize} />
+              </div>
+            ) : (
+              <p className="py-4 text-sm font-bold text-center text-muted-foreground">
+                Grid data not available
+              </p>
+            )}
           </div>
           <Button
             onClick={() => setIsExpanded(!isExpanded)}
@@ -158,23 +176,7 @@ function CrosswordHistoryCard({
         {/* Expanded content */}
         {isExpanded && (
           <div className="pt-4 mt-4 space-y-6 border-t-4 border-black">
-            {/* Grid Section */}
-            <div>
-              {isGridLoading && !effectiveGridData ? (
-                <div className="py-8 text-center">
-                  <div className="inline-block w-8 h-8 border-t-2 border-b-2 rounded-full animate-spin border-primary"></div>
-                  <p className="mt-2 text-sm font-bold">Loading grid...</p>
-                </div>
-              ) : effectiveGridData ? (
-                <div className="flex justify-center">
-                  <ReadOnlyCrosswordGrid clues={effectiveGridData.clues} gridSize={effectiveGridData.gridSize} />
-                </div>
-              ) : (
-                <p className="py-4 text-sm font-bold text-center text-muted-foreground">
-                  Grid data not available
-                </p>
-              )}
-            </div>
+
             {!isCompletionsLoading && (
               <div className="flex items-center gap-1.5 bg-yellow-100 px-2 py-0.5 rounded-full border-2 border-black">
                 <Coins className="w-4 h-4 text-yellow-600" />
@@ -200,14 +202,14 @@ function CrosswordHistoryCard({
                       <div className="w-8 text-center">#</div>
                       <div className="flex-1 px-2">User</div>
                     </div>
-                    
+
                     {/* Table Body */}
                     <div>
                       {sortedCompletions.slice(0, visibleCompletions).map((completion: any, index: number) => {
                         const userAddress = getCompletionUser(completion)
                         const rank = index + 1
                         const isWinner = rank <= winnerCount
-                        
+
                         return (
                           <div
                             key={`${userAddress}-${index}`}
@@ -220,9 +222,9 @@ function CrosswordHistoryCard({
                             <div className="flex w-8 flex-col items-center justify-center">
                               <span className={cn(
                                 "text-sm font-black",
-                                rank === 1 ? "text-yellow-600" : 
-                                rank === 2 ? "text-gray-500" : 
-                                rank === 3 ? "text-amber-700" : "text-black"
+                                rank === 1 ? "text-yellow-600" :
+                                  rank === 2 ? "text-gray-500" :
+                                    rank === 3 ? "text-amber-700" : "text-black"
                               )}>
                                 {rank}
                               </span>
@@ -242,13 +244,13 @@ function CrosswordHistoryCard({
                                 }
                                 size="sm"
                               />
-                            </div>                
+                            </div>
                           </div>
                         )
                       })}
                     </div>
                   </div>
-                    
+
                   {sortedCompletions.length > visibleCompletions && (
                     <div className="flex justify-center pt-4">
                       <Button
@@ -282,7 +284,7 @@ export default function HistoryPage() {
     crosswordIds
   })
 
-  
+
   if (isLoading && crosswords.length === 0) {
     return (
       <main className="flex items-center justify-center min-h-screen p-4 bg-background">
@@ -385,7 +387,7 @@ export default function HistoryPage() {
 
         <div className="flex justify-center mt-8">
           <Button
-            onClick={() =>   window.location.href = "/"}
+            onClick={() => window.location.href = "/"}
             className="border-4 border-black bg-accent font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-accent hover:shadow-none"
           >
             <Home className="w-4 h-4 mr-2" />
