@@ -47,7 +47,7 @@ export default function HistoryPage() {
       <div className="max-w-4xl mx-auto">
         <div className="mb-8 text-center">
           <div className="flex justify-center mb-4">
-            <Trophy className="w-16 h-16 text-primary" />
+            {/* <Trophy className="w-16 h-16 text-primary" /> */}
           </div>
           <h1 className="text-3xl font-black tracking-tight uppercase text-foreground sm:text-4xl md:text-5xl">
             Crossword History
