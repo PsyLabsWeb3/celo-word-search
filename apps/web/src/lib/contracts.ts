@@ -35,7 +35,7 @@ const CONTRACTS = {
   },
   [celoSepolia.id]: {
     CrosswordBoard: {
-      address: "0x62ADF6a2E788Fbbd66B5da641cAD08Fd96115B8B", // Latest Hardhat Ignition deployment
+      address: "0xe8a2c7df99bda594db3ab3431d7f25ba3d7e2e82", // Updated deployment with sponsoredBy field
       currentCrosswordId: "0x0000000000000000000000000000000000000000000000000000000000000000",
       // The ABI will be loaded dynamically to keep this file small
     }
