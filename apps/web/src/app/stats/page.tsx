@@ -198,18 +198,32 @@ export default function StatsPage() {
                             Back
                         </Button>
                     </Link>
-                    <a
-                        href={`https://celoscan.io/address/${NEW_CONTRACT_ADDRESS}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-full sm:w-auto"
-                    >
-                        <Button variant="outline" className="w-full sm:w-auto border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-purple-500 hover:bg-purple-600 text-white font-bold">
-                            <span className="hidden sm:inline">View on CeloScan</span>
-                            <span className="sm:hidden">CeloScan</span>
-                            <ExternalLink className="w-4 h-4 ml-2" />
-                        </Button>
-                    </a>
+                    <div className="flex flex-wrap gap-2">
+                        <a
+                            href={`https://celoscan.io/address/${LEGACY_CONTRACT_ADDRESS}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-full sm:w-auto"
+                        >
+                            <Button variant="outline" className="w-full sm:w-auto border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs sm:text-sm">
+                                <span className="hidden sm:inline">Legacy Contract</span>
+                                <span className="sm:hidden">Legacy</span>
+                                <ExternalLink className="w-4 h-4 ml-2" />
+                            </Button>
+                        </a>
+                        <a
+                            href={`https://celoscan.io/address/${NEW_CONTRACT_ADDRESS}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-full sm:w-auto"
+                        >
+                            <Button variant="outline" className="w-full sm:w-auto border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-purple-500 hover:bg-purple-600 text-white font-bold text-xs sm:text-sm">
+                                <span className="hidden sm:inline">New Contract</span>
+                                <span className="sm:hidden">New</span>
+                                <ExternalLink className="w-4 h-4 ml-2" />
+                            </Button>
+                        </a>
+                    </div>
                 </div>
 
                 {/* Title - Responsive sizing */}
