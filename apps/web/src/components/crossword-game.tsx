@@ -1112,9 +1112,8 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
       }
 
       // Call completeCrossword and log the result
-      // Only send 4 parameters as expected by the contract: duration, username, displayName, pfpUrl
-      // The crosswordId is retrieved automatically from contract state (currentCrosswordId)
-      const txPromise = completeCrossword([durationBigInt, username, displayName, pfpUrl]);
+      // Send 5 parameters: duration, username, displayName, pfpUrl, crosswordId (for signature)
+      const txPromise = completeCrossword([durationBigInt, username, displayName, pfpUrl, crosswordId]);
       setWaitingForTransaction(true);
     } else {
       setIsSubmitting(false);

@@ -224,6 +224,7 @@ export const useSetCrossword = () => {
 
 
 export const useCompleteCrossword = () => {
+  const { address } = useAccount(); // Get connected user address
   const contractConfig = getContractConfig('CrosswordBoard');
   const queryClient = useQueryClient();
   const { data, error: writeError, isPending, writeContract } = useWriteContract();
@@ -281,26 +282,61 @@ export const useCompleteCrossword = () => {
   }, [data]);
 
   return {
-    completeCrossword: (args: [bigint, string, string, string]) =>
-      writeContract({
-        address: contractConfig.address,
-        abi: contractConfig.abi,
-        functionName: 'completeCrossword',
-        args
-      }, {
-        onError: (error) => {
-          toast.error('Error completing crossword', {
-            description: getErrorMessage(error),
-          });
-          // Mark error as shown in case error occurs during writeContract
-          errorShown.current = true;
-        },
-        onSuccess: (hash) => {
-          toast.success('Transaction submitted', {
-            description: 'Your crossword completion is being processed on the blockchain.',
-          });
+    // Modified to accept crosswordId and handle signing
+    completeCrossword: async (args: [bigint, string, string, string, string]) => {
+      try {
+        const [duration, username, displayName, pfpUrl, crosswordId] = args;
+        
+        if (!address) {
+          toast.error('Wallet not connected');
+          return;
         }
-      }),
+
+        // 1. Fetch signature from API
+        const response = await fetch('/api/crossword/sign', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user: address,
+            crosswordId,
+            durationMs: Number(duration),
+            contractAddress: contractConfig.address
+          })
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to sign request');
+        }
+
+        const { signature } = await response.json();
+
+        // 2. Call Contract with Signature
+        writeContract({
+          address: contractConfig.address,
+          abi: contractConfig.abi,
+          functionName: 'completeCrossword',
+          args: [duration, username, displayName, pfpUrl, signature]
+        }, {
+          onError: (error) => {
+            toast.error('Error completing crossword', {
+              description: getErrorMessage(error),
+            });
+            errorShown.current = true;
+          },
+          onSuccess: (hash) => {
+            toast.success('Transaction submitted', {
+              description: 'Your crossword completion is being processed on the blockchain.',
+            });
+          }
+        });
+
+      } catch (e: any) {
+        console.error('Completion error:', e);
+        toast.error('Failed to complete', { description: e.message });
+        errorShown.current = true;
+      }
+    },
     isLoading: isPending || isConfirming,
     isSuccess,
     isError: !!writeError || isTxError,

@@ -8,6 +8,8 @@ import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
 /**
  * @title CrosswordBoard
@@ -59,6 +61,7 @@ contract CrosswordBoard is Ownable, AccessControl, ReentrancyGuard, Pausable {
     );
     event TokenAllowed(address indexed token, bool allowed);
     event NativeCeloReceived(address indexed sender, uint256 amount);
+    event SignerUpdated(address oldSigner, address newSigner, address updatedBy); // SECURITY FIX: Event for signer updates
     event PrizeTransferFailed(
         bytes32 indexed crosswordId,
         address indexed user,
@@ -160,6 +163,9 @@ contract CrosswordBoard is Ownable, AccessControl, ReentrancyGuard, Pausable {
     mapping(bytes32 => mapping(address => uint256)) public userRankInCrossword; // 0 = not a winner, 1+ = rank
     mapping(bytes32 => uint256) public crosswordCeloBalance; // Segregated CELO balance per crossword
 
+    // SECURITY FIX: Signer for verifying crossword completions
+    address public signer;
+
     // Modifiers
     modifier onlyAdminOrOwner() {
         require(
@@ -204,6 +210,17 @@ contract CrosswordBoard is Ownable, AccessControl, ReentrancyGuard, Pausable {
     function setBoolConfig(string calldata key, bool value) external onlyRole(ADMIN_ROLE) whenNotPaused {
         _configBools[key] = value;
         emit ConfigBoolSet(key, value, _msgSender());
+    }
+
+    /**
+     * @dev Set the signer address for verifying completions
+     * @param newSigner The new signer address
+     */
+    function setSigner(address newSigner) external onlyRole(ADMIN_ROLE) {
+        require(newSigner != address(0), "CrosswordBoard: signer cannot be zero address");
+        address oldSigner = signer;
+        signer = newSigner;
+        emit SignerUpdated(oldSigner, newSigner, _msgSender());
     }
 
     /**
@@ -749,12 +766,16 @@ contract CrosswordBoard is Ownable, AccessControl, ReentrancyGuard, Pausable {
 
     function recoverUnclaimedPrizes(bytes32 crosswordId) external onlyRole(ADMIN_ROLE) nonReentrant whenNotPaused {
         Crossword storage crossword = crosswords[crosswordId];
-        require(crossword.state == CrosswordState.Complete, "CrosswordBoard: crossword not complete");
+        
+        // SECURITY FIX: Allow recovery if enough time has passed, even if not marked "Complete" (prevents stuck funds)
+        // Require that we are past the recovery window relative to the end time (or activation time if no end time)
+        uint256 baseTime = crossword.endTime > 0 ? crossword.endTime : crossword.activationTime;
+        
+        require(crossword.activationTime > 0, "CrosswordBoard: crossword not activated");
         require(
-            block.timestamp >= crossword.activationTime + RECOVERY_WINDOW,
+            block.timestamp >= baseTime + RECOVERY_WINDOW,
             "CrosswordBoard: recovery window not elapsed"
         );
-        require(crossword.activationTime > 0, "CrosswordBoard: crossword not activated");
 
         // Ensure crossword is added to completed array if not already
         if (!isCrosswordCompletedAdded[crosswordId]) {
@@ -1022,8 +1043,15 @@ contract CrosswordBoard is Ownable, AccessControl, ReentrancyGuard, Pausable {
      * @param username The Farcaster username of the user
      * @param displayName The Farcaster display name of the user
      * @param pfpUrl The profile picture URL of the user
+     * @param signature The server-side signature verifying the solution
      */
-    function completeCrossword(uint256 durationMs, string calldata username, string calldata displayName, string calldata pfpUrl) external nonReentrant whenNotPaused {
+    function completeCrossword(
+        uint256 durationMs, 
+        string calldata username, 
+        string calldata displayName, 
+        string calldata pfpUrl,
+        bytes calldata signature
+    ) external nonReentrant whenNotPaused {
         // Verify user is connected (msg.sender is not zero address)
         require(msg.sender != address(0), "CrosswordBoard: invalid sender");
 
@@ -1043,6 +1071,17 @@ contract CrosswordBoard is Ownable, AccessControl, ReentrancyGuard, Pausable {
         require(bytes(displayName).length > 0 && bytes(displayName).length <= MAX_DISPLAYNAME_LENGTH, "CrosswordBoard: invalid display name length");
         require(bytes(pfpUrl).length <= MAX_PFPURL_LENGTH, "CrosswordBoard: pfpUrl too long");
         
+        // SECURITY FIX: Verify signature to prevent "free lunch" attacks
+        address _signer = signer;
+        require(_signer != address(0), "CrosswordBoard: signer not set");
+        
+        // Reconstruct the signed message: (user, crosswordId, durationMs, address(this))
+        // address(this) prevents replay attacks on other networks/contracts
+        bytes32 messageHash = keccak256(abi.encodePacked(msg.sender, crosswordId, durationMs, address(this)));
+        bytes32 ethSignedMessageHash = MessageHashUtils.toEthSignedMessageHash(messageHash);
+        
+        require(ECDSA.recover(ethSignedMessageHash, signature) == _signer, "CrosswordBoard: invalid signature");
+
         // SECURITY FIX: Limit total completions to prevent DoS
         require(crosswordCompletions[crosswordId].length < MAX_COMPLETIONS_PER_CROSSWORD, "CrosswordBoard: maximum completions reached");
 

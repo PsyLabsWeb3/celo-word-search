@@ -215,14 +215,27 @@ export default function LeaderboardPage() {
   }, [onChainCompletions, isCompletionsLoading]); // Removed getCompletionTimestamp to prevent infinite loop
 
   const formatDate = (timestamp: bigint) => {
+    if (!timestamp) return "Invalid Date";
+    
     // Convert from seconds to milliseconds for Date constructor
     const date = new Date(Number(timestamp) * 1000)
-    return new Intl.DateTimeFormat("es-MX", {
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    }).format(date)
+    
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      return "Invalid Date";
+    }
+    
+    try {
+      return new Intl.DateTimeFormat("es-MX", {
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      }).format(date)
+    } catch (e) {
+      console.error("Error formatting date:", e);
+      return "Invalid Date";
+    }
   }
 
   const getRankIcon = (index: number) => {
