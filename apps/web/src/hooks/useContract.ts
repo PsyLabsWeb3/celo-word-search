@@ -5,6 +5,7 @@ import { celo, celoAlfajores } from 'wagmi/chains';
 import { defineChain } from 'viem';
 import { toast } from 'sonner';
 import { useEffect, useRef } from 'react';
+import { getHistoricalCrosswordData } from '@/lib/historical-crosswords';
 
 // Define Celo Sepolia chain
 const celoSepolia = defineChain({
@@ -2256,19 +2257,41 @@ export const useCompleteCrossword = () => {
 export const useGetCrosswordCompletions = (crosswordId: `0x${string}`) => {
   const contractConfig = getContractConfig('CrosswordBoard');
 
-  return useContractRead({
+  // First check if we have hardcoded data for this crossword
+  const historicalData = crosswordId ? getHistoricalCrosswordData(crosswordId) : null;
+  const hasHardcodedCompletions = historicalData && historicalData.completions && historicalData.completions.length > 0;
+
+  const contractQuery = useContractRead({
     address: contractConfig.address,
     abi: contractConfig.abi,
     functionName: 'getCrosswordCompletions',
     args: [crosswordId],
     query: {
-      enabled: !!crosswordId,
+      enabled: !!crosswordId && !hasHardcodedCompletions,
       staleTime: 120000,  // Cache for 2 minutes
       gcTime: 300000,     // Garbage collect after 5 minutes
       retry: 1,           // Only retry once
       retryDelay: 5000,   // Wait 5 seconds between retries
     },
   });
+
+  if (hasHardcodedCompletions && historicalData && historicalData.completions) {
+      return {
+          data: historicalData.completions.map(c => ({
+            user: c.user,
+            timestamp: BigInt(c.timestamp),
+            rank: BigInt(c.rank),
+            durationMs: c.durationMs ? BigInt(c.durationMs) : 0n
+          })),
+          isLoading: false,
+          isError: false,
+          error: null,
+          isSuccess: true,
+          refetch: () => Promise.resolve(),
+      };
+  }
+
+  return contractQuery;
 };
 
 // Hook para verificar si un usuario es ganador de un crucigrama específico
@@ -3211,13 +3234,18 @@ export const useHasCompletedCrossword = (crosswordId: `0x${string}` | undefined,
 export const useGetCrosswordDetailsById = (crosswordId: `0x${string}` | undefined) => {
   const contractConfig = getContractConfig('CrosswordBoard');
 
-  const { data, isLoading, isError, error, refetch } = useContractRead({
+  // First check if we have hardcoded data for this crossword
+  const historicalData = crosswordId ? getHistoricalCrosswordData(crosswordId) : null;
+  const hasHardcodedDetails = historicalData && historicalData.prizePool && historicalData.token;
+
+  // We still define the hook but control its execution
+  const contractQuery = useContractRead({
     address: contractConfig.address,
     abi: contractConfig.abi,
     functionName: 'getCrosswordDetails',
     args: crosswordId ? [crosswordId] : undefined,
     query: {
-      enabled: !!crosswordId,
+      enabled: !!crosswordId && !hasHardcodedDetails,
       staleTime: 60000,  // Cache for 1 minute
       gcTime: 120000,    // Garbage collect after 2 minutes
       retry: 1,
@@ -3225,11 +3253,37 @@ export const useGetCrosswordDetailsById = (crosswordId: `0x${string}` | undefine
     },
   });
 
+  if (hasHardcodedDetails && historicalData) {
+      // Mock the contract return data format
+      // Return type is format [token, totalPrizePool, winnerPercentages, completions, activationTime, endTime, state]
+      const mockData = [
+          historicalData.token,
+          BigInt(historicalData.prizePool || 0),
+          [], // winnerPercentages unknown
+          (historicalData.completions || []).map((c: any) => ({
+              user: c.user,
+              timestamp: BigInt(c.timestamp),
+              rank: BigInt(c.rank)
+          })),
+          BigInt(historicalData.timestamp || 0),
+          0n, // endTime
+          1 // state Active
+      ];
+
+      return {
+          data: mockData,
+          isLoading: false,
+          isError: false,
+          error: null,
+          refetch: () => Promise.resolve(),
+      };
+  }
+
   return {
-    data,
-    isLoading,
-    isError,
-    error,
-    refetch,
+    data: contractQuery.data,
+    isLoading: contractQuery.isLoading,
+    isError: contractQuery.isError,
+    error: contractQuery.error,
+    refetch: contractQuery.refetch,
   };
 };

@@ -4,12 +4,38 @@
 interface HistoricalCrosswordData {
   clues: any[];
   gridSize: { rows: number; cols: number };
+  prizePool?: string; // in wei
+  token?: string; // address
+  timestamp?: number;
+  completions?: {
+    user: string;
+    timestamp: number;
+    rank: number;
+    durationMs?: string;
+  }[];
 }
 
 export const HISTORICAL_CROSSWORDS: Record<string, HistoricalCrosswordData> = {
   // First crossword - Nov 2025
   '0xdb4764000c54b9390a601e96783d76e3e3e9d06329637cdd119045bf32624e32': {
     gridSize: { rows: 9, cols: 10 },
+    prizePool: "5000000000000000000", // 5 CELO
+    token: "0x0000000000000000000000000000000000000000",
+    timestamp: 1732944000,
+    completions: [
+        {
+            user: "0x1234567890123456789012345678901234567890",
+            timestamp: 1732945000,
+            rank: 1,
+            durationMs: "600000"
+        },
+        {
+            user: "0xabcdef1234567890abcdef1234567890abcdef12",
+            timestamp: 1732946000,
+            rank: 2,
+            durationMs: "700000"
+        }
+    ],
     clues: [
       {
         number: 1,
@@ -67,6 +93,18 @@ export const HISTORICAL_CROSSWORDS: Record<string, HistoricalCrosswordData> = {
         col: 7,
         direction: "across"
       }
+    ]
+  },
+  // Current crossword - Dec 2025
+  '0x28d1ba71976f4f4fa7344c7025215739bd3f6aa515d13e1fdfbe5245ea419ce2': {
+   gridSize: { "rows": 9, "cols": 10 },
+    clues: [
+      { "number": 1, "clue": "Universal basic income protocol on Celo focused on financial inclusion.", "answer": "GOODDOLLAR", "row": 1, "col": 0, "direction": "across" },
+      { "number": 2, "clue": "Celo’s lightweight mobile wallet designed for fast, low-cost payments.", "answer": "MINIPAY", "row": 3, "col": 3, "direction": "across" },
+      { "number": 3, "clue": "Stablecoin protocol powering assets like cUSD, cEUR, and cREAL.", "answer": "MENTO", "row": 3, "col": 3, "direction": "down" },
+      { "number": 4, "clue": "Celo’s naming service that lets users register human-readable blockchain names.", "answer": "NAMES", "row": 5, "col": 3, "direction": "across" },
+      { "number": 5, "clue": "Decentralized identity protocol enabling portable and verifiable credentials.", "answer": "SELF", "row": 5, "col": 7, "direction": "down" },
+      { "number": 6, "clue": "Celo staking and governance plataform", "answer": "MONDO", "row": 0, "col": 1, "direction": "down" }
     ]
   }
 };
