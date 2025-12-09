@@ -97,6 +97,8 @@ contract CrosswordBoard is Ownable, AccessControl, ReentrancyGuard, Pausable {
         CrosswordState state;
         uint256 createdAt;
         uint256 claimedAmount; // Track claimed amount for native CELO
+        string name; // Name/Title of the crossword
+        string gridData; // JSON string of grid configuration
     }
 
     // User profile structure
@@ -293,6 +295,8 @@ contract CrosswordBoard is Ownable, AccessControl, ReentrancyGuard, Pausable {
      */
     function createCrossword(
         bytes32 crosswordId,
+        string memory name,
+        string memory gridData,
         address token,
         uint256 prizePool,
         uint256[] memory winnerPercentages,
@@ -344,6 +348,8 @@ contract CrosswordBoard is Ownable, AccessControl, ReentrancyGuard, Pausable {
         crossword.activationTime = block.timestamp; // Set activation time when funded
         crossword.createdAt = block.timestamp;
         crossword.claimedAmount = 0;
+        crossword.name = name;
+        crossword.gridData = gridData;
 
         emit CrosswordCreated(crosswordId, token, prizePool, _msgSender());
         emit CrosswordActivated(crosswordId, block.timestamp);
@@ -358,6 +364,8 @@ contract CrosswordBoard is Ownable, AccessControl, ReentrancyGuard, Pausable {
      */
     function createCrosswordWithNativeCELO(
         bytes32 crosswordId,
+        string memory name,
+        string memory gridData,
         uint256 prizePool,
         uint256[] memory winnerPercentages,
         uint256 endTime
@@ -404,6 +412,8 @@ contract CrosswordBoard is Ownable, AccessControl, ReentrancyGuard, Pausable {
         crossword.activationTime = block.timestamp; // Set activation time when funded
         crossword.createdAt = block.timestamp;
         crossword.claimedAmount = 0;
+        crossword.name = name;
+        crossword.gridData = gridData;
         
         // SECURITY FIX: Initialize segregated CELO balance
         crosswordCeloBalance[crosswordId] = prizePool;
@@ -827,7 +837,9 @@ contract CrosswordBoard is Ownable, AccessControl, ReentrancyGuard, Pausable {
             CompletionRecord[] memory completions,
             uint256 activationTime,
             uint256 endTime,
-            CrosswordState state
+            CrosswordState state,
+            string memory name,
+            string memory gridData
         )
     {
         Crossword storage crossword = crosswords[crosswordId];
@@ -838,7 +850,9 @@ contract CrosswordBoard is Ownable, AccessControl, ReentrancyGuard, Pausable {
             crossword.completions,
             crossword.activationTime,
             crossword.endTime,
-            crossword.state
+            crossword.state,
+            crossword.name,
+            crossword.gridData
         );
     }
 
@@ -1150,6 +1164,7 @@ contract CrosswordBoard is Ownable, AccessControl, ReentrancyGuard, Pausable {
      */
     function createCrosswordWithPrizePool(
         bytes32 crosswordId,
+        string memory name,
         string memory crosswordData,
         uint256 newMaxWinners,
         address token,
@@ -1171,7 +1186,7 @@ contract CrosswordBoard is Ownable, AccessControl, ReentrancyGuard, Pausable {
         _setMaxWinners(newMaxWinners);
 
         // SECURITY FIX: Use internal function instead of external call
-        _createCrossword(crosswordId, token, prizePool, winnerPercentages, endTime);
+        _createCrossword(crosswordId, name, crosswordData, token, prizePool, winnerPercentages, endTime);
 
         emit CrosswordUpdated(crosswordId, crosswordData, _msgSender());
     }
@@ -1187,6 +1202,7 @@ contract CrosswordBoard is Ownable, AccessControl, ReentrancyGuard, Pausable {
      */
     function createCrosswordWithNativeCELOPrizePool(
         bytes32 crosswordId,
+        string memory name,
         string memory crosswordData,
         uint256 newMaxWinners,
         uint256 prizePool,
@@ -1208,7 +1224,7 @@ contract CrosswordBoard is Ownable, AccessControl, ReentrancyGuard, Pausable {
         _setMaxWinners(newMaxWinners);
 
         // Create the crossword with native CELO prize pool using the internal function
-        _createCrosswordWithNativeCELO(crosswordId, prizePool, winnerPercentages, endTime);
+        _createCrosswordWithNativeCELO(crosswordId, name, crosswordData, prizePool, winnerPercentages, endTime);
 
         emit CrosswordUpdated(crosswordId, crosswordData, _msgSender());
     }
@@ -1248,6 +1264,8 @@ contract CrosswordBoard is Ownable, AccessControl, ReentrancyGuard, Pausable {
      */
     function _createCrossword(
         bytes32 crosswordId,
+        string memory name,
+        string memory gridData,
         address token,
         uint256 prizePool,
         uint256[] memory winnerPercentages,
@@ -1299,6 +1317,9 @@ contract CrosswordBoard is Ownable, AccessControl, ReentrancyGuard, Pausable {
         crossword.activationTime = block.timestamp; // Set activation time when funded
         crossword.createdAt = block.timestamp;
         crossword.claimedAmount = 0;
+        crossword.name = name;
+        crossword.gridData = gridData;
+        crossword.claimedAmount = 0;
 
         emit CrosswordCreated(crosswordId, token, prizePool, _msgSender());
         emit CrosswordActivated(crosswordId, block.timestamp);
@@ -1309,6 +1330,8 @@ contract CrosswordBoard is Ownable, AccessControl, ReentrancyGuard, Pausable {
      */
     function _createCrosswordWithNativeCELO(
         bytes32 crosswordId,
+        string memory name,
+        string memory gridData,
         uint256 prizePool,
         uint256[] memory winnerPercentages,
         uint256 endTime
