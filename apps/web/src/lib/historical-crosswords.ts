@@ -3,6 +3,7 @@
 
 interface HistoricalCrosswordData {
   name?: string; // Crossword name/title
+  sponsoredBy?: string; // Organization/Entity that sponsored the crossword
   clues: any[];
   gridSize: { rows: number; cols: number };
   prizePool?: string; // in wei
@@ -12,7 +13,10 @@ interface HistoricalCrosswordData {
     user: string;
     timestamp: number;
     rank: number;
-    durationMs?: string;
+    durationMs?: string | number; // duration in milliseconds
+    username?: string;
+    displayName?: string;
+    pfpUrl?: string;
   }[];
   winnerCount?: number;
 }

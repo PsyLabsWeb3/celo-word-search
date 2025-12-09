@@ -10,9 +10,6 @@ interface CrosswordHistoryItem {
   creator: string;
   blockNumber: bigint;
   timestamp?: number;
-  name?: string;
-  sponsoredBy?: string;
-  gridData?: { clues: any[]; gridSize: { rows: number; cols: number } };
 }
 
 interface UseGetCrosswordHistoryReturn {
@@ -93,12 +90,7 @@ export function useGetCrosswordHistory(
                   prizePool: BigInt(historicalData.prizePool || '0'),
                   creator: '0x0000000000000000000000000000000000000000',
                   blockNumber: 0n,
-                  timestamp: historicalData.timestamp || 0,
-                  name: historicalData.name,
-                  gridData: historicalData.gridSize && historicalData.clues ? {
-                    clues: historicalData.clues,
-                    gridSize: historicalData.gridSize
-                  } : undefined
+                  timestamp: historicalData.timestamp || 0
                 };
               }
 
@@ -119,32 +111,16 @@ export function useGetCrosswordHistory(
                     ]},
                     { "internalType": "uint256", "name": "activationTime", "type": "uint256" },
                     { "internalType": "uint256", "name": "endTime", "type": "uint256" },
-                    { "internalType": "enum CrosswordBoard.CrosswordState", "name": "state", "type": "uint8" },
-                    { "internalType": "string", "name": "name", "type": "string" },
-                    { "internalType": "string", "name": "gridData", "type": "string" }
+                    { "internalType": "enum CrosswordBoard.CrosswordState", "name": "state", "type": "uint8" }
                   ],
                   "stateMutability": "view",
                   "type": "function"
                 }],
                 functionName: 'getCrosswordDetails',
                 args: [id]
-              }) as any; // Use any to avoid ABI conflicts during development
+              }) as [string, bigint, bigint[], any[], bigint, bigint, number];
 
-              const [token, prizePool, , , activationTime, , , name, gridDataStr, sponsoredBy] = details as [string, bigint, any[], any[], bigint, bigint, number, string, string, string];
-
-              let gridData;
-              if (gridDataStr) {
-                try {
-                  const parsedGridData = JSON.parse(gridDataStr);
-                  gridData = {
-                    clues: parsedGridData.clues,
-                    gridSize: parsedGridData.gridSize
-                  };
-                } catch (e) {
-                  console.error(`Error parsing grid data for crossword ${id}:`, e);
-                  gridData = undefined;
-                }
-              }
+              const [token, prizePool, , , activationTime] = details;
 
               return {
                 crosswordId: id,
@@ -152,10 +128,7 @@ export function useGetCrosswordHistory(
                 prizePool: prizePool,
                 creator: '0x0000000000000000000000000000000000000000', // Creator not stored in details, but not critical
                 blockNumber: 0n, // Not needed for display
-                timestamp: Number(activationTime),
-                name: name || undefined,
-                sponsoredBy: sponsoredBy || undefined,
-                gridData
+                timestamp: Number(activationTime)
               };
             } catch (err) {
               console.error(`Error fetching details for crossword ${id}:`, err);
@@ -166,9 +139,7 @@ export function useGetCrosswordHistory(
                 prizePool: 0n,
                 creator: '0x0000000000000000000000000000000000000000',
                 blockNumber: 0n,
-                timestamp: Date.now() / 1000,
-                name: undefined,
-                gridData: undefined
+                timestamp: Date.now() / 1000
               };
             }
           });
@@ -226,23 +197,9 @@ export function useGetCrosswordHistory(
                 }],
                 functionName: 'getCrosswordDetails',
                 args: [id]
-              }) as any; // Use any to avoid ABI conflicts during development
+              }) as [string, bigint, bigint[], any[], bigint, bigint, number, string, string];
 
-              const [token, prizePool, , , activationTime, , , name, gridDataStr, sponsoredBy] = details as [string, bigint, any[], any[], bigint, bigint, number, string, string, string];
-
-              let gridData;
-              if (gridDataStr) {
-                try {
-                  const parsedGridData = JSON.parse(gridDataStr);
-                  gridData = {
-                    clues: parsedGridData.clues,
-                    gridSize: parsedGridData.gridSize
-                  };
-                } catch (e) {
-                  console.error(`Error parsing grid data for completed crossword ${id}:`, e);
-                  gridData = undefined;
-                }
-              }
+              const [token, prizePool, , , activationTime] = details;
 
               return {
                 crosswordId: id,
@@ -250,10 +207,7 @@ export function useGetCrosswordHistory(
                 prizePool: prizePool,
                 creator: '0x0000000000000000000000000000000000000000', // Creator not stored in details, but not critical
                 blockNumber: 0n, // Not needed for display
-                timestamp: Number(activationTime),
-                name: name || undefined,
-                sponsoredBy: sponsoredBy || undefined,
-                gridData
+                timestamp: Number(activationTime)
               };
             } catch (err) {
               console.error(`Error fetching details for completed crossword ${id}:`, err);
@@ -264,9 +218,7 @@ export function useGetCrosswordHistory(
                 prizePool: 0n,
                 creator: '0x0000000000000000000000000000000000000000',
                 blockNumber: 0n,
-                timestamp: Date.now() / 1000,
-                name: undefined,
-                gridData: undefined
+                timestamp: Date.now() / 1000
               };
             }
           });
@@ -288,9 +240,7 @@ export function useGetCrosswordHistory(
               prizePool: 0n,
               creator: '0x0000000000000000000000000000000000000000',
               blockNumber: 999999999999n,
-              timestamp: Date.now() / 1000,
-              name: undefined,
-              gridData: undefined
+              timestamp: Date.now() / 1000
             });
           }
 

@@ -58,6 +58,7 @@ export default function AdminPage() {
   const [winnerPercentages, setWinnerPercentages] = useState<string[]>(["10000"]); // Default: 100% to 1st winner
   const [endTime, setEndTime] = useState<string>("0"); // Unix timestamp, 0 means no deadline
   const [crosswordName, setCrosswordName] = useState<string>(""); // Name/Title of the crossword
+  const [sponsoredBy, setSponsoredBy] = useState<string>(""); // Organization/Entity that sponsored the crossword
 
   // Load default winner percentages from localStorage on mount
   useEffect(() => {
@@ -371,6 +372,7 @@ export default function AdminPage() {
             crosswordId as `0x${string}`,
             crosswordName || "Daily Crossword",
             dataString,
+            sponsoredBy || "",
             BigInt(maxWinners),
             amountInWei,
             winnerPercentagesBigInt,
@@ -382,6 +384,7 @@ export default function AdminPage() {
             crosswordId as `0x${string}`,
             crosswordName || "Daily Crossword",
             dataString,
+            sponsoredBy || "",
             BigInt(maxWinners),
             tokenAddress as `0x${string}`,
             amountInWei,
@@ -772,6 +775,22 @@ export default function AdminPage() {
                         </div>
                         <p className="mt-2 text-xs text-muted-foreground">
                           Give your crossword a name or title (defaults to "Daily Crossword" if left empty)
+                        </p>
+                      </div>
+
+                      <div>
+                        <Label className="font-bold">Sponsored By</Label>
+                        <div className="space-y-2">
+                          <Input
+                            type="text"
+                            placeholder="Enter sponsor name (e.g., Celo Foundation)"
+                            value={sponsoredBy}
+                            onChange={(e) => setSponsoredBy(e.target.value)}
+                            className="border-4 border-black font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+                          />
+                        </div>
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          Name of organization or entity sponsoring this crossword (optional)
                         </p>
                       </div>
 

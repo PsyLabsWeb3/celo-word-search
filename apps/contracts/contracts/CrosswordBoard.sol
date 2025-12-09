@@ -99,6 +99,7 @@ contract CrosswordBoard is Ownable, AccessControl, ReentrancyGuard, Pausable {
         uint256 claimedAmount; // Track claimed amount for native CELO
         string name; // Name/Title of the crossword
         string gridData; // JSON string of grid configuration
+        string sponsoredBy; // Organization/Entity that sponsored the crossword
     }
 
     // User profile structure
@@ -146,6 +147,10 @@ contract CrosswordBoard is Ownable, AccessControl, ReentrancyGuard, Pausable {
 
     // User profiles
     mapping(address => UserProfile) public userProfiles;
+
+    // Track completed crosswords
+    bytes32[] public completedCrosswords;
+    mapping(bytes32 => bool) public isCrosswordCompletedAdded;
 
     // Admin management
     mapping(address => bool) public isAdmin;
@@ -297,6 +302,7 @@ contract CrosswordBoard is Ownable, AccessControl, ReentrancyGuard, Pausable {
         bytes32 crosswordId,
         string memory name,
         string memory gridData,
+        string memory sponsoredBy,
         address token,
         uint256 prizePool,
         uint256[] memory winnerPercentages,
@@ -350,6 +356,7 @@ contract CrosswordBoard is Ownable, AccessControl, ReentrancyGuard, Pausable {
         crossword.claimedAmount = 0;
         crossword.name = name;
         crossword.gridData = gridData;
+        crossword.sponsoredBy = sponsoredBy;
 
         emit CrosswordCreated(crosswordId, token, prizePool, _msgSender());
         emit CrosswordActivated(crosswordId, block.timestamp);
@@ -366,6 +373,7 @@ contract CrosswordBoard is Ownable, AccessControl, ReentrancyGuard, Pausable {
         bytes32 crosswordId,
         string memory name,
         string memory gridData,
+        string memory sponsoredBy,
         uint256 prizePool,
         uint256[] memory winnerPercentages,
         uint256 endTime
@@ -414,7 +422,8 @@ contract CrosswordBoard is Ownable, AccessControl, ReentrancyGuard, Pausable {
         crossword.claimedAmount = 0;
         crossword.name = name;
         crossword.gridData = gridData;
-        
+        crossword.sponsoredBy = sponsoredBy;
+
         // SECURITY FIX: Initialize segregated CELO balance
         crosswordCeloBalance[crosswordId] = prizePool;
 
@@ -482,22 +491,22 @@ contract CrosswordBoard is Ownable, AccessControl, ReentrancyGuard, Pausable {
 
         // SECURITY FIX: Checks-Effects-Interactions pattern
         // 1. CHECKS - already done above
-        
+
         // 2. EFFECTS - Update all state BEFORE external calls
         uint256 rank = crossword.completions.length + 1;
-        
+
         // Create completion record
         CompletionRecord memory completion = CompletionRecord({
             user: user,
             timestamp: block.timestamp,
             rank: rank
         });
-        
+
         crossword.completions.push(completion);
-        
+
         // Update O(1) mapping for rank lookup
         userRankInCrossword[crosswordId][user] = rank;
-        
+
         // Mark as claimed BEFORE transfer to prevent reentrancy
         crossword.hasClaimed[user] = true;
 
@@ -512,6 +521,11 @@ contract CrosswordBoard is Ownable, AccessControl, ReentrancyGuard, Pausable {
         // If we reached the maximum number of winners, mark as complete
         if (crossword.completions.length >= crossword.winnerPercentages.length || crossword.completions.length >= maxWinners) {
             crossword.state = CrosswordState.Complete;
+            // Add to completed crosswords array if not already added
+            if (!isCrosswordCompletedAdded[crosswordId]) {
+                completedCrosswords.push(crosswordId);
+                isCrosswordCompletedAdded[crosswordId] = true;
+            }
         }
 
         // 3. INTERACTIONS - External calls LAST
@@ -617,6 +631,11 @@ contract CrosswordBoard is Ownable, AccessControl, ReentrancyGuard, Pausable {
         // If we reached the maximum number of winners, mark as complete
         if (crossword.completions.length >= crossword.winnerPercentages.length || crossword.completions.length >= maxWinners) {
             crossword.state = CrosswordState.Complete;
+            // Add to completed crosswords array if not already added
+            if (!isCrosswordCompletedAdded[crosswordId]) {
+                completedCrosswords.push(crosswordId);
+                isCrosswordCompletedAdded[crosswordId] = true;
+            }
         }
 
         // 3. INTERACTIONS - External calls LAST
@@ -737,6 +756,12 @@ contract CrosswordBoard is Ownable, AccessControl, ReentrancyGuard, Pausable {
         );
         require(crossword.activationTime > 0, "CrosswordBoard: crossword not activated");
 
+        // Ensure crossword is added to completed array if not already
+        if (!isCrosswordCompletedAdded[crosswordId]) {
+            completedCrosswords.push(crosswordId);
+            isCrosswordCompletedAdded[crosswordId] = true;
+        }
+
         uint256 remainingBalance;
         if (crossword.token == address(0)) {
             // SECURITY FIX: Use segregated balance for native CELO
@@ -839,7 +864,8 @@ contract CrosswordBoard is Ownable, AccessControl, ReentrancyGuard, Pausable {
             uint256 endTime,
             CrosswordState state,
             string memory name,
-            string memory gridData
+            string memory gridData,
+            string memory sponsoredBy
         )
     {
         Crossword storage crossword = crosswords[crosswordId];
@@ -852,7 +878,8 @@ contract CrosswordBoard is Ownable, AccessControl, ReentrancyGuard, Pausable {
             crossword.endTime,
             crossword.state,
             crossword.name,
-            crossword.gridData
+            crossword.gridData,
+            crossword.sponsoredBy
         );
     }
 
@@ -1166,6 +1193,7 @@ contract CrosswordBoard is Ownable, AccessControl, ReentrancyGuard, Pausable {
         bytes32 crosswordId,
         string memory name,
         string memory crosswordData,
+        string memory sponsoredBy,
         uint256 newMaxWinners,
         address token,
         uint256 prizePool,
@@ -1186,7 +1214,7 @@ contract CrosswordBoard is Ownable, AccessControl, ReentrancyGuard, Pausable {
         _setMaxWinners(newMaxWinners);
 
         // SECURITY FIX: Use internal function instead of external call
-        _createCrossword(crosswordId, name, crosswordData, token, prizePool, winnerPercentages, endTime);
+        _createCrossword(crosswordId, name, crosswordData, sponsoredBy, token, prizePool, winnerPercentages, endTime);
 
         emit CrosswordUpdated(crosswordId, crosswordData, _msgSender());
     }
@@ -1204,6 +1232,7 @@ contract CrosswordBoard is Ownable, AccessControl, ReentrancyGuard, Pausable {
         bytes32 crosswordId,
         string memory name,
         string memory crosswordData,
+        string memory sponsoredBy,
         uint256 newMaxWinners,
         uint256 prizePool,
         uint256[] memory winnerPercentages,
@@ -1224,7 +1253,7 @@ contract CrosswordBoard is Ownable, AccessControl, ReentrancyGuard, Pausable {
         _setMaxWinners(newMaxWinners);
 
         // Create the crossword with native CELO prize pool using the internal function
-        _createCrosswordWithNativeCELO(crosswordId, name, crosswordData, prizePool, winnerPercentages, endTime);
+        _createCrosswordWithNativeCELO(crosswordId, name, crosswordData, sponsoredBy, prizePool, winnerPercentages, endTime);
 
         emit CrosswordUpdated(crosswordId, crosswordData, _msgSender());
     }
@@ -1266,6 +1295,7 @@ contract CrosswordBoard is Ownable, AccessControl, ReentrancyGuard, Pausable {
         bytes32 crosswordId,
         string memory name,
         string memory gridData,
+        string memory sponsoredBy,
         address token,
         uint256 prizePool,
         uint256[] memory winnerPercentages,
@@ -1319,10 +1349,27 @@ contract CrosswordBoard is Ownable, AccessControl, ReentrancyGuard, Pausable {
         crossword.claimedAmount = 0;
         crossword.name = name;
         crossword.gridData = gridData;
+        crossword.sponsoredBy = sponsoredBy;
         crossword.claimedAmount = 0;
 
         emit CrosswordCreated(crosswordId, token, prizePool, _msgSender());
         emit CrosswordActivated(crosswordId, block.timestamp);
+    }
+
+    /**
+     * @dev Get all completed crossword IDs
+     * @return Array of completed crossword IDs
+     */
+    function getCompletedCrosswords() external view returns (bytes32[] memory) {
+        return completedCrosswords;
+    }
+
+    /**
+     * @dev Get the count of completed crosswords
+     * @return Number of completed crosswords
+     */
+    function getCompletedCrosswordsCount() external view returns (uint256) {
+        return completedCrosswords.length;
     }
 
     /**
@@ -1332,6 +1379,7 @@ contract CrosswordBoard is Ownable, AccessControl, ReentrancyGuard, Pausable {
         bytes32 crosswordId,
         string memory name,
         string memory gridData,
+        string memory sponsoredBy,
         uint256 prizePool,
         uint256[] memory winnerPercentages,
         uint256 endTime
@@ -1378,7 +1426,10 @@ contract CrosswordBoard is Ownable, AccessControl, ReentrancyGuard, Pausable {
         crossword.activationTime = block.timestamp; // Set activation time when funded
         crossword.createdAt = block.timestamp;
         crossword.claimedAmount = 0;
-        
+        crossword.name = name;  // Set the name from the parameter
+        crossword.gridData = gridData;  // Also set the grid data
+        crossword.sponsoredBy = sponsoredBy;  // Set the sponsoredBy field
+
         // SECURITY FIX: Initialize segregated CELO balance
         crosswordCeloBalance[crosswordId] = prizePool;
 

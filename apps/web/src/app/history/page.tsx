@@ -72,6 +72,16 @@ export default function HistoryPage() {
                     token={crossword.token}
                     prizePool={crossword.prizePool}
                     timestamp={crossword.timestamp}
+                    initialGridData={crossword.gridData ? {
+                      ...crossword.gridData,
+                      name: crossword.name,
+                      sponsoredBy: crossword.sponsoredBy
+                    } : crossword.name || crossword.sponsoredBy ? {
+                      clues: [],
+                      gridSize: { rows: 0, cols: 0 },
+                      name: crossword.name,
+                      sponsoredBy: crossword.sponsoredBy
+                    } : undefined}
                 />
                 ))}
             </div>
