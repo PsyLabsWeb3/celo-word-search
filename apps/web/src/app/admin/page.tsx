@@ -25,6 +25,7 @@ interface Clue {
 interface CrosswordData {
   gridSize: { rows: number; cols: number }
   clues: Clue[]
+  isTest?: boolean
 }
 
 export default function AdminPage() {
@@ -59,6 +60,7 @@ export default function AdminPage() {
   const [endTime, setEndTime] = useState<string>("0"); // Unix timestamp, 0 means no deadline
   const [crosswordName, setCrosswordName] = useState<string>(""); // Name/Title of the crossword
   const [sponsoredBy, setSponsoredBy] = useState<string>(""); // Organization/Entity that sponsored the crossword
+  const [isTestMode, setIsTestMode] = useState(false); // Flag to mark crossword as test (hidden from history)
 
   // Load default winner percentages from localStorage on mount
   useEffect(() => {
@@ -285,6 +287,7 @@ export default function AdminPage() {
     const crosswordData: CrosswordData = {
       gridSize,
       clues: clues.filter((c) => c.answer && c.clue),
+      isTest: isTestMode,
     }
 
     // Validate we have at least one clue
@@ -792,6 +795,19 @@ export default function AdminPage() {
                         <p className="mt-2 text-xs text-muted-foreground">
                           Name of organization or entity sponsoring this crossword (optional)
                         </p>
+                      </div>
+
+                      <div className="flex items-center space-x-2 border-4 border-black p-3 bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                        <input
+                          type="checkbox"
+                          id="isTestMode"
+                          checked={isTestMode}
+                          onChange={(e) => setIsTestMode(e.target.checked)}
+                          className="w-5 h-5 border-2 border-black rounded focus:ring-primary text-primary"
+                        />
+                        <Label htmlFor="isTestMode" className="font-bold cursor-pointer">
+                          Test Mode (Hide from History)
+                        </Label>
                       </div>
 
                       <div>

@@ -12,7 +12,7 @@ interface CrosswordHistoryItem {
   timestamp?: number;
   name?: string;
   sponsoredBy?: string;
-  gridData?: { clues: any[]; gridSize: { rows: number; cols: number } };
+  gridData?: { clues: any[]; gridSize: { rows: number; cols: number }; isTest?: boolean };
 }
 
 interface UseGetCrosswordHistoryReturn {
@@ -121,7 +121,8 @@ export function useGetCrosswordHistory(
                     { "internalType": "uint256", "name": "endTime", "type": "uint256" },
                     { "internalType": "enum CrosswordBoard.CrosswordState", "name": "state", "type": "uint8" },
                     { "internalType": "string", "name": "name", "type": "string" },
-                    { "internalType": "string", "name": "gridData", "type": "string" }
+                    { "internalType": "string", "name": "gridData", "type": "string" },
+                    { "internalType": "string", "name": "sponsoredBy", "type": "string" }
                   ],
                   "stateMutability": "view",
                   "type": "function"
@@ -138,7 +139,8 @@ export function useGetCrosswordHistory(
                   const parsedGridData = JSON.parse(gridDataStr);
                   gridData = {
                     clues: parsedGridData.clues,
-                    gridSize: parsedGridData.gridSize
+                    gridSize: parsedGridData.gridSize,
+                    isTest: parsedGridData.isTest
                   };
                 } catch (e) {
                   console.error(`Error parsing grid data for crossword ${id}:`, e);
@@ -196,8 +198,6 @@ export function useGetCrosswordHistory(
             functionName: 'getCompletedCrosswords'
           }) as `0x${string}`[];
 
-          console.log('Completed crosswords from contract:', completedCrosswords);
-
           const crosswordPromises = completedCrosswords.map(async (id) => {
             try {
               // For completed crosswords, fetch details from contract
@@ -219,7 +219,8 @@ export function useGetCrosswordHistory(
                     { "internalType": "uint256", "name": "endTime", "type": "uint256" },
                     { "internalType": "enum CrosswordBoard.CrosswordState", "name": "state", "type": "uint8" },
                     { "internalType": "string", "name": "name", "type": "string" },
-                    { "internalType": "string", "name": "gridData", "type": "string" }
+                    { "internalType": "string", "name": "gridData", "type": "string" },
+                    { "internalType": "string", "name": "sponsoredBy", "type": "string" }
                   ],
                   "stateMutability": "view",
                   "type": "function"
@@ -236,7 +237,8 @@ export function useGetCrosswordHistory(
                   const parsedGridData = JSON.parse(gridDataStr);
                   gridData = {
                     clues: parsedGridData.clues,
-                    gridSize: parsedGridData.gridSize
+                    gridSize: parsedGridData.gridSize,
+                    isTest: parsedGridData.isTest
                   };
                 } catch (e) {
                   console.error(`Error parsing grid data for completed crossword ${id}:`, e);
@@ -273,7 +275,6 @@ export function useGetCrosswordHistory(
 
           const crosswords = await Promise.all(crosswordPromises);
           setCrosswords(crosswords);
-          console.log('Completed crosswords loaded:', crosswords);
         } catch (err) {
           console.error('Error fetching completed crosswords:', err);
           // If fetching completed crosswords fails, fall back to old behavior

@@ -10,6 +10,8 @@ interface CrosswordHistoryItem {
   creator: string;
   blockNumber: bigint;
   timestamp?: number;
+  name?: string;
+  sponsoredBy?: string;
 }
 
 interface CrosswordHistoryProviderProps {
@@ -92,16 +94,19 @@ const CrosswordHistoryProvider: React.FC<CrosswordHistoryProviderProps> = ({
                     ]},
                     { "internalType": "uint256", "name": "activationTime", "type": "uint256" },
                     { "internalType": "uint256", "name": "endTime", "type": "uint256" },
-                    { "internalType": "enum CrosswordBoard.CrosswordState", "name": "state", "type": "uint8" }
+                    { "internalType": "enum CrosswordBoard.CrosswordState", "name": "state", "type": "uint8" },
+                    { "internalType": "string", "name": "name", "type": "string" },
+                    { "internalType": "string", "name": "gridData", "type": "string" },
+                    { "internalType": "string", "name": "sponsoredBy", "type": "string" }
                   ],
                   "stateMutability": "view",
                   "type": "function"
                 }],
                 functionName: 'getCrosswordDetails',
                 args: [id]
-              }) as [string, bigint, bigint[], any[], bigint, bigint, number];
+              }) as [string, bigint, bigint[], any[], bigint, bigint, number, string, string, string];
 
-              const [token, prizePool, , , activationTime] = details;
+              const [token, prizePool, , , activationTime, , , name, , sponsoredBy] = details;
 
               return {
                 crosswordId: id,
@@ -109,7 +114,9 @@ const CrosswordHistoryProvider: React.FC<CrosswordHistoryProviderProps> = ({
                 prizePool: prizePool,
                 creator: '0x0000000000000000000000000000000000000000', // Creator not stored in details, but not critical
                 blockNumber: 0n, // Not needed for display
-                timestamp: Number(activationTime)
+                timestamp: Number(activationTime),
+                name: name,
+                sponsoredBy: sponsoredBy
               };
             } catch (err) {
               console.error(`Error fetching details for crossword ${id}:`, err);
@@ -177,16 +184,17 @@ const CrosswordHistoryProvider: React.FC<CrosswordHistoryProviderProps> = ({
                     { "internalType": "uint256", "name": "endTime", "type": "uint256" },
                     { "internalType": "enum CrosswordBoard.CrosswordState", "name": "state", "type": "uint8" },
                     { "internalType": "string", "name": "name", "type": "string" },
-                    { "internalType": "string", "name": "gridData", "type": "string" }
+                    { "internalType": "string", "name": "gridData", "type": "string" },
+                    { "internalType": "string", "name": "sponsoredBy", "type": "string" }
                   ],
                   "stateMutability": "view",
                   "type": "function"
                 }],
                 functionName: 'getCrosswordDetails',
                 args: [id]
-              }) as [string, bigint, bigint[], any[], bigint, bigint, number, string, string];
+              }) as [string, bigint, bigint[], any[], bigint, bigint, number, string, string, string];
 
-              const [token, prizePool, , , activationTime] = details;
+              const [token, prizePool, , , activationTime, , , name, , sponsoredBy] = details;
 
               return {
                 crosswordId: id,
@@ -194,7 +202,9 @@ const CrosswordHistoryProvider: React.FC<CrosswordHistoryProviderProps> = ({
                 prizePool: prizePool,
                 creator: '0x0000000000000000000000000000000000000000', // Creator not stored in details, but not critical
                 blockNumber: 0n, // Not needed for display
-                timestamp: Number(activationTime)
+                timestamp: Number(activationTime),
+                name: name,
+                sponsoredBy: sponsoredBy
               };
             } catch (err) {
               console.error(`Error fetching details for completed crossword ${id}:`, err);

@@ -24,13 +24,10 @@ export function LegacyCrosswordHistory() {
           name: data.name,
           sponsoredBy: data.sponsoredBy
       }
-
-
-
   }).filter((c): c is NonNullable<typeof c> => c !== null);
 
   // Sort by timestamp descending
-  const sortedCrosswords = crosswords.sort((a, b) => 
+  const sortedCrosswords = crosswords.sort((a, b) =>
     (b.timestamp || 0) - (a.timestamp || 0)
   );
 
@@ -47,10 +44,9 @@ export function LegacyCrosswordHistory() {
           initialSponsoredBy={crossword.sponsoredBy}
           initialCompletions={crossword.completions}
           initialGridData={{ clues: crossword.clues, gridSize: crossword.gridSize, name: crossword.name, sponsoredBy: crossword.sponsoredBy }}
-
           initialWinnerCount={crossword.winnerCount}
+          isLegacy={true} // Indicate this is a legacy crossword
         />
-
       ))}
     </div>
   )

@@ -3,6 +3,14 @@ import { usePublicClient, useChainId } from 'wagmi';
 import { CONTRACTS } from '@/lib/contracts';
 import { getHistoricalCrosswordData } from '@/lib/historical-crosswords';
 
+interface CrosswordCompletion {
+  user: `0x${string}`;
+  timestamp: number;
+  rank: number;
+  displayName?: string;
+  pfpUrl?: string;
+}
+
 interface CrosswordHistoryItem {
   crosswordId: `0x${string}`;
   token: string;
@@ -10,6 +18,7 @@ interface CrosswordHistoryItem {
   creator: string;
   blockNumber: bigint;
   timestamp?: number;
+  completions?: CrosswordCompletion[]; // Add this line
 }
 
 interface UseGetCrosswordHistoryReturn {
@@ -90,7 +99,8 @@ export function useGetCrosswordHistory(
                   prizePool: BigInt(historicalData.prizePool || '0'),
                   creator: '0x0000000000000000000000000000000000000000',
                   blockNumber: 0n,
-                  timestamp: historicalData.timestamp || 0
+                  timestamp: historicalData.timestamp || 0,
+                  completions: historicalData.completions || [], // Add completions here
                 };
               }
 
@@ -167,7 +177,6 @@ export function useGetCrosswordHistory(
             functionName: 'getCompletedCrosswords'
           }) as `0x${string}`[];
 
-          console.log('Completed crosswords from contract:', completedCrosswords);
 
           const crosswordPromises = completedCrosswords.map(async (id) => {
             try {
@@ -225,7 +234,6 @@ export function useGetCrosswordHistory(
 
           const crosswords = await Promise.all(crosswordPromises);
           setCrosswords(crosswords);
-          console.log('Completed crosswords loaded:', crosswords);
         } catch (err) {
           console.error('Error fetching completed crosswords:', err);
           // If fetching completed crosswords fails, fall back to old behavior

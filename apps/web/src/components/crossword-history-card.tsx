@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Trophy, ChevronDown, ChevronUp, Calendar, Coins } from "lucide-react"
 import { useGetCrosswordDetailsById, useGetCrosswordCompletions } from "@/hooks/useContract"
 import FarcasterUserDisplay from "@/components/farcaster-user-display"
+import FarcasterUserDisplayLegacy from "@/components/farcaster-user-display-legacy"
 import { useGetCrosswordGridData } from "@/hooks/useGetCrosswordGridData"
 import ReadOnlyCrosswordGrid from "@/components/readonly-crossword-grid"
 import { useCrossword } from "@/contexts/crossword-context"
@@ -21,7 +22,8 @@ export function CrosswordHistoryCard({
   initialGridData,
   initialName,
   initialSponsoredBy,
-  initialWinnerCount
+  initialWinnerCount,
+  isLegacy = false
 }: {
   crosswordId: `0x${string}`
   token: string
@@ -32,6 +34,7 @@ export function CrosswordHistoryCard({
   initialName?: string
   initialSponsoredBy?: string
   initialWinnerCount?: number
+  isLegacy?: boolean
 }) {
   const [isExpanded, setIsExpanded] = useState(false)
   // Use initial data if provided, otherwise fetch
@@ -264,15 +267,27 @@ export function CrosswordHistoryCard({
 
                             {/* User */}
                             <div className="flex-1 min-w-0 px-2 text-sm overflow-hidden">
-                              <FarcasterUserDisplay
-                                address={userAddress}
-                                fallbackUsername={
-                                  userAddress.substring(0, 6) +
-                                  ".." +
-                                  userAddress.substring(userAddress.length - 4)
-                                }
-                                size="sm"
-                              />
+                              {isLegacy ? (
+                                <FarcasterUserDisplayLegacy
+                                  address={userAddress}
+                                  fallbackUsername={
+                                    userAddress.substring(0, 6) +
+                                    ".." +
+                                    userAddress.substring(userAddress.length - 4)
+                                  }
+                                  size="sm"
+                                />
+                              ) : (
+                                <FarcasterUserDisplay
+                                  address={userAddress}
+                                  fallbackUsername={
+                                    userAddress.substring(0, 6) +
+                                    ".." +
+                                    userAddress.substring(userAddress.length - 4)
+                                  }
+                                  size="sm"
+                                />
+                              )}
                             </div>
                           </div>
                         )

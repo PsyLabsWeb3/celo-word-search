@@ -106,8 +106,10 @@ export default function LeaderboardPage() {
 
   // Helper functions to handle both tuple-style and object-style completion data
   const getCompletionTimestamp = useCallback((completion: any): bigint => {
+    if (!completion) return 0n;
     // Handle both named properties and array indices
-    return completion.completionTimestamp ?? completion[1];
+    const timestamp = completion.completionTimestamp ?? completion[1];
+    return timestamp ?? 0n;
   }, []); // Empty dependency array since the function doesn't change
 
   const getCompletionUser = useCallback((completion: any): string => {

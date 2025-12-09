@@ -40,7 +40,11 @@ export default function HistoryPage() {
   })
 
   // Filter out legacy IDs to avoid duplicates (since useGetCrosswordHistory defaults to returning current crossword)
-  const dynamicCrosswords = rawDynamicCrosswords.filter(c => !legacyIds.includes(c.crosswordId))
+  // Also filter out test crosswords
+  const dynamicCrosswords = rawDynamicCrosswords.filter(c => 
+    !legacyIds.includes(c.crosswordId) && 
+    !c.gridData?.isTest
+  )
 
   return (
     <main className="min-h-screen p-4 bg-background sm:p-6 md:p-8">
@@ -72,6 +76,8 @@ export default function HistoryPage() {
                     token={crossword.token}
                     prizePool={crossword.prizePool}
                     timestamp={crossword.timestamp}
+                    initialName={crossword.name}
+                    initialSponsoredBy={crossword.sponsoredBy}
                     initialGridData={crossword.gridData ? {
                       ...crossword.gridData,
                       name: crossword.name,
