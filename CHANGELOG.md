@@ -32,6 +32,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated contract address in frontend configuration to new Sepolia deployment: `0xe8a2c7df99bda594db3ab3431d7f25ba3d7e2e82`
 - Fixed ABI encoding parameter mismatch errors by ensuring parameter counts match contract functions
 
+## [1.1.1] - 2025-12-09
+
+### Refactored
+- Updated ABI management to import from JSON files instead of inline definitions in useContract.ts
+- This allows for easier synchronization between contract deployments and frontend
+- Contract configuration now uses dynamic ABI loading from artifact files
+- Ready for mainnet deployment while maintaining current Sepolia configuration as active network
+- Ensures ABI consistency between contract functions and frontend hooks
+- Updated CrosswordBoard.json ABI with latest contract functions including sponsoredBy
+- Configuration supports both testnet and mainnet deployments seamlessly
+
 ### Fixed
 - Fixed issue where ABI encoding expected 7 parameters but 8 were provided
 - Corrected parameter counts in all contract function calls
