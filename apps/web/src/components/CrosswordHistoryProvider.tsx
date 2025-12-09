@@ -148,7 +148,6 @@ const CrosswordHistoryProvider: React.FC<CrosswordHistoryProviderProps> = ({
             functionName: 'getCompletedCrosswords'
           }) as `0x${string}`[];
 
-          console.log('Completed crosswords from contract:', completedCrosswords);
 
           if (completedCrosswords.length === 0) {
             console.log('No completed crosswords found, setting empty array');
@@ -213,7 +212,6 @@ const CrosswordHistoryProvider: React.FC<CrosswordHistoryProviderProps> = ({
 
           const crosswords = await Promise.all(crosswordPromises);
           setCrosswords(crosswords);
-          console.log('Completed crosswords loaded:', crosswords);
         } catch (err) {
           console.error('Error fetching completed crosswords:', err);
           // If fetching completed crosswords fails, set empty array instead of default
