@@ -8,7 +8,11 @@ import Link from "next/link"
 import { createPublicClient, http, parseAbiItem, formatEther } from "viem"
 import { celo } from "viem/chains"
 
-const CONTRACT_ADDRESS = "0xdC2a624dFFC1f6343F62A02001906252e3cA8fD2"
+// Legacy contract address (to be replaced with actual legacy contract if known)
+const LEGACY_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_LEGACY_CONTRACT_ADDRESS || "0xdC2a624dFFC1f6343F62A02001906252e3cA8fD2"
+// New contract address (will be dynamically configurable)
+const NEW_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_NEW_CONTRACT_ADDRESS || ""
+
 const CROSSWORD_1_ID = "0xdb4764000c54b9390a601e96783d76e3e3e9d06329637cdd119045bf32624e32"
 const CROSSWORD_2_ID = "0x28d1ba71976f4f4fa7344c7025215739bd3f6aa515d13e1fdfbe5245ea419ce2"
 
@@ -26,6 +30,7 @@ interface TransactionStats {
         user: string
         timestamp: Date
         amount?: string
+        contractAddress: string
     }>
     isLoading: boolean
     error: string | null
@@ -53,39 +58,76 @@ export default function StatsPage() {
                     transport: http("https://forno.celo.org"),
                 })
 
-                // Fetch CrosswordCompleted events
-                const completedEvents = await client.getLogs({
-                    address: CONTRACT_ADDRESS,
-                    event: parseAbiItem("event CrosswordCompleted(bytes32 indexed crosswordId, address indexed user, uint256 timestamp, uint256 durationMs)"),
-                    fromBlock: 52500000n,
-                    toBlock: "latest",
-                })
+                // Addresses to fetch data from (legacy + new, removing duplicates and empty addresses)
+                const allAddresses = [
+                    LEGACY_CONTRACT_ADDRESS,
+                    NEW_CONTRACT_ADDRESS
+                ].filter(address => address && address.trim() !== '');
 
-                // Fetch PrizeDistributed events
-                const prizeEvents = await client.getLogs({
-                    address: CONTRACT_ADDRESS,
-                    event: parseAbiItem("event PrizeDistributed(bytes32 indexed crosswordId, address indexed winner, uint256 amount, uint256 rank)"),
-                    fromBlock: 52500000n,
-                    toBlock: "latest",
-                })
+                const contractAddresses = Array.from(new Set(allAddresses));
 
-                // Calculate stats
-                const crossword1 = completedEvents.filter(log => log.args.crosswordId === CROSSWORD_1_ID)
-                const crossword2 = completedEvents.filter(log => log.args.crosswordId === CROSSWORD_2_ID)
-                const testCrosswords = completedEvents.filter(log =>
+                // Fetch events from all contracts
+                let allCompletedEvents: any[] = [];
+                let allPrizeEvents: any[] = [];
+
+                // Fetch events from each contract address
+                for (const address of contractAddresses) {
+                    try {
+                        console.log(`Fetching data from contract: ${address}`);
+
+                        // Fetch CrosswordCompleted events from this contract
+                        const completedEvents = await client.getLogs({
+                            address: address as `0x${string}`,
+                            event: parseAbiItem("event CrosswordCompleted(bytes32 indexed crosswordId, address indexed user, uint256 timestamp, uint256 durationMs)"),
+                            fromBlock: 52500000n, // Use known start block for the contract
+                            toBlock: "latest",
+                        })
+
+                        console.log(`Found ${completedEvents.length} completion events from contract ${address}`);
+
+                        // Fetch PrizeDistributed events from this contract
+                        const prizeEvents = await client.getLogs({
+                            address: address as `0x${string}`,
+                            event: parseAbiItem("event PrizeDistributed(bytes32 indexed crosswordId, address indexed winner, uint256 amount, uint256 rank)"),
+                            fromBlock: 52500000n, // Use known start block for the contract
+                            toBlock: "latest",
+                        })
+
+                        console.log(`Found ${prizeEvents.length} prize events from contract ${address}`);
+
+                        // Add contract address to each event for tracking purposes
+                        allCompletedEvents = allCompletedEvents.concat(
+                            completedEvents.map(event => ({ ...event, contractAddress: address }))
+                        );
+                        allPrizeEvents = allPrizeEvents.concat(
+                            prizeEvents.map(event => ({ ...event, contractAddress: address }))
+                        );
+                    } catch (contractError) {
+                        console.error(`Error fetching data from contract ${address}:`, contractError);
+                        // Continue with other contracts even if one fails
+                    }
+                }
+
+                console.log(`Total completion events: ${allCompletedEvents.length}`);
+                console.log(`Total prize events: ${allPrizeEvents.length}`);
+
+                // Calculate stats from combined events
+                const crossword1 = allCompletedEvents.filter(log => log.args.crosswordId === CROSSWORD_1_ID)
+                const crossword2 = allCompletedEvents.filter(log => log.args.crosswordId === CROSSWORD_2_ID)
+                const testCrosswords = allCompletedEvents.filter(log =>
                     log.args.crosswordId !== CROSSWORD_1_ID && log.args.crosswordId !== CROSSWORD_2_ID
                 )
 
-                const uniqueUsersSet = new Set(completedEvents.map(log => log.args.user))
+                const uniqueUsersSet = new Set(allCompletedEvents.map(log => log.args.user))
 
-                const totalCelo = prizeEvents.reduce((sum, log) => {
+                const totalCelo = allPrizeEvents.reduce((sum, log) => {
                     return sum + Number(formatEther(log.args.amount || 0n))
                 }, 0)
 
-                // Get recent transactions (last 10)
+                // Get recent transactions (last 10) from all contracts combined
                 const allEvents = [
-                    ...completedEvents.map(e => ({ ...e, type: "Completion" })),
-                    ...prizeEvents.map(e => ({ ...e, type: "Prize" }))
+                    ...allCompletedEvents.map(e => ({ ...e, type: "Completion" })),
+                    ...allPrizeEvents.map(e => ({ ...e, type: "Prize" }))
                 ].sort((a, b) => Number(b.blockNumber) - Number(a.blockNumber))
 
                 const recentTxs = await Promise.all(
@@ -100,14 +142,15 @@ export default function StatsPage() {
                             timestamp: new Date(Number(block.timestamp) * 1000),
                             amount: event.type === "Prize"
                                 ? formatEther((event.args as any).amount || 0n)
-                                : undefined
+                                : undefined,
+                            contractAddress: event.contractAddress,
                         }
                     })
                 )
 
                 setStats({
-                    totalCompletions: completedEvents.length,
-                    totalPrizeDistributions: prizeEvents.length,
+                    totalCompletions: allCompletedEvents.length,
+                    totalPrizeDistributions: allPrizeEvents.length,
                     totalCeloDistributed: totalCelo,
                     crossword1Completions: crossword1.length,
                     crossword2Completions: crossword2.length,
@@ -156,7 +199,7 @@ export default function StatsPage() {
                         </Button>
                     </Link>
                     <a
-                        href={`https://celoscan.io/address/${CONTRACT_ADDRESS}`}
+                        href={`https://celoscan.io/address/${NEW_CONTRACT_ADDRESS}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="w-full sm:w-auto"
@@ -175,10 +218,10 @@ export default function StatsPage() {
                         📊 Live Stats
                     </h1>
                     <p className="text-sm sm:text-lg text-muted-foreground font-medium px-2">
-                        Real-time blockchain data from Celo Mainnet
+                        Combined blockchain data from Celo Mainnet
                     </p>
                     <p className="text-xs sm:text-sm text-muted-foreground mt-2 font-mono break-all px-4">
-                        {CONTRACT_ADDRESS.slice(0, 8)}...{CONTRACT_ADDRESS.slice(-6)}
+                        0x...{NEW_CONTRACT_ADDRESS.slice(-6)} (all-time combined)
                     </p>
                 </div>
 
@@ -244,15 +287,19 @@ export default function StatsPage() {
                         </div>
                     </Card>
 
-                    {/* Contract Age */}
+                    {/* Average Prize Amount */}
                     <Card className="border-4 border-black bg-gradient-to-br from-pink-400 to-pink-500 p-3 sm:p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] sm:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
                         <div className="flex flex-col sm:flex-row items-start sm:items-center sm:justify-between gap-2">
                             <div className="flex-1 min-w-0">
-                                <p className="text-[10px] sm:text-xs font-bold text-pink-900 uppercase tracking-wide">Age</p>
-                                <p className="text-2xl sm:text-4xl lg:text-5xl font-black text-white mt-1">7</p>
-                                <p className="text-[10px] sm:text-xs text-pink-100 mt-0.5 sm:mt-1">Days active</p>
+                                <p className="text-[10px] sm:text-xs font-bold text-pink-900 uppercase tracking-wide">Avg Prize</p>
+                                <p className="text-2xl sm:text-4xl lg:text-5xl font-black text-white mt-1">
+                                    {stats.totalPrizeDistributions > 0
+                                        ? (stats.totalCeloDistributed / stats.totalPrizeDistributions).toFixed(2)
+                                        : '0.00'}
+                                </p>
+                                <p className="text-[10px] sm:text-xs text-pink-100 mt-0.5 sm:mt-1">CELO per payout</p>
                             </div>
-                            <Clock className="w-8 h-8 sm:w-12 sm:h-12 lg:w-14 lg:h-14 text-pink-200 shrink-0" />
+                            <Coins className="w-8 h-8 sm:w-12 sm:h-12 lg:w-14 lg:h-14 text-pink-200 shrink-0" />
                         </div>
                     </Card>
                 </div>
@@ -341,7 +388,7 @@ export default function StatsPage() {
                                                 {tx.type}
                                             </span>
                                         </td>
-                                        <td className="py-3 px-2 text-sm">
+                                        <td className="py-3 px-2 text-sm font-mono">
                                             0x{tx.user.slice(2, 8)}...{tx.user.slice(-6)}
                                         </td>
                                         <td className="py-3 px-2 text-sm text-gray-600">
