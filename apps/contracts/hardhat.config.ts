@@ -16,6 +16,9 @@ const config: HardhatUserConfig = {
     },
   },
   networks: {
+    hardhat: {
+      allowUnlimitedContractSize: true,
+    },
     // Celo Mainnet
     celo: {
       url: process.env.CELO_MAINNET_RPC || "https://forno.celo.org",
