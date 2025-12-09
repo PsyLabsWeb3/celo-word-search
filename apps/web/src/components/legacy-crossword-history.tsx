@@ -23,7 +23,7 @@ export function LegacyCrosswordHistory() {
         <div className="space-y-4">
             <div className="py-4 text-center">
                  <div className="inline-block w-8 h-8 border-t-2 border-b-2 rounded-full animate-spin border-primary"></div>
-                 <p className="mt-2 text-sm font-bold">Loading legacy crosswords...</p>
+                 <p className="mt-2 text-sm font-bold">Loading ...</p>
             </div>
         </div>
     )

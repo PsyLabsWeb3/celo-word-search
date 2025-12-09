@@ -57,6 +57,7 @@ export default function AdminPage() {
   const [defaultWinnerPercentages, setDefaultWinnerPercentages] = useState<string[]>(["10000"]);
   const [winnerPercentages, setWinnerPercentages] = useState<string[]>(["10000"]); // Default: 100% to 1st winner
   const [endTime, setEndTime] = useState<string>("0"); // Unix timestamp, 0 means no deadline
+  const [crosswordName, setCrosswordName] = useState<string>(""); // Name/Title of the crossword
 
   // Load default winner percentages from localStorage on mount
   useEffect(() => {
@@ -368,6 +369,7 @@ export default function AdminPage() {
           // Use native CELO function
           createCrosswordWithNativeCELOPrizePool([
             crosswordId as `0x${string}`,
+            crosswordName || "Daily Crossword",
             dataString,
             BigInt(maxWinners),
             amountInWei,
@@ -378,6 +380,7 @@ export default function AdminPage() {
           // Use ERC-20 token function
           createCrosswordWithPrizePool([
             crosswordId as `0x${string}`,
+            crosswordName || "Daily Crossword",
             dataString,
             BigInt(maxWinners),
             tokenAddress as `0x${string}`,
@@ -756,6 +759,22 @@ export default function AdminPage() {
                   <Card className="border-4 border-black bg-popover p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] h-full">
                     <h3 className="mb-3 text-lg font-black uppercase text-foreground">Prize Configuration</h3>
                     <div className="space-y-4">
+                      <div>
+                        <Label className="font-bold">Crossword Name</Label>
+                        <div className="space-y-2">
+                          <Input
+                            type="text"
+                            placeholder="Enter crossword name (e.g., Daily Crossword)"
+                            value={crosswordName}
+                            onChange={(e) => setCrosswordName(e.target.value)}
+                            className="border-4 border-black font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+                          />
+                        </div>
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          Give your crossword a name or title (defaults to "Daily Crossword" if left empty)
+                        </p>
+                      </div>
+
                       <div>
                         <Label className="font-bold">Maximum Winners</Label>
                         <div className="space-y-2">
