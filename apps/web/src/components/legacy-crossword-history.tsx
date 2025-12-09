@@ -1,7 +1,7 @@
 "use client"
 
-import { useGetCrosswordHistory } from "@/hooks/useGetCrosswordHistory"
 import { CrosswordHistoryCard } from "@/components/crossword-history-card"
+import { getHistoricalCrosswordData } from "@/lib/historical-crosswords"
 
 export function LegacyCrosswordHistory() {
   const legacyIds: `0x${string}`[] = [
@@ -9,25 +9,29 @@ export function LegacyCrosswordHistory() {
     '0xdb4764000c54b9390a601e96783d76e3e3e9d06329637cdd119045bf32624e32'  // First historical
   ];
 
-  const { crosswords, isLoading } = useGetCrosswordHistory({
-    crosswordIds: legacyIds
-  })
+  const crosswords = legacyIds.map(id => {
+      const data = getHistoricalCrosswordData(id);
+      if (!data) return null;
+      return {
+          crosswordId: id,
+          token: data.token || "0x0000000000000000000000000000000000000000",
+          prizePool: BigInt(data.prizePool || "0"),
+          timestamp: data.timestamp,
+          completions: data.completions,
+          gridSize: data.gridSize,
+          clues: data.clues,
+          winnerCount: data.winnerCount,
+          name: data.name
+      }
+
+
+
+  }).filter((c): c is NonNullable<typeof c> => c !== null);
 
   // Sort by timestamp descending
-  const sortedCrosswords = [...crosswords].sort((a, b) => 
+  const sortedCrosswords = crosswords.sort((a, b) => 
     (b.timestamp || 0) - (a.timestamp || 0)
   );
-
-  if (isLoading && crosswords.length === 0) {
-    return (
-        <div className="space-y-4">
-            <div className="py-4 text-center">
-                 <div className="inline-block w-8 h-8 border-t-2 border-b-2 rounded-full animate-spin border-primary"></div>
-                 <p className="mt-2 text-sm font-bold">Loading ...</p>
-            </div>
-        </div>
-    )
-  }
 
   return (
     <div className="space-y-4">
@@ -38,7 +42,12 @@ export function LegacyCrosswordHistory() {
           token={crossword.token}
           prizePool={crossword.prizePool}
           timestamp={crossword.timestamp}
+          initialCompletions={crossword.completions}
+          initialGridData={{ clues: crossword.clues, gridSize: crossword.gridSize, name: crossword.name }}
+
+          initialWinnerCount={crossword.winnerCount}
         />
+
       ))}
     </div>
   )

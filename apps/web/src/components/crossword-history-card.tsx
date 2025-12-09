@@ -16,25 +16,35 @@ export function CrosswordHistoryCard({
   crosswordId,
   token,
   prizePool,
-  timestamp
+  timestamp,
+  initialCompletions,
+  initialGridData,
+  initialWinnerCount
 }: {
   crosswordId: `0x${string}`
   token: string
   prizePool: bigint
   timestamp?: number
+  initialCompletions?: any[]
+  initialGridData?: { clues: any[]; gridSize: { rows: number; cols: number }; name?: string }
+
+  initialWinnerCount?: number
 }) {
   const [isExpanded, setIsExpanded] = useState(false)
-  const { data: details, isLoading: isDetailsLoading } = useGetCrosswordDetailsById(isExpanded ? crosswordId : undefined)
-  const { data: completionsData, isLoading: isCompletionsLoading } = useGetCrosswordCompletions(isExpanded ? crosswordId : `0x0000000000000000000000000000000000000000000000000000000000000000`)
-  // Always load grid data for preview
-  const { gridData, isLoading: isGridLoading } = useGetCrosswordGridData(crosswordId)
+  // Use initial data if provided, otherwise fetch
+  const shouldFetch = isExpanded && !initialCompletions
+  
+  const { data: details, isLoading: isDetailsLoading } = useGetCrosswordDetailsById(shouldFetch ? crosswordId : undefined)
+  const { data: completionsData, isLoading: isCompletionsLoading } = useGetCrosswordCompletions(shouldFetch ? crosswordId : `0x0000000000000000000000000000000000000000000000000000000000000000`)
+  // Always load grid data for preview (unless provided)
+  const { gridData, isLoading: isGridLoading } = useGetCrosswordGridData(!initialGridData ? crosswordId : undefined)
   const { currentCrossword } = useCrossword()
 
   // Pagination for completions
   const [customLimit, setCustomLimit] = useState<number | null>(null)
 
-  // Determine number of winners based on winnerPercentages length
-  const winnerCount = details && Array.isArray(details) && details[2] ? (details[2] as any[]).length : 3
+  // Determine number of winners based on winnerPercentages length or initial count
+  const winnerCount = initialWinnerCount ?? (details && Array.isArray(details) && details[2] ? (details[2] as any[]).length : 3)
 
   // Calculate effective limit: use custom limit if set, otherwise default to winner count
   const visibleCompletions = customLimit ?? winnerCount
@@ -57,7 +67,7 @@ export function CrosswordHistoryCard({
     })()
     : null
 
-  const effectiveGridData = gridData || contextGridData
+  const effectiveGridData = initialGridData || gridData || contextGridData
 
   const formatDate = (ts: number) => {
     const date = new Date(ts * 1000)
@@ -112,13 +122,13 @@ export function CrosswordHistoryCard({
   }
 
   // Sort completions by timestamp
-  const sortedCompletions = completionsData
+  const sortedCompletions = initialCompletions || (completionsData
     ? [...(Array.isArray(completionsData) ? completionsData : [])].sort((a, b) => {
       const timeA = getCompletionTimestamp(a)
       const timeB = getCompletionTimestamp(b)
       return Number(timeA - timeB)
     })
-    : []
+    : [])
 
   return (
     <Card className="border-4 border-black bg-card shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none">
