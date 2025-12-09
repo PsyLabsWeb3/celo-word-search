@@ -35,7 +35,7 @@ const CONTRACTS = {
   },
   [celoSepolia.id]: {
     CrosswordBoard: {
-      address: "0xe8a2c7df99bda594db3ab3431d7f25ba3d7e2e82", // Updated deployment with sponsoredBy field
+      address: "0xED0F84f0ec54Bb0Bd6d59bf24AEbfec26bEa5c7C", // Updated deployment with security fixes
       currentCrosswordId: "0x0000000000000000000000000000000000000000000000000000000000000000",
       // The ABI will be loaded dynamically to keep this file small
     }

@@ -1334,7 +1334,7 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
           <p>Requirements:</p>
           <ul className="max-w-md mx-auto mt-2 text-left list-disc list-inside">
             <li>Celo compatible wallet (MetaMask, Valora, etc.)</li>
-            <li>Connected to Celo Mainnet</li>
+            <li>Connected to a Celo network (Mainnet, Alfajores, or Sepolia)</li>
           </ul>
         </div>
       </div>
@@ -1347,19 +1347,19 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
       <div className="flex flex-col items-center justify-center p-8 text-center">
         <h2 className="mb-4 text-xl font-bold">Incompatible Network</h2>
         <p className="mb-4">
-          This application requires the Celo network. Please switch to Celo Mainnet.
+          This application requires a Celo network. Please switch to a supported network.
         </p>
         <div className="mb-4 text-sm text-muted-foreground">
           <p>Current network: {chainId}</p>
-          <p>Compatible networks: Celo Mainnet</p>
+          <p>Supported networks: Celo Mainnet (ID: 42220), Alfajores (ID: 44787), or Sepolia (ID: 11142220)</p>
         </div>
         <button
           onClick={async () => {
             try {
-              // Try to switch to Celo Mainnet
+              // Try to switch to Celo Sepolia (testnet)
               await window.ethereum.request({
                 method: 'wallet_switchEthereumChain',
-                params: [{ chainId: '0xA4EC' }], // 0xA4EC is 42220 in hex
+                params: [{ chainId: '0xA9EC7C' }], // 0xA9EC7C is 11142220 (Celo Sepolia) in hex
               });
             } catch (switchError: any) {
               // This error code indicates that the chain has not been added to MetaMask.
@@ -1369,66 +1369,38 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
                     method: 'wallet_addEthereumChain',
                     params: [
                       {
-                        chainId: '0xA4EC',
-                        chainName: 'Celo Mainnet',
+                        chainId: '0xA9EC7C',
+                        chainName: 'Celo Sepolia Testnet',
                         nativeCurrency: {
                           name: 'CELO',
-                          symbol: 'CELO',
+                          symbol: 'A-CELO',
                           decimals: 18,
                         },
-                        rpcUrls: ['https://forno.celo.org'],
-                        blockExplorerUrls: ['https://celoscan.io'],
+                        rpcUrls: ['https://forno.celo-sepolia.celo-testnet.org'],
+                        blockExplorerUrls: ['https://sepolia.celoscan.io'],
                       },
                     ],
                   });
                 } catch (addError) {
-                  console.error('Error adding Celo Mainnet:', addError);
+                  console.error('Error adding Celo Sepolia:', addError);
                 }
               } else {
-                console.error('Error switching to Celo Mainnet:', switchError);
-                alert('Please manually switch to Celo Mainnet in your wallet.');
+                console.error('Error switching to Celo network:', switchError);
+              alert('Please manually switch to a Celo network (Mainnet, Alfajores, or Sepolia) in your wallet.');
               }
             }
           }}
           className="px-4 py-2 mt-2 text-sm rounded-md bg-primary text-primary-foreground hover:opacity-90"
         >
-          Switch to Celo Mainnet
+          Switch to Celo Sepolia
         </button>
       </div>
     );
   }
 
-  // Enforce Celo Mainnet for production
-  if (!isOnCeloMainnet) {
-    return (
-      <div className="flex flex-col items-center justify-center p-8 text-center">
-        <h2 className="mb-4 text-xl font-bold">Switch to Celo Mainnet</h2>
-        <p className="mb-4">
-          Please switch to Celo Mainnet to play this crossword.
-        </p>
-        <div className="mb-4 text-sm text-muted-foreground">
-          <p>Current network: {chainId}</p>
-          <p>Required network: Celo Mainnet (ID: {celo.id})</p>
-        </div>
-        <button
-          onClick={async () => {
-            try {
-              await window.ethereum.request({
-                method: 'wallet_switchEthereumChain',
-                params: [{ chainId: '0xA4EC' }], // 0xA4EC is 42220 in hex
-              });
-            } catch (switchError) {
-              console.error('Error switching to Celo Mainnet:', switchError);
-              alert('Please manually switch to Celo Mainnet in your wallet.');
-            }
-          }}
-          className="px-4 py-2 text-sm rounded-md bg-primary text-primary-foreground hover:opacity-90"
-        >
-          Switch to Celo Mainnet
-        </button>
-      </div>
-    );
-  }
+  // Accept any Celo network - removed Mainnet-only enforcement to support testnets
+  // The network validation above already ensures user is on a Celo network
+
 
   // After loading, if no crossword data, show message
   if (!crosswordData) {
