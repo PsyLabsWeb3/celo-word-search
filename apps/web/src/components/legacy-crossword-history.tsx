@@ -21,7 +21,8 @@ export function LegacyCrosswordHistory() {
           gridSize: data.gridSize,
           clues: data.clues,
           winnerCount: data.winnerCount,
-          name: data.name
+          name: data.name,
+          sponsoredBy: data.sponsoredBy
       }
 
 
@@ -43,7 +44,7 @@ export function LegacyCrosswordHistory() {
           prizePool={crossword.prizePool}
           timestamp={crossword.timestamp}
           initialCompletions={crossword.completions}
-          initialGridData={{ clues: crossword.clues, gridSize: crossword.gridSize, name: crossword.name }}
+          initialGridData={{ clues: crossword.clues, gridSize: crossword.gridSize, name: crossword.name, sponsoredBy: crossword.sponsoredBy }}
 
           initialWinnerCount={crossword.winnerCount}
         />

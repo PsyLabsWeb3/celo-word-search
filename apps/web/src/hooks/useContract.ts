@@ -2996,7 +2996,7 @@ export const useCreateCrosswordWithPrizePool = () => {
   }, [data]);
 
   return {
-    createCrosswordWithPrizePool: async (args: [`0x${string}`, string, bigint, `0x${string}`, bigint, bigint[], bigint], value?: bigint) => {
+    createCrosswordWithPrizePool: async (args: [`0x${string}`, string, string, string, bigint, `0x${string}`, bigint, bigint[], bigint], value?: bigint) => {
       try {
         const txConfig: any = {
           address: contractConfig.address,
@@ -3096,7 +3096,7 @@ export const useCreateCrosswordWithNativeCELOPrizePool = () => {
   }, [data]);
 
   return {
-    createCrosswordWithNativeCELOPrizePool: async (args: [`0x${string}`, string, bigint, bigint, bigint[], bigint], value: bigint) => {
+    createCrosswordWithNativeCELOPrizePool: async (args: [`0x${string}`, string, string, string, bigint, bigint, bigint[], bigint], value: bigint) => {
 
       try {
         // Prepare transaction configuration with proper gas estimation
@@ -3255,7 +3255,7 @@ export const useGetCrosswordDetailsById = (crosswordId: `0x${string}` | undefine
 
   if (hasHardcodedDetails && historicalData) {
       // Mock the contract return data format
-      // Return type is format [token, totalPrizePool, winnerPercentages, completions, activationTime, endTime, state]
+      // Return type is format [token, totalPrizePool, winnerPercentages, completions, activationTime, endTime, state, name, gridData]
       const mockData = [
           historicalData.token,
           BigInt(historicalData.prizePool || 0),
@@ -3267,7 +3267,10 @@ export const useGetCrosswordDetailsById = (crosswordId: `0x${string}` | undefine
           })),
           BigInt(historicalData.timestamp || 0),
           0n, // endTime
-          1 // state Active
+          1, // state Active
+          historicalData.name || "", // name at position 7
+          "", // gridData at position 8
+          historicalData.sponsoredBy || "" // sponsoredBy at position 9
       ];
 
       return {

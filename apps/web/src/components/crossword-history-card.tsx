@@ -26,7 +26,7 @@ export function CrosswordHistoryCard({
   prizePool: bigint
   timestamp?: number
   initialCompletions?: any[]
-  initialGridData?: { clues: any[]; gridSize: { rows: number; cols: number }; name?: string }
+  initialGridData?: { clues: any[]; gridSize: { rows: number; cols: number }; name?: string; sponsoredBy?: string }
 
   initialWinnerCount?: number
 }) {
@@ -35,6 +35,8 @@ export function CrosswordHistoryCard({
   const shouldFetch = isExpanded && !initialCompletions
   
   const { data: details, isLoading: isDetailsLoading } = useGetCrosswordDetailsById(shouldFetch ? crosswordId : undefined)
+  // Type assertion for details structure: [token, totalPrizePool, winnerPercentages, completions, activationTime, endTime, state, name, gridData, sponsoredBy]
+  type DetailsType = [string, bigint, bigint[], any[], bigint, bigint, number, string, string, string] | undefined;
   const { data: completionsData, isLoading: isCompletionsLoading } = useGetCrosswordCompletions(shouldFetch ? crosswordId : `0x0000000000000000000000000000000000000000000000000000000000000000`)
   // Always load grid data for preview (unless provided)
   const { gridData, isLoading: isGridLoading } = useGetCrosswordGridData(!initialGridData ? crosswordId : undefined)
@@ -68,6 +70,10 @@ export function CrosswordHistoryCard({
     : null
 
   const effectiveGridData = initialGridData || gridData || contextGridData
+  // Extract name from all possible sources
+  const crosswordName = initialGridData?.name || (effectiveGridData && (effectiveGridData as any).name) || (details && (details as any)[7])
+  // Extract sponsoredBy from all possible sources (position 9 in details array)
+  const crosswordSponsoredBy = initialGridData?.sponsoredBy || (effectiveGridData && (effectiveGridData as any).sponsoredBy) || (details && (details as any)[9])
 
   const formatDate = (ts: number) => {
     const date = new Date(ts * 1000)
@@ -81,7 +87,7 @@ export function CrosswordHistoryCard({
   }
 
   // Use prize pool from details if available, otherwise use prop
-  const effectivePrizePool = details && Array.isArray(details) && details[1] ? details[1] : prizePool
+  const effectivePrizePool = details && Array.isArray(details) && (details as any)[1] ? (details as any)[1] : prizePool
 
   const formatPrizePool = (amount: bigint) => {
     const formatted = Number(amount) / 1e18
@@ -136,11 +142,17 @@ export function CrosswordHistoryCard({
         {/* Header - Always visible */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex-1">
-            {/* Display crossword name if available from historical data */}
-            {effectiveGridData && (effectiveGridData as any).name && (
+            {/* Display crossword name if available */}
+            {crosswordName && (
               <h3 className="mb-2 text-lg font-black text-foreground sm:text-xl">
-                {(effectiveGridData as any).name}
+                {crosswordName}
               </h3>
+            )}
+            {/* Display sponsored by information if available */}
+            {crosswordSponsoredBy && (
+              <p className="mb-1 text-sm font-bold text-muted-foreground">
+                Sponsored by: <span className="font-black text-primary">{crosswordSponsoredBy}</span>
+              </p>
             )}
             <div className="flex flex-wrap gap-3 text-xs font-bold sm:text-sm text-muted-foreground">
               <p className="text-sm font-black sm:text-base">
