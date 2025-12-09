@@ -19,6 +19,8 @@ export function CrosswordHistoryCard({
   timestamp,
   initialCompletions,
   initialGridData,
+  initialName,
+  initialSponsoredBy,
   initialWinnerCount
 }: {
   crosswordId: `0x${string}`
@@ -27,7 +29,8 @@ export function CrosswordHistoryCard({
   timestamp?: number
   initialCompletions?: any[]
   initialGridData?: { clues: any[]; gridSize: { rows: number; cols: number }; name?: string; sponsoredBy?: string }
-
+  initialName?: string
+  initialSponsoredBy?: string
   initialWinnerCount?: number
 }) {
   const [isExpanded, setIsExpanded] = useState(false)
@@ -70,10 +73,10 @@ export function CrosswordHistoryCard({
     : null
 
   const effectiveGridData = initialGridData || gridData || contextGridData
-  // Extract name from all possible sources
-  const crosswordName = initialGridData?.name || (effectiveGridData && (effectiveGridData as any).name) || (details && (details as any)[7])
-  // Extract sponsoredBy from all possible sources (position 9 in details array)
-  const crosswordSponsoredBy = initialGridData?.sponsoredBy || (effectiveGridData && (effectiveGridData as any).sponsoredBy) || (details && (details as any)[9])
+  // Extract name from all possible sources (added initialName prop as priority)
+  const crosswordName = initialName || initialGridData?.name || (effectiveGridData && (effectiveGridData as any).name) || (details && (details as any)[7])
+  // Extract sponsoredBy from all possible sources (position 9 in details array) (added initialSponsoredBy prop as priority)
+  const crosswordSponsoredBy = initialSponsoredBy || initialGridData?.sponsoredBy || (effectiveGridData && (effectiveGridData as any).sponsoredBy) || (details && (details as any)[9])
 
   const formatDate = (ts: number) => {
     const date = new Date(ts * 1000)

@@ -43,6 +43,8 @@ export function LegacyCrosswordHistory() {
           token={crossword.token}
           prizePool={crossword.prizePool}
           timestamp={crossword.timestamp}
+          initialName={crossword.name}
+          initialSponsoredBy={crossword.sponsoredBy}
           initialCompletions={crossword.completions}
           initialGridData={{ clues: crossword.clues, gridSize: crossword.gridSize, name: crossword.name, sponsoredBy: crossword.sponsoredBy }}
 
