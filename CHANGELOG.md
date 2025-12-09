@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Added CELO as sponsor for historical crosswords (Crossword Genesis and CELO Ecosystem)
+
 ## [1.2.0] - 2025-12-09
 
 ### Added
