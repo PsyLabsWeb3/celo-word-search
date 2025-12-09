@@ -26,6 +26,7 @@ export const HISTORICAL_CROSSWORDS: Record<string, HistoricalCrosswordData> = {
   // First crossword - Nov 2025 - "Crossword Genesis"
   '0xdb4764000c54b9390a601e96783d76e3e3e9d06329637cdd119045bf32624e32': {
     name: "Crossword Genesis",
+    sponsoredBy: "CELO",
     gridSize: { rows: 9, cols: 10 },
     prizePool: "5000000000000000000", // 5 CELO
     token: "0x0000000000000000000000000000000000000000",
@@ -122,6 +123,7 @@ export const HISTORICAL_CROSSWORDS: Record<string, HistoricalCrosswordData> = {
   // Second crossword - Dec 2025 - "CELO Ecosystem"
   '0x28d1ba71976f4f4fa7344c7025215739bd3f6aa515d13e1fdfbe5245ea419ce2': {
     name: "CELO Ecosystem",
+    sponsoredBy: "CELO",
     gridSize: { "rows": 9, "cols": 10 },
     timestamp: 1764763200, // Dec 3 2025 12:00 UTC
     winnerCount: 10,
