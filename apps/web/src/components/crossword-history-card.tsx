@@ -126,6 +126,12 @@ export function CrosswordHistoryCard({
         {/* Header - Always visible */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex-1">
+            {/* Display crossword name if available from historical data */}
+            {effectiveGridData && (effectiveGridData as any).name && (
+              <h3 className="mb-2 text-lg font-black text-foreground sm:text-xl">
+                {(effectiveGridData as any).name}
+              </h3>
+            )}
             <div className="flex flex-wrap gap-3 text-xs font-bold sm:text-sm text-muted-foreground">
               <p className="text-sm font-black sm:text-base">
                 {crosswordId.substring(0, 12)}..{crosswordId.substring(crosswordId.length - 6)}

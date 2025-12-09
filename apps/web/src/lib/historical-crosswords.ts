@@ -2,6 +2,7 @@
 // This is needed because querying old events from RPC providers causes errors
 
 interface HistoricalCrosswordData {
+  name?: string; // Crossword name/title
   clues: any[];
   gridSize: { rows: number; cols: number };
   prizePool?: string; // in wei
@@ -16,26 +17,14 @@ interface HistoricalCrosswordData {
 }
 
 export const HISTORICAL_CROSSWORDS: Record<string, HistoricalCrosswordData> = {
-  // First crossword - Nov 2025
+  // First crossword - Nov 2025 - "Crossword Genesis"
   '0xdb4764000c54b9390a601e96783d76e3e3e9d06329637cdd119045bf32624e32': {
+    name: "Crossword Genesis",
     gridSize: { rows: 9, cols: 10 },
     prizePool: "5000000000000000000", // 5 CELO
     token: "0x0000000000000000000000000000000000000000",
     timestamp: 1732944000,
-    completions: [
-        {
-            user: "0x1234567890123456789012345678901234567890",
-            timestamp: 1732945000,
-            rank: 1,
-            durationMs: "600000"
-        },
-        {
-            user: "0xabcdef1234567890abcdef1234567890abcdef12",
-            timestamp: 1732946000,
-            rank: 2,
-            durationMs: "700000"
-        }
-    ],
+
     clues: [
       {
         number: 1,
@@ -95,9 +84,10 @@ export const HISTORICAL_CROSSWORDS: Record<string, HistoricalCrosswordData> = {
       }
     ]
   },
-  // Current crossword - Dec 2025
+  // Second crossword - Dec 2025 - "CELO Ecosystem"
   '0x28d1ba71976f4f4fa7344c7025215739bd3f6aa515d13e1fdfbe5245ea419ce2': {
-   gridSize: { "rows": 9, "cols": 10 },
+    name: "CELO Ecosystem",
+    gridSize: { "rows": 9, "cols": 10 },
     clues: [
       { "number": 1, "clue": "Universal basic income protocol on Celo focused on financial inclusion.", "answer": "GOODDOLLAR", "row": 1, "col": 0, "direction": "across" },
       { "number": 2, "clue": "Celo’s lightweight mobile wallet designed for fast, low-cost payments.", "answer": "MINIPAY", "row": 3, "col": 3, "direction": "across" },
