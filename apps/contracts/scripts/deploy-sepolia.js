@@ -24,7 +24,7 @@ async function main() {
   const crosswordBoardContract = await hre.viem.getContractAt("CrosswordBoard", crosswordBoard.address);
 
   // Add additional admin address
-  const additionalAdmin = "0x66299C18c60CE709777Ec79C73b131cE2634f58e";
+  const additionalAdmin = "0xA35Dc36B55D9A67c8433De7e790074ACC939f39e";
 
   // Check if additional admin is the same as deployer (which it is in this case)
   console.log("\nChecking if additional admin is deployer...");

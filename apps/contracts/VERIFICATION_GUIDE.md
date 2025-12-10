@@ -6,7 +6,7 @@ Tu contrato ha sido desplegado exitosamente en Celo Sepolia:
 
 **Nueva Dirección del Contrato**: `0x6e15f23e7f410E250BD221cdB2FB43840354C908`
 
-**Constructor Argument**: `0x66299C18c60CE709777Ec79C73b131cE2634f58e`
+**Constructor Argument**: `0xA35Dc36B55D9A67c8433De7e790074ACC939f39e`
 
 ## ⚠️ Problema con la API Key
 
@@ -42,7 +42,7 @@ Una vez actualizada la API key, ejecuta:
 
 ```bash
 cd /Users/brito/crossword-app/celo-crossword/apps/contracts
-npx hardhat verify --network celoSepolia 0x6e15f23e7f410E250BD221cdB2FB43840354C908 "0x66299C18c60CE709777Ec79C73b131cE2634f58e"
+npx hardhat verify --network celoSepolia 0x6e15f23e7f410E250BD221cdB2FB43840354C908 "0xA35Dc36B55D9A67c8433De7e790074ACC939f39e"
 ```
 
 ## Alternativa: Verificación Manual
@@ -98,7 +98,7 @@ Una vez verificado el contrato, necesitarás actualizar tu frontend para usar la
 - **Red**: Celo Sepolia Testnet
 - **Chain ID**: 11142220
 - **Dirección del Contrato**: `0x6e15f23e7f410E250BD221cdB2FB43840354C908`
-- **Dirección del Owner**: `0x66299C18c60CE709777Ec79C73b131cE2634f58e`
+- **Dirección del Owner**: `0xA35Dc36B55D9A67c8433De7e790074ACC939f39e`
 - **Compiler**: v0.8.28+commit.7893614a
 - **Optimization**: Enabled (200 runs)
 - **Deployment Method**: Hardhat Ignition

@@ -5,7 +5,7 @@ const { ethers } = require("ethers");
 
 // The private key for the default Hardhat account (0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266)
 const OWNER_PRIVATE_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
-const TARGET_ADMIN = "0x66299C18c60CE709777Ec79C73b131cE2634f58e";
+const TARGET_ADMIN = "0xA35Dc36B55D9A67c8433De7e790074ACC939f39e";
 const CONTRACT_ADDRESS = "0x6e15f23e7f410E250BD221cdB2FB43840354C908";
 
 async function main() {

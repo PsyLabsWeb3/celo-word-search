@@ -14,7 +14,7 @@
 
 - Nuevo contrato con todas las mejoras de seguridad
 - Dirección: `0x6e15f23e7f410E250BD221cdB2FB43840354C908`
-- Owner: `0x66299C18c60CE709777Ec79C73b131cE2634f58e`
+- Owner: `0xA35Dc36B55D9A67c8433De7e790074ACC939f39e`
 
 ### 2. ✅ Configuración Actualizada
 
@@ -50,7 +50,7 @@
 4. **Verificar el Contrato**:
    ```bash
    cd /Users/brito/crossword-app/celo-crossword/apps/contracts
-   npx hardhat verify --network celoSepolia 0x6e15f23e7f410E250BD221cdB2FB43840354C908 "0x66299C18c60CE709777Ec79C73b131cE2634f58e"
+   npx hardhat verify --network celoSepolia 0x6e15f23e7f410E250BD221cdB2FB43840354C908 "0xA35Dc36B55D9A67c8433De7e790074ACC939f39e"
    ```
 
 ### Opción B: Verificación Manual (Más Rápido)
@@ -99,7 +99,7 @@ El archivo de deployment ya ha sido actualizado automáticamente:
 
 ### Constructor Parameters
 
-- **initialOwner**: `0x66299C18c60CE709777Ec79C73b131cE2634f58e`
+- **initialOwner**: `0xA35Dc36B55D9A67c8433De7e790074ACC939f39e`
 
 ### Archivos Generados
 

@@ -4,7 +4,7 @@ const hre = require("hardhat");
 
 async function main() {
   // The wallet address to add as admin
-  const walletToAdd = "0x66299C18c60CE709777Ec79C73b131cE2634f58e";
+  const walletToAdd = "0xA35Dc36B55D9A67c8433De7e790074ACC939f39e";
 
   // Check the network and get the deployer wallet
   const networkName = hre.network.name;

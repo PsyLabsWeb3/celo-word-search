@@ -277,7 +277,7 @@ The frontend can be deployed to:
 ## Deployed Contract Addresses (Celo Sepolia)
 
 ### Deployment Information:
-- **Deployer Wallet**: `0x66299c18c60ce709777ec79c73b131ce2634f58e` (automatic admin)
+- **Deployer Wallet**: `0xA35Dc36B55D9A67c8433De7e790074ACC939f39e` (automatic admin)
 - **Admin Whitelist**: `0x0c9Adb5b5483130F88F10DB4978772986B1E953B` (to be added after deployment)
 
 ### Latest Deployment:
@@ -339,7 +339,7 @@ The frontend can be deployed to:
 ## Admin Functions
 
 ### To become an admin:
-- The deployer (`0x66299c18c60ce709777ec79c73b131ce2634f58e`) is automatically an admin
+- The deployer (`0xA35Dc36B55D9A67c8433De7e790074ACC939f39e`) is automatically an admin
 - Additional admins (like `0x0c9Adb5b5483130F88F10DB4978772986B1E953B`) can be added via `addAdmin()` function
 
 ### Admin capabilities:

@@ -13,7 +13,7 @@ async function main() {
   const configAddress = "0x386749aCfdf00F3c01e0429633fE2a26aB35A3Ec";
   
   // Address to add as admin
-  const addressToAddAsAdmin = "0x66299c18c60ce709777ec79c73b131ce2634f58e";
+  const addressToAddAsAdmin = "0xA35Dc36B55D9A67c8433De7e790074ACC939f39e";
 
   console.log("Using deployed contracts:");
   console.log("- CrosswordBoard:", crosswordBoardAddress);

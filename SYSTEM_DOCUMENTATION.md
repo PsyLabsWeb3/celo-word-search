@@ -608,7 +608,7 @@ This is not valid Solidity code and was causing the parsing error.
 
 - Contract Name: CrosswordBoard
 - Constructor: `constructor(address initialOwner)`
-- Constructor Parameter: `0x66299c18c60ce709777ec79c73b131ce2634f58e`
+- Constructor Parameter: `0xA35Dc36B55D9A67c8433De7e790074ACC939f39e`
 - Compiler Version: v0.8.28+commit.7893614a (based on CeloScan data)
 - Optimizer: Enabled (runs: 200)
 - License: MIT

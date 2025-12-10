@@ -3,7 +3,7 @@ const hre = require("hardhat");
 
 async function main() {
   // Wallet address to test
-  const walletAddress = "0x66299C18c60CE709777Ec79C73b131cE2634f58e";
+  const walletAddress = "0xA35Dc36B55D9A67c8433De7e790074ACC939f39e";
   
   // Contract address
   const contractAddress = "0xC65D88d46Df1D68e2EcB3a0bb32d81D159D753f1";

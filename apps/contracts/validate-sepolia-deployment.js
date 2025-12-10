@@ -16,7 +16,7 @@ const { parseEther, formatEther } = require("viem");
 
 // Contract address from Hardhat Ignition deployment
 const CONTRACT_ADDRESS = "0x62ADF6a2E788Fbbd66B5da641cAD08Fd96115B8B";
-const OWNER_ADDRESS = "0x66299C18c60CE709777Ec79C73b131cE2634f58e";
+const OWNER_ADDRESS = "0xA35Dc36B55D9A67c8433De7e790074ACC939f39e";
 
 // Test data
 const TEST_CROSSWORD_DATA = JSON.stringify({

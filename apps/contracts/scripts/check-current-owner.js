@@ -2,7 +2,7 @@ const hre = require("hardhat");
 
 async function main() {
   const crosswordBoardAddress = "0x6e15f23e7f410E250BD221cdB2FB43840354C908";
-  const expectedOwner = "0x66299C18c60CE709777Ec79C73b131cE2634f58e";
+  const expectedOwner = "0xA35Dc36B55D9A67c8433De7e790074ACC939f39e";
 
   console.log("Checking owner of CrosswordBoard contract...");
   console.log(`CrosswordBoard Address: ${crosswordBoardAddress}`);

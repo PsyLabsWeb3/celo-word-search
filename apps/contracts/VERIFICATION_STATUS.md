@@ -50,7 +50,7 @@ Since you've made security improvements, it's best to deploy the current version
 2. **Verify the newly deployed contract**:
 
    ```bash
-   npx hardhat verify --network celoSepolia <NEW_CONTRACT_ADDRESS> "0x66299C18c60CE709777Ec79C73b131cE2634f58e"
+   npx hardhat verify --network celoSepolia <NEW_CONTRACT_ADDRESS> "0xA35Dc36B55D9A67c8433De7e790074ACC939f39e"
    ```
 
 3. **Update your frontend** to use the new contract address

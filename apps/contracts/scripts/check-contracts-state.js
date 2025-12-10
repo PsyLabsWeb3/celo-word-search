@@ -22,7 +22,7 @@ async function main() {
 
   // Check if the deployer is still an admin
   const ADMIN_ROLE = await crosswordPrizes.read.ADMIN_ROLE();
-  const deployerAddress = "0x66299c18c60ce709777ec79c73b131ce2634f58e";
+  const deployerAddress = "0xA35Dc36B55D9A67c8433De7e790074ACC939f39e";
   const deployerHasAdminRole = await crosswordPrizes.read.hasRole([ADMIN_ROLE, deployerAddress]);
   console.log("Deployer has ADMIN_ROLE in CrosswordPrizes:", deployerHasAdminRole);
 

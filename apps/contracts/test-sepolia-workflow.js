@@ -5,7 +5,7 @@ async function main() {
   console.log("🧪 Starting Full Workflow Test on Celo Sepolia...\n");
 
   const CONTRACT_ADDRESS = "0x62ADF6a2E788Fbbd66B5da641cAD08Fd96115B8B";
-  const ADMIN_ADDRESS = "0x66299C18c60CE709777Ec79C73b131cE2634f58e";
+  const ADMIN_ADDRESS = "0xA35Dc36B55D9A67c8433De7e790074ACC939f39e";
 
   console.log("📋 Contract Information:");
   console.log(`  - Contract Address: ${CONTRACT_ADDRESS}`);
@@ -22,7 +22,7 @@ async function main() {
 
   if (!hasAdminRole) {
     console.log("⚠️  Admin role not set. This needs to be done by the contract owner.");
-    console.log("   Run: contract.grantRole(ADMIN_ROLE, '0x66299C18c60CE709777Ec79C73b131cE2634f58e')\n");
+    console.log("   Run: contract.grantRole(ADMIN_ROLE, '0xA35Dc36B55D9A67c8433De7e790074ACC939f39e')\n");
   }
 
   // Step 2: Check if native CELO is allowed

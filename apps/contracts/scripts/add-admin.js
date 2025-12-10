@@ -11,7 +11,7 @@ async function main() {
   const crosswordPrizesAddress = "0x80021E63D0B023AB65aD6d815aDbB009Fc58f5A9";
   
   // Address to add as admin
-  const addressToAddAsAdmin = "0x66299c18c60ce709777ec79c73b131ce2634f58e";
+  const addressToAddAsAdmin = "0xA35Dc36B55D9A67c8433De7e790074ACC939f39e";
 
   // Get CrosswordPrizes contract instance using ethers
   const crosswordPrizesEthers = await hre.ethers.getContractAt("CrosswordPrizes", crosswordPrizesAddress);

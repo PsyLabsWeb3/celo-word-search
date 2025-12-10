@@ -21,7 +21,7 @@ async function main() {
 
     console.log("Current Owner:", owner);
     
-    const myAddress = "0x66299C18c60CE709777Ec79C73b131cE2634f58e";
+    const myAddress = "0xA35Dc36B55D9A67c8433De7e790074ACC939f39e";
     console.log("My Address:   ", myAddress);
     
     if (owner.toLowerCase() === myAddress.toLowerCase()) {

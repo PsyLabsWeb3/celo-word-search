@@ -4,7 +4,7 @@ async function main() {
   console.log("Adding admin address to existing contracts...\n");
 
   // The address to add as admin
-  const adminAddress = "0x66299C18c60CE709777Ec79C73b131cE2634f58e";
+  const adminAddress = "0xA35Dc36B55D9A67c8433De7e790074ACC939f39e";
   console.log("Admin address to add:", adminAddress);
 
   // Get the wallet client

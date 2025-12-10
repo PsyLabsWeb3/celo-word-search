@@ -43,7 +43,7 @@ async function main() {
   console.log("Added admin to CrosswordBoard:", admin.address);
 
   // Add additional admin address
-  const additionalAdmin = "0x66299C18c60CE709777Ec79C73b131cE2634f58e";
+  const additionalAdmin = "0xA35Dc36B55D9A67c8433De7e790074ACC939f39e";
 
   // Add admin to CrosswordBoard
   await boardContract.addAdmin(additionalAdmin);

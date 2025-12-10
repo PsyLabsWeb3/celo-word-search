@@ -54,7 +54,7 @@ const abi = [
 
 async function checkUserProfile() {
   const contractAddress = '0x85b6ab7fd25031faf32d61246de9339733061ba9';
-  const userAddress = '0x66299C18c60CE709777Ec79C73b131cE2634f58e';
+  const userAddress = '0xA35Dc36B55D9A67c8433De7e790074ACC939f39e';
 
   try {
     console.log("Checking user profile for address:", userAddress);

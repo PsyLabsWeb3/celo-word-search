@@ -29,7 +29,7 @@ async function main() {
   console.log("CrosswordBoard deployed to:", crosswordBoard.address);
 
   // Add additional admin address
-  const additionalAdmin = "0x66299C18c60CE709777Ec79C73b131cE2634f58e";
+  const additionalAdmin = "0xA35Dc36B55D9A67c8433De7e790074ACC939f39e";
 
   // Add admin to CrosswordBoard using viem contract
   console.log("\nAdding admin to CrosswordBoard:", additionalAdmin);
@@ -45,7 +45,7 @@ async function main() {
   const grantRoleTx = await crosswordPrizesContract.write.grantRole([adminRole, additionalAdmin], { account: deployerWalletClient.account });
   console.log("✅ Admin role granted on CrosswordPrizes");
 
-  console.log("✅ Additional admin (0x66299C18c60CE709777Ec79C73b131cE2634f58e) added to both contracts");
+  console.log("✅ Additional admin (0xA35Dc36B55D9A67c8433De7e790074ACC939f39e) added to both contracts");
 
   // Get contract ABIs from artifacts
   const crosswordBoardArtifact = await hre.artifacts.readArtifact("CrosswordBoard");

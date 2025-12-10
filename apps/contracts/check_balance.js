@@ -2,13 +2,15 @@
 const hre = require('hardhat');
 
 async function main() {
-  console.log('Checking CELO balance for address: 0x66299C18c60CE709777Ec79C73b131cE2634f58e on Celo Sepolia...');
+  // Get the wallet from private key to get the correct address
+  const [deployer] = await hre.viem.getWalletClients();
+  const address = deployer.account.address;
+  
+  console.log(`Checking CELO balance for address: ${address}...`);
 
   // Get the public client
   const publicClient = await hre.viem.getPublicClient();
   
-  // Address to check
-  const address = '0x66299C18c60CE709777Ec79C73b131cE2634f58e';
   
   try {
     // Get the balance in wei
