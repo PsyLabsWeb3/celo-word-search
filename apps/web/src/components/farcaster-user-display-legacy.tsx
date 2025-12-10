@@ -9,6 +9,9 @@ interface FarcasterUserDisplayLegacyProps {
   address: string;
   fallbackUsername?: string;
   size?: "sm" | "md" | "lg";
+  initialUsername?: string;
+  initialDisplayName?: string;
+  initialPfpUrl?: string;
 }
 
 // This component displays a Farcaster user for legacy crosswords with avatar, username, and address
@@ -16,7 +19,10 @@ interface FarcasterUserDisplayLegacyProps {
 export default function FarcasterUserDisplayLegacy({
   address,
   fallbackUsername = "User",
-  size = "md"
+  size = "md",
+  initialUsername,
+  initialDisplayName,
+  initialPfpUrl
 }: FarcasterUserDisplayLegacyProps) {
   const [userData, setUserData] = useState<{
     username: string;
@@ -30,18 +36,19 @@ export default function FarcasterUserDisplayLegacy({
   const { data: blockchainProfile, isLoading: isBlockchainLoading, isError, refetch } = useGetUserProfile(address as `0x${string}`);
 
   useEffect(() => {
-    // Function to fetch from API as fallback
+    // Function to fetch from API as fallback - this can enhance the data with avatar
     const fetchProfileFromAPI = async () => {
       try {
         const response = await fetch(`/api/farcaster-profiles/${address}`);
         if (response.ok) {
           const profile = await response.json();
           if (profile && profile.username && profile.username.trim() !== "" && profile.username.trim() !== "0") {
-            setUserData({
-              username: profile.username,
-              displayName: profile.displayName || profile.username,
-              pfpUrl: profile.pfpUrl || ""
-            });
+            // Update the user data with API data (which may include avatar)
+            setUserData(prevData => ({
+              username: profile.username || (prevData?.username ?? ""),
+              displayName: profile.displayName || profile.username || (prevData?.displayName ?? ""),
+              pfpUrl: profile.pfpUrl || (prevData?.pfpUrl ?? "")
+            }));
             return true; // Successfully found profile
           }
         }
@@ -50,6 +57,19 @@ export default function FarcasterUserDisplayLegacy({
       }
       return false; // No profile found in API
     };
+
+    // Check if we have initial data with a valid username and set it
+    let hasInitialData = false;
+    if (initialUsername !== undefined && initialDisplayName !== undefined && initialPfpUrl !== undefined) {
+      if (initialUsername && initialUsername.trim() !== "" && initialUsername.trim() !== "0") {
+        setUserData({
+          username: initialUsername,
+          displayName: initialDisplayName || initialUsername,
+          pfpUrl: initialPfpUrl || ""
+        });
+        hasInitialData = true;
+      }
+    }
 
     // When blockchain profile data is available
     if (blockchainProfile) {
@@ -75,11 +95,11 @@ export default function FarcasterUserDisplayLegacy({
 
       // If we have a valid username from blockchain, use it; otherwise fall back
       if (username && username.trim() !== "" && username.trim() !== "0") {
-        setUserData({
+        setUserData(prevData => ({
           username: username,
-          displayName: displayName || username,
-          pfpUrl: pfpUrl || ""
-        });
+          displayName: displayName || (prevData?.displayName ?? username),
+          pfpUrl: pfpUrl || (prevData?.pfpUrl ?? "")
+        }));
         setLoading(false);
       } else {
         // Fallback to API if blockchain doesn't have the data
@@ -93,12 +113,24 @@ export default function FarcasterUserDisplayLegacy({
         setLoading(false);
       });
     } else if (!isBlockchainLoading) {
-      // If no blockchain profile found and no error, try the API as fallback
-      fetchProfileFromAPI().finally(() => {
+      // If we have initial data, we can stop loading and just try to enhance in background
+      if (hasInitialData) {
         setLoading(false);
-      });
+        // Try to enhance with API data in background, but don't block the UI
+        fetchProfileFromAPI();
+      } else {
+        // If no initial data, try API as fallback
+        fetchProfileFromAPI().finally(() => {
+          setLoading(false);
+        });
+      }
+    } else if (isBlockchainLoading) {
+      // If still loading blockchain data and have initial data, temporarily show initial data but keep loading state
+      if (hasInitialData) {
+        // Don't set loading false yet as we're still trying to get better data from blockchain
+      }
     }
-  }, [blockchainProfile, isBlockchainLoading, isError, address]);
+  }, [blockchainProfile, isBlockchainLoading, isError, address, initialUsername, initialDisplayName, initialPfpUrl]);
 
   // Format address for display
   const formatAddress = (addr: string): string => {

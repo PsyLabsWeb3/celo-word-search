@@ -9,6 +9,9 @@ interface FarcasterUserDisplayProps {
   address: string;
   fallbackUsername?: string;
   size?: "sm" | "md" | "lg";
+  initialUsername?: string;
+  initialDisplayName?: string;
+  initialPfpUrl?: string;
 }
 
 // This component displays a Farcaster user with avatar, username, and address
@@ -16,7 +19,10 @@ interface FarcasterUserDisplayProps {
 export default function FarcasterUserDisplay({
   address,
   fallbackUsername = "User",
-  size = "md"
+  size = "md",
+  initialUsername,
+  initialDisplayName,
+  initialPfpUrl
 }: FarcasterUserDisplayProps) {
   const [userData, setUserData] = useState<{
     username: string;
@@ -28,6 +34,22 @@ export default function FarcasterUserDisplay({
 
   // Use the blockchain hook to get user profile
   const { data: blockchainProfile, isLoading: isBlockchainLoading, isError, refetch } = useGetUserProfile(address as `0x${string}`);
+
+  // Check if initial data is provided (from historical records or other sources)
+  useEffect(() => {
+    if (initialUsername !== undefined && initialDisplayName !== undefined && initialPfpUrl !== undefined) {
+      // Use initial data if it's valid
+      if (initialUsername && initialUsername.trim() !== "" && initialUsername.trim() !== "0") {
+        setUserData({
+          username: initialUsername,
+          displayName: initialDisplayName || initialUsername,
+          pfpUrl: initialPfpUrl || ""
+        });
+        setLoading(false);
+        return; // Early return to skip the rest of the effect
+      }
+    }
+  }, [initialUsername, initialDisplayName, initialPfpUrl]);
 
   // Initialize on component mount
   useEffect(() => {
@@ -41,6 +63,40 @@ export default function FarcasterUserDisplay({
   }, [address, fallbackUsername, size]);
 
   useEffect(() => {
+    // Function to fetch from API as fallback - this can enhance the data with avatar
+    const fetchProfileFromAPI = async () => {
+      try {
+        const response = await fetch(`/api/farcaster-profiles/${address}`);
+        if (response.ok) {
+          const profile = await response.json();
+          if (profile && profile.username && profile.username.trim() !== "" && profile.username.trim() !== "0") {
+            // Update the user data with API data (which may include avatar)
+            setUserData(prevData => ({
+              username: profile.username || (prevData?.username ?? ""),
+              displayName: profile.displayName || profile.username || (prevData?.displayName ?? ""),
+              pfpUrl: profile.pfpUrl || (prevData?.pfpUrl ?? "")
+            }));
+            return true; // Successfully found profile
+          }
+        }
+      } catch (error) {
+        console.error(`Error fetching profile from API for ${address}:`, error);
+      }
+      return false; // No profile found in API
+    };
+
+    // Check if we have initial data with a valid username and set it
+    let hasInitialData = false;
+    if (initialUsername !== undefined && initialDisplayName !== undefined && initialPfpUrl !== undefined) {
+      if (initialUsername && initialUsername.trim() !== "" && initialUsername.trim() !== "0") {
+        setUserData({
+          username: initialUsername,
+          displayName: initialDisplayName || initialUsername,
+          pfpUrl: initialPfpUrl || ""
+        });
+        hasInitialData = true;
+      }
+    }
     // Debug log removed - Profile data received
 
     if (blockchainProfile) {
@@ -72,11 +128,11 @@ export default function FarcasterUserDisplay({
       // If we have a valid username from blockchain, use it; otherwise fall back
       if (username && username.trim() !== "" && username.trim() !== "0") { // Check for empty string or "0"
         // Debug log removed - Using Farcaster profile data
-        setUserData({
+        setUserData(prevData => ({
           username: username,
-          displayName: displayName || username,
-          pfpUrl: pfpUrl || ""
-        });
+          displayName: displayName || (prevData?.displayName ?? username),
+          pfpUrl: pfpUrl || (prevData?.pfpUrl ?? "")
+        }));
       } else {
         // Fallback to address display
         // Debug log removed - No Farcaster data found in blockchain, using fallback
@@ -92,64 +148,34 @@ export default function FarcasterUserDisplay({
       // Debug log removed - Error occurred fetching profile from blockchain, trying API fallback
 
       // Fetch profile from API as fallback
-      const fetchProfileFromAPI = async () => {
-        try {
-          // Try the new GET endpoint for single address first
-          const response = await fetch(`/api/farcaster-profiles/${address}`);
-
-          if (response.ok) {
-            const profile = await response.json();
-
-            if (profile && profile.username && profile.username.trim() !== "" && profile.username.trim() !== "0") {
-              // Debug log removed - Using Farcaster profile data from API
-              setUserData({
-                username: profile.username,
-                displayName: profile.displayName || profile.username,
-                pfpUrl: profile.pfpUrl || ""
-              });
-            } else {
-              // If API also doesn't have data, use fallback
-              // Debug log removed - No profile found in API, using fallback
-              setUserData({
-                username: fallbackUsername,
-                displayName: fallbackUsername,
-                pfpUrl: ""
-              });
-            }
-          } else {
-            // API request failed, use fallback
-            // Debug log removed - API request failed, using fallback
-            setUserData({
-              username: fallbackUsername,
-              displayName: fallbackUsername,
-              pfpUrl: ""
-            });
-          }
-        } catch (error) {
-          // Debug log removed - Error fetching profile from API
-          // On API error, use fallback
-          setUserData({
-            username: fallbackUsername,
-            displayName: fallbackUsername,
-            pfpUrl: ""
-          });
-        } finally {
-          setLoading(false);
-        }
-      };
-
-      fetchProfileFromAPI();
-    } else if (!isBlockchainLoading) {
-      // If no blockchain profile found and no error, show fallback immediately
-      // Debug log removed - No blockchain profile data, using fallback
-      setUserData({
-        username: fallbackUsername,
-        displayName: fallbackUsername,
-        pfpUrl: ""
+      fetchProfileFromAPI().finally(() => {
+        setLoading(false);
       });
-      setLoading(false);
+    } else if (!isBlockchainLoading) {
+      // If we have initial data, we can stop loading and just try to enhance in background
+      if (hasInitialData) {
+        setLoading(false);
+        // Try to enhance with API data in background, but don't block the UI
+        fetchProfileFromAPI();
+      } else {
+        // If no initial data, use fallback and try API as fallback
+        setUserData({
+          username: fallbackUsername,
+          displayName: fallbackUsername,
+          pfpUrl: ""
+        });
+        // Fetch profile from API as fallback
+        fetchProfileFromAPI().finally(() => {
+          setLoading(false);
+        });
+      }
+    } else if (isBlockchainLoading) {
+      // If still loading blockchain data and have initial data, temporarily show initial data but keep loading state
+      if (hasInitialData) {
+        // Don't set loading false yet as we're still trying to get better data from blockchain
+      }
     }
-  }, [blockchainProfile, isBlockchainLoading, isError, fallbackUsername, address]);
+  }, [blockchainProfile, isBlockchainLoading, isError, fallbackUsername, address, initialUsername, initialDisplayName, initialPfpUrl]);
 
   // Add a retry mechanism for when profile data is not immediately available
   useEffect(() => {

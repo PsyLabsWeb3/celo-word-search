@@ -1,0 +1,24 @@
+WARNING: You are currently using Node.js v25.2.1, which is not supported by Hardhat. This can lead to unexpected behavior. See https://v2.hardhat.org/nodejs-versions
+
+
+[dotenv@17.2.3] injecting env (3) from .env -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+[INFO] Sourcify Verification Skipped: Sourcify verification is currently disabled. To enable it, add the following entry to your Hardhat configuration:
+
+sourcify: {
+  enabled: true
+}
+
+Or set 'enabled' to false to hide this message.
+
+For more information, visit https://v2.hardhat.org/hardhat-runner/plugins/nomicfoundation-hardhat-verify#verifying-on-sourcify
+hardhat-verify found one or more errors during the verification process:
+
+Etherscan:
+Failed to send contract verification request.
+Endpoint URL: https://api.etherscan.io/v2/api
+Reason: The Etherscan API responded that the address 0x9057D09e0C9cBb863C002FC0E1Af1098df5B7648 does not have bytecode.
+This can happen if the contract was recently deployed and this fact hasn't propagated to the backend yet.
+Try waiting for a minute before verifying your contract. If you are invoking this from a script,
+try to wait for five confirmations of your contract deployment transaction before running the verification subtask.
+
+

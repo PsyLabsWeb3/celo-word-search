@@ -19,6 +19,7 @@ const CROSSWORD_2_ID = "0x28d1ba71976f4f4fa7344c7025215739bd3f6aa515d13e1fdfbe52
 interface TransactionStats {
     totalCompletions: number
     totalPrizeDistributions: number
+    totalCrosswordsCreated: number
     totalCeloDistributed: number
     crossword1Completions: number
     crossword2Completions: number
@@ -40,6 +41,7 @@ export default function StatsPage() {
     const [stats, setStats] = useState<TransactionStats>({
         totalCompletions: 0,
         totalPrizeDistributions: 0,
+        totalCrosswordsCreated: 0,
         totalCeloDistributed: 0,
         crossword1Completions: 0,
         crossword2Completions: 0,
@@ -69,6 +71,7 @@ export default function StatsPage() {
                 // Fetch events from all contracts
                 let allCompletedEvents: any[] = [];
                 let allPrizeEvents: any[] = [];
+                let allCreatedEvents: any[] = [];
 
                 // Fetch events from each contract address
                 for (const address of contractAddresses) {
@@ -95,12 +98,25 @@ export default function StatsPage() {
 
                         console.log(`Found ${prizeEvents.length} prize events from contract ${address}`);
 
+                        // Fetch CrosswordCreated events from this contract
+                        const createdEvents = await client.getLogs({
+                            address: address as `0x${string}`,
+                            event: parseAbiItem("event CrosswordCreated(bytes32 indexed crosswordId, address indexed token, uint256 prizePool, address creator)"),
+                            fromBlock: 52500000n,
+                            toBlock: "latest",
+                        })
+
+                        console.log(`Found ${createdEvents.length} created events from contract ${address}`);
+
                         // Add contract address to each event for tracking purposes
                         allCompletedEvents = allCompletedEvents.concat(
                             completedEvents.map(event => ({ ...event, contractAddress: address }))
                         );
                         allPrizeEvents = allPrizeEvents.concat(
                             prizeEvents.map(event => ({ ...event, contractAddress: address }))
+                        );
+                        allCreatedEvents = allCreatedEvents.concat(
+                            createdEvents.map(event => ({ ...event, contractAddress: address }))
                         );
                     } catch (contractError) {
                         console.error(`Error fetching data from contract ${address}:`, contractError);
@@ -110,6 +126,7 @@ export default function StatsPage() {
 
                 console.log(`Total completion events: ${allCompletedEvents.length}`);
                 console.log(`Total prize events: ${allPrizeEvents.length}`);
+                console.log(`Total created events: ${allCreatedEvents.length}`);
 
                 // Calculate stats from combined events
                 const crossword1 = allCompletedEvents.filter(log => log.args.crosswordId === CROSSWORD_1_ID)
@@ -127,7 +144,8 @@ export default function StatsPage() {
                 // Get recent transactions (last 10) from all contracts combined
                 const allEvents = [
                     ...allCompletedEvents.map(e => ({ ...e, type: "Completion" })),
-                    ...allPrizeEvents.map(e => ({ ...e, type: "Prize" }))
+                    ...allPrizeEvents.map(e => ({ ...e, type: "Prize" })),
+                    ...allCreatedEvents.map(e => ({ ...e, type: "Created" }))
                 ].sort((a, b) => Number(b.blockNumber) - Number(a.blockNumber))
 
                 const recentTxs = await Promise.all(
@@ -138,7 +156,9 @@ export default function StatsPage() {
                             type: event.type,
                             user: event.type === "Completion"
                                 ? (event.args as any).user
-                                : (event.args as any).winner,
+                                : event.type === "Prize"
+                                ? (event.args as any).winner
+                                : "Admin",
                             timestamp: new Date(Number(block.timestamp) * 1000),
                             amount: event.type === "Prize"
                                 ? formatEther((event.args as any).amount || 0n)
@@ -151,6 +171,7 @@ export default function StatsPage() {
                 setStats({
                     totalCompletions: allCompletedEvents.length,
                     totalPrizeDistributions: allPrizeEvents.length,
+                    totalCrosswordsCreated: allCreatedEvents.length,
                     totalCeloDistributed: totalCelo,
                     crossword1Completions: crossword1.length,
                     crossword2Completions: crossword2.length,
@@ -173,7 +194,7 @@ export default function StatsPage() {
         fetchStats()
     }, [])
 
-    const totalTransactions = stats.totalCompletions + stats.totalPrizeDistributions
+    const totalTransactions = stats.totalCompletions + stats.totalPrizeDistributions + stats.totalCrosswordsCreated
 
     if (stats.isLoading) {
         return (

@@ -276,6 +276,10 @@ export function CrosswordHistoryCard({
                                     userAddress.substring(userAddress.length - 4)
                                   }
                                   size="sm"
+                                  // Pass the completion data if it contains user profile info
+                                  initialUsername={completion.username}
+                                  initialDisplayName={completion.displayName}
+                                  initialPfpUrl={completion.pfpUrl}
                                 />
                               ) : (
                                 <FarcasterUserDisplay
@@ -286,6 +290,10 @@ export function CrosswordHistoryCard({
                                     userAddress.substring(userAddress.length - 4)
                                   }
                                   size="sm"
+                                  // Pass the completion data if it contains user profile info
+                                  initialUsername={completion.username}
+                                  initialDisplayName={completion.displayName}
+                                  initialPfpUrl={completion.pfpUrl}
                                 />
                               )}
                             </div>
