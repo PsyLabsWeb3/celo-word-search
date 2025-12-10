@@ -323,6 +323,8 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
   const [mobilePopup, setMobilePopup] = useState<MobileInputPopup | null>(null)
   const [showCongratulations, setShowCongratulations] = useState(false)
   const [mobileInput, setMobileInput] = useState("")
+  const [invalidCells, setInvalidCells] = useState<Set<string>>(new Set())
+  const [isShaking, setIsShaking] = useState(false)
   const gridRef = useRef<HTMLDivElement>(null)
   const mobileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
@@ -965,19 +967,48 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
     }
     setIsSubmitting(true);
 
+    // Clear previous validation errors
+    setInvalidCells(new Set());
+
     const CROSSWORD_GRID = buildGridFromClues(crosswordData.clues, crosswordData.gridSize)
-    const isValid = CROSSWORD_GRID.every((row, rowIdx) =>
-      row.every((cell, colIdx) => {
-        if (cell === null) return true;
-        return userGrid[rowIdx][colIdx]?.toUpperCase() === cell;
+    
+    // Check for empty cells first
+    const hasEmptyCells = CROSSWORD_GRID.some((row, rowIdx) =>
+      row.some((cell, colIdx) => {
+        if (cell === null) return false;
+        return !userGrid[rowIdx][colIdx];
       })
     );
 
-    if (!isValid) {
-      alert("The crossword is not complete or has errors. Please check your answers.");
+    if (hasEmptyCells) {
+      alert("The crossword is incomplete. Please fill in all cells.");
       setIsSubmitting(false);
       return;
     }
+
+    // Check for incorrect answers
+    const currentInvalidCells = new Set<string>();
+    let hasErrors = false;
+
+    CROSSWORD_GRID.forEach((row, rowIdx) => {
+      row.forEach((cell, colIdx) => {
+        if (cell === null) return;
+        if (userGrid[rowIdx][colIdx]?.toUpperCase() !== cell) {
+          currentInvalidCells.add(`${rowIdx}-${colIdx}`);
+          hasErrors = true;
+        }
+      });
+    });
+
+    if (hasErrors) {
+      setInvalidCells(currentInvalidCells);
+      setIsShaking(true);
+      setTimeout(() => setIsShaking(false), 500); // Reset shake after animation
+      alert("Some answers are incorrect. Errors have been highlighted in red.");
+      setIsSubmitting(false);
+      return;
+    }
+
 
     if (!isConnected) {
       alert("Please connect your wallet to save your result.");
@@ -1112,9 +1143,15 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
       }
 
       // Call completeCrossword and log the result
-      // Send 5 parameters: duration, username, displayName, pfpUrl, crosswordId (for signature)
-      const txPromise = completeCrossword([durationBigInt, username, displayName, pfpUrl, crosswordId]);
       setWaitingForTransaction(true);
+      try {
+        // Send 5 parameters: duration, username, displayName, pfpUrl, crosswordId (for signature)
+        await completeCrossword([durationBigInt, username, displayName, pfpUrl, crosswordId]);
+      } catch (error) {
+        console.error("Crossword completion failed:", error);
+        setWaitingForTransaction(false);
+        setIsSubmitting(false);
+      }
     } else {
       setIsSubmitting(false);
     }
@@ -1458,7 +1495,7 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
         {/* Crossword Grid */}
         <div className="px-2 overflow-x-auto">
           <Card className="border-4 border-black bg-card p-1 sm:p-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] sm:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
-            <div ref={gridRef} className="mx-auto overflow-x-auto w-fit" onKeyDown={handleKeyDown} tabIndex={0}>
+            <div ref={gridRef} className={`mx-auto overflow-x-auto w-fit ${isShaking ? "animate-shake" : ""}`} onKeyDown={handleKeyDown} tabIndex={0}>
               <div className="grid gap-0 p-1 sm:p-2" style={{ gridTemplateColumns: `repeat(${currentGrid[0].length}, 1fr)` }}>
                 {currentGrid.map((row, rowIdx) =>
                   row.map((cell, colIdx) => {
@@ -1467,7 +1504,10 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
                     const isHighlighted = isInSelectedWord(rowIdx, colIdx)
                     const isBlocked = cell === null
                     const userValue = userGrid[rowIdx][colIdx]
-                    const isCorrect = userValue && userValue.toUpperCase() === cell
+                    // We only show green "isCorrect" if the user has officially completed it (or we can just hide it to avoid spoilers until done)
+                    // For now, let's keep isCorrect behavior but prioritize isInvalid
+                    const isCorrect = userValue && userValue.toUpperCase() === cell && alreadyCompleted
+                    const isInvalid = invalidCells.has(`${rowIdx}-${colIdx}`)
 
                     return (
                       <div
@@ -1476,11 +1516,12 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
                         className={cn(
                           "relative h-7 w-7 border-2 border-black transition-all max-[400px]:h-6 max-[400px]:w-6 sm:h-8 sm:w-8 md:h-10 md:w-10 lg:h-11 lg:w-11",
                           isBlocked && "bg-foreground",
-                          !isBlocked &&
+                          !isBlocked && !isInvalid &&
                             "cursor-pointer bg-white hover:translate-x-0.5 hover:translate-y-0.5 active:translate-x-0.5 active:translate-y-0.5 hover:shadow-none active:shadow-none",
-                          isHighlighted && !isSelected && "bg-secondary shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]",
-                          isSelected && "bg-primary shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]",
+                          isHighlighted && !isSelected && !isInvalid && "bg-secondary shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]",
+                          isSelected && !isInvalid && "bg-primary shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]",
                           isCorrect && !isBlocked && "bg-accent",
+                          isInvalid && !isBlocked && "bg-red-500 animate-pulse text-white", // Red background for invalid cells
                         )}
                       >
                         {cellNumber && (
@@ -1528,7 +1569,7 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
               </Button>
               <Button
                 onClick={alreadyCompleted ? () => alert("Prize can be claimed from the Leaderboard page after completion.") : handleSaveCompletion}
-                disabled={(!isComplete && !alreadyCompleted) || alreadyCompleted || isCompleting || isSubmitting}
+                disabled={alreadyCompleted || isCompleting || isSubmitting}
                 className="mb-4 w-full md:w-auto border-4 border-black bg-primary font-black uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-0.5 hover:translate-y-0.5 sm:hover:translate-x-1 sm:hover:translate-y-1 active:translate-x-0.5 active:translate-y-0.5 sm:active:translate-y-1 hover:bg-primary active:bg-primary hover:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] disabled:active:translate-x-0 disabled:active:translate-y-0 disabled:active:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
               >
                 {isSubmitting || isCompleting ? (
@@ -1558,7 +1599,7 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
                 ) : (
                   <>
                     <Save className="w-4 h-4 mr-2" />
-                    {(isComplete ? "Save Result" : "Complete")}
+                    {"Verify & Complete"}
                   </>
                 )}
               </Button>

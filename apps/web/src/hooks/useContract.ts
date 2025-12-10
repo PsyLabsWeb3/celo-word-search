@@ -335,6 +335,7 @@ export const useCompleteCrossword = () => {
         console.error('Completion error:', e);
         toast.error('Failed to complete', { description: e.message });
         errorShown.current = true;
+        throw e;
       }
     },
     isLoading: isPending || isConfirming,

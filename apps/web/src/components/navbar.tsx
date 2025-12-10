@@ -121,38 +121,29 @@ export default function Navbar() {
     if (!isConnected) {
       return (
         <div className="flex flex-col gap-2 sm:flex-row">
-          {/* Farcaster wallet button - only shown in Farcaster environment */}
-          {hasFarcasterConnectorRef.current && (
-            <button
-              onClick={async () => {
-                setManualConnecting(true);
-                const currentFarcasterConnector = connectors.find(c => c.id === 'farcaster');
-                try {
-                  if (currentFarcasterConnector) {
-                    await connect({ connector: currentFarcasterConnector });
-                  }
-                } finally {
-                  setManualConnecting(false);
-                }
-              }}
-              disabled={isConnecting}
-              className={`bg-[#27F52A] px-3 py-2 text-sm font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 active:translate-x-1 active:translate-y-1 hover:bg-[#27F52A] active:bg-[#27F52A] hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary ${isMobile ? 'w-full' : 'sm:px-4 sm:text-base'} ${isConnecting ? 'opacity-70' : ''}`}
-            >
-              {isConnecting && (
-                <svg className="inline-block w-4 h-4 mr-2 -ml-1 text-current animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-              )}
-              {isConnecting ? 'Connecting...' : 'Farcaster Wallet'}
-            </button>
-          )}
-
-          {/* External wallet button */}
           <button
-            onClick={connectExternalWallet}
+            onClick={async () => {
+              setManualConnecting(true);
+              try {
+                // Priority: Farcaster -> Injected -> MetaMask
+                const connectorToUse = 
+                  connectors.find(c => c.id === 'farcaster') || 
+                  connectors.find(c => c.id === 'injected' || c.name.toLowerCase().includes('meta') || c.id.includes('meta'));
+                
+                if (connectorToUse) {
+                  await connect({ connector: connectorToUse });
+                } else {
+                  alert("No compatible wallet found. Please use Farcaster or install a wallet like MetaMask.");
+                }
+              } catch (error) {
+                console.error("Connection error:", error);
+                alert(`Connection failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+              } finally {
+                setManualConnecting(false);
+              }
+            }}
             disabled={isConnecting}
-            className={`bg-blue-500 px-3 py-2 text-sm font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 active:translate-x-1 active:translate-y-1 hover:bg-blue-600 active:bg-blue-600 hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary ${isMobile ? 'w-full' : 'sm:px-4 sm:text-base'} ${isConnecting ? 'opacity-70' : ''}`}
+            className={`bg-[#27F52A] px-3 py-2 text-sm font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 active:translate-x-1 active:translate-y-1 hover:bg-[#27F52A] active:bg-[#27F52A] hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary ${isMobile ? 'w-full' : 'sm:px-4 sm:text-base'} ${isConnecting ? 'opacity-70' : ''}`}
           >
             {isConnecting && (
               <svg className="inline-block w-4 h-4 mr-2 -ml-1 text-current animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -160,7 +151,7 @@ export default function Navbar() {
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
             )}
-            {isConnecting ? 'Connecting...' : 'External Wallet'}
+            {isConnecting ? 'Connecting...' : (hasFarcasterConnectorRef.current ? 'Connect Wallet' : 'Connect Wallet')}
           </button>
         </div>
       );
