@@ -1102,7 +1102,7 @@ export const useCreateCrosswordWithPrizePool = () => {
         };
 
         // Add gas limit for ERC20 operations
-        txConfig.gas = 800000n; // Higher gas limit for complex operations with token transfers
+        txConfig.gas = 3000000n; // Higher gas limit for complex operations with token transfers
 
         return writeContract(txConfig, {
           onError: (error) => {
@@ -1204,7 +1204,7 @@ export const useCreateCrosswordWithNativeCELOPrizePool = () => {
         };
 
         // Add gas limit to ensure sufficient gas for native CELO transfer
-        txConfig.gas = 1000000n; // Set higher gas limit for complex operations with native token transfer
+        txConfig.gas = 3000000n; // Set higher gas limit for complex operations with native token transfer
 
         return writeContract(txConfig, {
           onError: (error) => {
