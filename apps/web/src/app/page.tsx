@@ -6,7 +6,7 @@ import Image from "next/image";
 import { useAccount } from "wagmi";
 import CrosswordGame from "@/components/crossword-game"
 import { Button } from "@/components/ui/button"
-import { AlertCircle, Wallet } from "lucide-react"
+import { AlertCircle, Wallet, Play, History, BarChart3, Trophy, ArrowRight } from "lucide-react"
 import { useCrossword } from "@/contexts/crossword-context";
 import { useCeloNetworkValidation } from "@/hooks/useCeloNetworkValidation";
 import { CeloNetworkButton } from "@/components/celo-network-button";
@@ -166,50 +166,57 @@ export default function Page() {
             </p>
           </div>
 
-          <div className="flex flex-col items-center justify-center gap-4 md:flex-row">
+          <div className="grid w-full max-w-4xl gap-4 mx-auto mt-8 sm:grid-cols-2 lg:grid-cols-2">
             {isConnected && (
               <>
                 <CeloNetworkButton
                   onClick={handleStartNewGame}
-                  className="h-auto w-80 border-4 border-black bg-accent px-8 py-6 text-2xl font-black uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-2 hover:translate-y-2 active:translate-x-2 active:translate-y-2 hover:bg-accent active:bg-accent hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                  className="h-32 w-full border-4 border-black bg-accent p-4 text-2xl font-black uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 active:translate-x-1 active:translate-y-1 hover:bg-accent active:bg-accent hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary flex flex-col items-center justify-center gap-2"
                 >
-                  Start
+                  <Play className="w-10 h-10" />
+                  <span>Start Game</span>
                 </CeloNetworkButton>
-                <Link href="/stats" passHref>
+
+                <Link href="/history" passHref className="w-full">
                   <CeloNetworkButton
                     variant="secondary"
-                    className="h-auto w-80 border-4 border-black bg-orange-500 px-8 py-6 text-2xl font-black uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-2 hover:translate-y-2 active:translate-x-2 active:translate-y-2 hover:bg-orange-500 active:bg-orange-500 hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                    className="h-32 w-full border-4 border-black bg-purple-500 p-4 text-2xl font-black uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 active:translate-x-1 active:translate-y-1 hover:bg-purple-500 active:bg-purple-500 hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary flex flex-col items-center justify-center gap-2"
                   >
-                    📊 Stats
+                    <History className="w-10 h-10" />
+                    <span>History</span>
                   </CeloNetworkButton>
                 </Link>
+
+                <Link href="/stats" passHref className="w-full">
+                  <CeloNetworkButton
+                    variant="secondary"
+                    className="h-32 w-full border-4 border-black bg-orange-500 p-4 text-2xl font-black uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 active:translate-x-1 active:translate-y-1 hover:bg-orange-500 active:bg-orange-500 hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary flex flex-col items-center justify-center gap-2"
+                  >
+                    <BarChart3 className="w-10 h-10" />
+                    <span>Stats</span>
+                  </CeloNetworkButton>
+                </Link>
+
                 {(hasSavedCrossword || alreadyCompleted) && currentCrossword?.id && (
-                  <>
-                    <Link href="/leaderboard" passHref>
-                      <CeloNetworkButton
-                        variant="secondary"
-                        className="h-auto w-80 border-4 border-black bg-blue-500 px-8 py-6 text-2xl font-black uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-2 hover:translate-y-2 active:translate-x-2 active:translate-y-2 hover:bg-blue-500 active:bg-blue-500 hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-                      >
-                        Leaderboard
-                      </CeloNetworkButton>
-                    </Link>
-                    <Link href="/history" passHref>
-                      <CeloNetworkButton
-                        variant="secondary"
-                        className="h-auto w-80 border-4 border-black bg-purple-500 px-8 py-6 text-2xl font-black uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-2 hover:translate-y-2 active:translate-x-2 active:translate-y-2 hover:bg-purple-500 active:bg-purple-500 hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-                      >
-                        History
-                      </CeloNetworkButton>
-                    </Link>
-                  </>
+                  <Link href="/leaderboard" passHref className="w-full">
+                    <CeloNetworkButton
+                      variant="secondary"
+                      className="h-32 w-full border-4 border-black bg-blue-500 p-4 text-2xl font-black uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 active:translate-x-1 active:translate-y-1 hover:bg-blue-500 active:bg-blue-500 hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary flex flex-col items-center justify-center gap-2"
+                    >
+                      <Trophy className="w-10 h-10" />
+                      <span>Leaderboard</span>
+                    </CeloNetworkButton>
+                  </Link>
                 )}
+
                 {hasSavedCrossword && (
                   <CeloNetworkButton
                     variant="secondary"
                     onClick={handleContinueGame}
-                    className="h-auto w-80 border-4 border-black bg-primary px-8 py-6 text-2xl font-black uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-2 hover:translate-y-2 active:translate-x-2 active:translate-y-2 hover:bg-primary active:bg-primary hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                    className="col-span-1 sm:col-span-2 h-24 w-full border-4 border-black bg-primary p-4 text-xl font-black uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 active:translate-x-1 active:translate-y-1 hover:bg-primary active:bg-primary hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary flex items-center justify-center gap-2 mt-4"
                   >
-                    Continue Crossword
+                    <span>Continue Crossword</span>
+                    <ArrowRight className="w-6 h-6" />
                   </CeloNetworkButton>
                 )}
               </>
