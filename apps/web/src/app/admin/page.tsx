@@ -12,6 +12,7 @@ import { toast } from "sonner"
 import { useIsAdmin, useSetCrossword, useGetMaxWinnersConfig, useSetConfig, useCreateCrosswordWithPrizePool, useCreateCrosswordWithNativeCELOPrizePool, useActivateCrossword, useGetCrosswordDetails, useCrosswordPrizesDetails } from "@/hooks/useContract"
 import { useCrossword } from "@/contexts/crossword-context"
 import { useQueryClient } from "@tanstack/react-query"
+import { CeloNetworkButton } from "@/components/celo-network-button"
 
 interface Clue {
   number: number
@@ -660,6 +661,13 @@ export default function AdminPage() {
         <Card className="w-full max-w-2xl p-8 text-center border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
           <h2 className="mb-4 text-2xl font-bold">Admin Panel</h2>
           <p className="mb-6 text-lg">Please connect your wallet to access the admin panel.</p>
+          <div className="flex justify-center">
+            <CeloNetworkButton
+              className="h-auto w-64 border-4 border-black bg-[#27F52A] px-6 py-4 text-xl font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 active:translate-x-1 active:translate-y-1 hover:bg-[#27F52A] active:bg-[#27F52A] hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+            >
+              Connect Wallet
+            </CeloNetworkButton>
+          </div>
         </Card>
       </div>
     );

@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dialog";
 
 export default function Navbar() {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(true);
   const [mounted, setMounted] = useState(false);
   const [hasManuallyDisconnected, setHasManuallyDisconnected] = useState(false);
   const [manualConnecting, setManualConnecting] = useState(false);

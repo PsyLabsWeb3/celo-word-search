@@ -167,13 +167,7 @@ export default function Page() {
           </div>
 
           <div className="flex flex-col items-center justify-center gap-4 md:flex-row">
-            {!isConnected ? (
-              <CeloNetworkButton
-                className="h-auto w-80 border-4 border-black bg-[#27F52A] px-8 py-6 text-2xl font-black uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-2 hover:translate-y-2 active:translate-x-2 active:translate-y-2 hover:bg-[#27F52A] active:bg-[#27F52A] hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-              >
-                Connect Wallet
-              </CeloNetworkButton>
-            ) : (
+            {isConnected && (
               <>
                 <CeloNetworkButton
                   onClick={handleStartNewGame}
@@ -181,15 +175,6 @@ export default function Page() {
                 >
                   Start
                 </CeloNetworkButton>
-
-                <Link href="/history" passHref>
-                  <CeloNetworkButton
-                    variant="secondary"
-                    className="h-auto w-80 border-4 border-black bg-purple-500 px-8 py-6 text-2xl font-black uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-2 hover:translate-y-2 active:translate-x-2 active:translate-y-2 hover:bg-purple-500 active:bg-purple-500 hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-                  >
-                    History
-                  </CeloNetworkButton>
-                </Link>
                 <Link href="/stats" passHref>
                   <CeloNetworkButton
                     variant="secondary"
@@ -199,14 +184,24 @@ export default function Page() {
                   </CeloNetworkButton>
                 </Link>
                 {(hasSavedCrossword || alreadyCompleted) && currentCrossword?.id && (
-                  <Link href="/leaderboard" passHref>
-                    <CeloNetworkButton
-                      variant="secondary"
-                      className="h-auto w-80 border-4 border-black bg-blue-500 px-8 py-6 text-2xl font-black uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-2 hover:translate-y-2 active:translate-x-2 active:translate-y-2 hover:bg-blue-500 active:bg-blue-500 hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-                    >
-                      Leaderboard
-                    </CeloNetworkButton>
-                  </Link>
+                  <>
+                    <Link href="/leaderboard" passHref>
+                      <CeloNetworkButton
+                        variant="secondary"
+                        className="h-auto w-80 border-4 border-black bg-blue-500 px-8 py-6 text-2xl font-black uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-2 hover:translate-y-2 active:translate-x-2 active:translate-y-2 hover:bg-blue-500 active:bg-blue-500 hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                      >
+                        Leaderboard
+                      </CeloNetworkButton>
+                    </Link>
+                    <Link href="/history" passHref>
+                      <CeloNetworkButton
+                        variant="secondary"
+                        className="h-auto w-80 border-4 border-black bg-purple-500 px-8 py-6 text-2xl font-black uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-2 hover:translate-y-2 active:translate-x-2 active:translate-y-2 hover:bg-purple-500 active:bg-purple-500 hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                      >
+                        History
+                      </CeloNetworkButton>
+                    </Link>
+                  </>
                 )}
                 {hasSavedCrossword && (
                   <CeloNetworkButton
