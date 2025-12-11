@@ -317,7 +317,7 @@ export default function Navbar() {
 
       {/* Mobile dropdown menu */}
       {isMenuOpen && (
-        <div className="container mx-auto mt-3 max-w-7xl">
+        <div className="container mx-auto mt-3 max-w-7xl md:hidden">
           <div className="flex flex-col gap-3 p-3 bg-[#AD27F5]">
             {renderWalletButton(true)}
             <div className="pt-3 mt-3 border-t border-white/30">
