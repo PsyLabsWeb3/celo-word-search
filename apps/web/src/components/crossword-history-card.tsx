@@ -4,13 +4,14 @@ import { cn } from "@/lib/utils"
 import { useState } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Trophy, ChevronDown, ChevronUp, Calendar, Coins } from "lucide-react"
+import { Trophy, ChevronDown, ChevronUp, Calendar, Coins, Lock } from "lucide-react"
 import { useGetCrosswordDetailsById, useGetCrosswordCompletions } from "@/hooks/useContract"
 import FarcasterUserDisplay from "@/components/farcaster-user-display"
 import FarcasterUserDisplayLegacy from "@/components/farcaster-user-display-legacy"
 import { useGetCrosswordGridData } from "@/hooks/useGetCrosswordGridData"
 import ReadOnlyCrosswordGrid from "@/components/readonly-crossword-grid"
 import { useCrossword } from "@/contexts/crossword-context"
+import { useAccount } from "wagmi"
 
 // Component for individual crossword history item
 export function CrosswordHistoryCard({
@@ -37,10 +38,12 @@ export function CrosswordHistoryCard({
   isLegacy?: boolean
 }) {
   const [isExpanded, setIsExpanded] = useState(false)
-  // Use initial data if provided, otherwise fetch
-  const shouldFetch = isExpanded && !initialCompletions
+  const { address } = useAccount()
   
-  const { data: details, isLoading: isDetailsLoading } = useGetCrosswordDetailsById(shouldFetch ? crosswordId : undefined)
+  // Always fetch completions if not provided (needed to check if user completed for grid display)
+  const shouldFetch = !initialCompletions
+  
+  const { data: details, isLoading: isDetailsLoading } = useGetCrosswordDetailsById(isExpanded && shouldFetch ? crosswordId : undefined)
   // Type assertion for details structure: [token, totalPrizePool, winnerPercentages, completions, activationTime, endTime, state, name, gridData, sponsoredBy]
   type DetailsType = [string, bigint, bigint[], any[], bigint, bigint, number, string, string, string] | undefined;
   const { data: completionsData, isLoading: isCompletionsLoading } = useGetCrosswordCompletions(shouldFetch ? crosswordId : `0x0000000000000000000000000000000000000000000000000000000000000000`)
@@ -142,6 +145,18 @@ export function CrosswordHistoryCard({
     })
     : [])
 
+  // Check if this is the current crossword
+  const isCurrentCrossword = currentCrossword?.id === crosswordId
+
+  // Check if current user has completed this crossword (only matters for current crossword)
+  const userHasCompleted = sortedCompletions.some((completion: any) => {
+    const userAddress = getCompletionUser(completion)
+    return userAddress.toLowerCase() === address?.toLowerCase()
+  })
+
+  // Only hide grid for current crossword if user hasn't completed it
+  const shouldShowGrid = !isCurrentCrossword || userHasCompleted
+
   return (
     <Card className="border-4 border-black bg-card shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none">
       <div className="p-4 sm:p-6">
@@ -181,7 +196,19 @@ export function CrosswordHistoryCard({
               </div>
             ) : effectiveGridData ? (
               <div className="flex justify-center">
-                <ReadOnlyCrosswordGrid clues={effectiveGridData.clues} gridSize={effectiveGridData.gridSize} />
+                {shouldShowGrid ? (
+                  <ReadOnlyCrosswordGrid clues={effectiveGridData.clues} gridSize={effectiveGridData.gridSize} />
+                ) : (
+                  <div className="flex flex-col items-center justify-center gap-3 py-8 px-4 border-4 border-black bg-muted/30 rounded-lg shadow-[4px_4px_0px_0px_rgba(0,0,0,0.3)] min-h-[200px]">
+                    <Lock className="w-12 h-12 text-muted-foreground/50" />
+                    <p className="text-sm font-black text-center text-muted-foreground max-w-[250px]">
+                      Complete this crossword to see the answers
+                    </p>
+                    <p className="text-xs font-bold text-center text-muted-foreground/70 max-w-[250px]">
+                      No spoilers! 🤫
+                    </p>
+                  </div>
+                )}
               </div>
             ) : (
               <p className="py-4 text-sm font-bold text-center text-muted-foreground">
@@ -218,9 +245,10 @@ export function CrosswordHistoryCard({
               </div>
             )}
 
-            {/* Completions Section */}
-            <div>
-              <h4 className="mb-3 text-sm font-black uppercase sm:text-base">Completions</h4>
+            {/* Completions Section - Only show if user should see the grid */}
+            {shouldShowGrid && (
+              <div>
+                <h4 className="mb-3 text-sm font-black uppercase sm:text-base">Completions</h4>
               {isCompletionsLoading ? (
                 <div className="py-8 text-center">
                   <div className="inline-block w-8 h-8 border-t-2 border-b-2 rounded-full animate-spin border-primary"></div>
@@ -320,7 +348,8 @@ export function CrosswordHistoryCard({
                   No completions yet
                 </p>
               )}
-            </div>
+              </div>
+            )}
           </div>
         )}
       </div>

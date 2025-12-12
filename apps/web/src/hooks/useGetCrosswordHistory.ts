@@ -176,6 +176,8 @@ export function useGetCrosswordHistory(
           });
 
           const crosswords = await Promise.all(crosswordPromises);
+          // Sort by timestamp descending (newest first)
+          crosswords.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
           setCrosswords(crosswords);
           setIsLoading(false);
           return;
@@ -274,6 +276,8 @@ export function useGetCrosswordHistory(
           });
 
           const crosswords = await Promise.all(crosswordPromises);
+          // Sort by timestamp descending (newest first)
+          crosswords.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
           setCrosswords(crosswords);
         } catch (err) {
           console.error('Error fetching completed crosswords:', err);

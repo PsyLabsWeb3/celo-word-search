@@ -72,14 +72,9 @@ export default function HistoryPage() {
           </Button>
         </div>
 
-        {/* Legacy / Hardcoded Crosswords */}
-        <div className="mb-8 space-y-4">
-             <LegacyCrosswordHistory />
-        </div>
-
         {/* Dynamic / Future Crosswords */}
         {dynamicCrosswords.length > 0 && (
-            <div className="space-y-4">
+            <div className="mb-8 space-y-4">
                 {dynamicCrosswords.map((crossword) => (
                 <CrosswordHistoryCard
                     key={crossword.crosswordId}
@@ -106,10 +101,15 @@ export default function HistoryPage() {
 
         {/* Loading State for Dynamic */}
         {isLoading && dynamicCrosswords.length === 0 && (
-             <div className="py-8 text-center">
+             <div className="mb-8 py-8 text-center">
                 <div className="inline-block w-8 h-8 border-t-2 border-b-2 rounded-full animate-spin border-primary"></div>
              </div>
         )}
+
+        {/* Legacy / Hardcoded Crosswords */}
+        <div className="mb-8 space-y-4">
+             <LegacyCrosswordHistory />
+        </div>
 
         {/* Home Button */}
         <div className="flex justify-center mt-8">
