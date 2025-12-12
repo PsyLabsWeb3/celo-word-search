@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils"
 import { useEffect, useState, useCallback } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Trophy, Medal, Award, Home, Clock, ChevronDown } from "lucide-react"
+import { Trophy, Medal, Award, Home, Clock, ChevronDown, ArrowLeft } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useCrossword } from "@/contexts/crossword-context"
 import { useGetCrosswordCompletions, useClaimPrize, useCrosswordPrizesDetails } from "@/hooks/useContract"
@@ -371,6 +371,17 @@ export default function LeaderboardPage() {
             </h1>
             <p className="mt-2 text-sm font-bold text-muted-foreground sm:text-base">
               The first users to complete the current crossword puzzle (stored on the blockchain).            </p>
+          </div>
+
+          {/* Back Button - Top */}
+          <div className="flex justify-center mb-8">
+            <Button
+              onClick={() => window.location.href = "/"}
+              className="border-4 border-black bg-accent font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-accent hover:shadow-none"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back
+            </Button>
           </div>
 
           {completions.length === 0 ? (

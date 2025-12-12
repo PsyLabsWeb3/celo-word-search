@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils"
 import { useState } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Trophy, Home, ChevronDown, ChevronUp, Calendar, Coins } from "lucide-react"
+import { Trophy, Home, ChevronDown, ChevronUp, Calendar, Coins, ArrowLeft } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useChainId } from "wagmi"
 import { CONTRACTS } from "@/lib/contracts"
@@ -59,6 +59,17 @@ export default function HistoryPage() {
           <p className="mt-2 text-sm font-bold text-muted-foreground sm:text-base">
             Browse past crosswords and their winners
           </p>
+        </div>
+
+        {/* Back Button - Top */}
+        <div className="flex justify-center mb-8">
+          <Button
+            onClick={() => window.location.href = "/"}
+            className="border-4 border-black bg-accent font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-accent hover:shadow-none"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back
+          </Button>
         </div>
 
         {/* Legacy / Hardcoded Crosswords */}
