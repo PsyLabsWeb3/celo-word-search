@@ -4,8 +4,8 @@ import { cn } from "@/lib/utils"
 import { useEffect, useState, useCallback } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Trophy, Medal, Award, Home, Clock, ChevronDown, ArrowLeft } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { Trophy, Medal, Award, Home, Clock, ChevronDown, ArrowLeft, Share2 } from "lucide-react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useCrossword } from "@/contexts/crossword-context"
 import { useGetCrosswordCompletions, useClaimPrize, useCrosswordPrizesDetails } from "@/hooks/useContract"
 import { useAccount } from "wagmi";
@@ -15,6 +15,8 @@ import { readContract } from 'wagmi/actions';
 import { CONTRACTS } from '@/lib/contracts';
 import { config } from '@/contexts/frame-wallet-context';
 import { useChainId } from "wagmi";
+import { formatEther } from "viem";
+import confetti from 'canvas-confetti';
 
 export default function LeaderboardPage() {
   const [completions, setCompletions] = useState<any[]>([])
@@ -23,10 +25,13 @@ export default function LeaderboardPage() {
   const [userHasClaimed, setUserHasClaimed] = useState<boolean | null>(null); // null = not checked yet
   const [checkingClaimStatus, setCheckingClaimStatus] = useState(false);
   const [visibleCount, setVisibleCount] = useState(10);
+  const [showCelebrationModal, setShowCelebrationModal] = useState(false);
+  const [celebrationData, setCelebrationData] = useState<{winner: boolean, rank: number, prize?: string} | null>(null);
   const { currentCrossword } = useCrossword()
   const { address: connectedAddress, isConnected } = useAccount();
   const { claimPrize, isLoading: isClaiming, isSuccess: isClaimSuccess, isError: isClaimError, error: claimError } = useClaimPrize();
   const router = useRouter()
+  const searchParams = useSearchParams();
   const chainId = useChainId();
 
   // Effect to check if user has already claimed their prize by calling the contract function
@@ -216,6 +221,97 @@ export default function LeaderboardPage() {
     }
   }, [onChainCompletions, isCompletionsLoading]); // Removed getCompletionTimestamp to prevent infinite loop
 
+  // Effect to check URL parameters and show celebration modal
+  useEffect(() => {
+    const completed = searchParams.get('completed');
+    const winner = searchParams.get('winner');
+    const rank = searchParams.get('rank');
+
+    console.log('[LEADERBOARD DEBUG] URL params:', { completed, winner, rank, showCelebrationModal });
+
+    if (completed === 'true' && !showCelebrationModal) {
+      const isWinner = winner === 'true';
+      const userRank = rank ? parseInt(rank) : 0;
+      
+      console.log('[LEADERBOARD DEBUG] Processing completion:', { isWinner, userRank });
+
+      if (userRank > 0) {
+        // Show modal immediately for both winners and non-winners
+        if (isWinner) {
+          // For winners, try to calculate prize if data is available
+          if (crosswordDetails) {
+            const prizePool = Array.isArray(crosswordDetails) ? crosswordDetails[1] : 0n;
+            const winnerPercentages = Array.isArray(crosswordDetails) ? crosswordDetails[2] : [];
+            
+            if (userRank <= winnerPercentages.length) {
+              const percentage = winnerPercentages[userRank - 1];
+              const prizeAmount = (prizePool * percentage) / 10000n;
+              const prizeInCelo = formatEther(prizeAmount);
+              
+              setCelebrationData({ winner: true, rank: userRank, prize: prizeInCelo });
+            } else {
+              // Show without prize if rank is out of range
+              setCelebrationData({ winner: true, rank: userRank, prize: '0' });
+            }
+          } else {
+            // Show modal without prize amount if data not loaded yet
+            setCelebrationData({ winner: true, rank: userRank, prize: '...' });
+          }
+          
+          console.log('[LEADERBOARD DEBUG] Setting showCelebrationModal to true for winner');
+          setShowCelebrationModal(true);
+          
+          // Fire confetti for winners
+          setTimeout(() => {
+            const count = 500;
+            const defaults = { origin: { y: 0.5, x: 0.5 } };
+            
+            function fire(particleRatio: number, opts: any) {
+              confetti({
+                ...defaults,
+                ...opts,
+                particleCount: Math.floor(count * particleRatio)
+              });
+            }
+            
+            fire(0.25, { spread: 26, startVelocity: 55 });
+            fire(0.2, { spread: 60 });
+            fire(0.35, { spread: 100, decay: 0.91, scalar: 0.4 });
+            fire(0.1, { spread: 120, startVelocity: 25, decay: 0.92, scalar: 1.2 });
+            fire(0.1, { spread: 120, startVelocity: 45 });
+          }, 300);
+        } else {
+          // Non-winner celebration
+          console.log('[LEADERBOARD DEBUG] Setting showCelebrationModal to true for non-winner');
+          setCelebrationData({ winner: false, rank: userRank });
+          setShowCelebrationModal(true);
+        }
+
+        // Clear URL parameters
+        console.log('[LEADERBOARD DEBUG] Clearing URL parameters');
+        if (typeof window !== 'undefined') {
+          window.history.replaceState({}, '', '/leaderboard');
+        }
+      }
+    }
+  }, [searchParams, crosswordDetails, showCelebrationModal]);
+
+  // Update prize amount when crosswordDetails loads for winners
+  useEffect(() => {
+    if (showCelebrationModal && celebrationData?.winner && celebrationData.prize === '...' && crosswordDetails) {
+      const prizePool = Array.isArray(crosswordDetails) ? crosswordDetails[1] : 0n;
+      const winnerPercentages = Array.isArray(crosswordDetails) ? crosswordDetails[2] : [];
+      
+      if (celebrationData.rank > 0 && celebrationData.rank <= winnerPercentages.length) {
+        const percentage = winnerPercentages[celebrationData.rank - 1];
+        const prizeAmount = (prizePool * percentage) / 10000n;
+        const prizeInCelo = formatEther(prizeAmount);
+        
+        setCelebrationData({ ...celebrationData, prize: prizeInCelo });
+      }
+    }
+  }, [crosswordDetails, celebrationData, showCelebrationModal]);
+
   const formatDate = (timestamp: bigint) => {
     if (!timestamp) return "Invalid Date";
     
@@ -358,8 +454,104 @@ export default function LeaderboardPage() {
     }
   };
 
+  // Function to share on Farcaster
+  const handleFarcasterShare = async () => {
+    if (!celebrationData) return;
+
+    try {
+      let shareText = '';
+      
+      if (celebrationData.winner && celebrationData.prize) {
+        shareText = `🏆 I won ${Number(celebrationData.prize).toFixed(4)} CELO finishing #${celebrationData.rank} in the Celo Crossword! Can you beat me? 🧩`;
+      } else {
+        shareText = `✅ I completed the Celo Crossword, finishing #${celebrationData.rank}! Try it yourself! 🧩`;
+      }
+
+      // Get the current origin for the frame URL
+      const frameUrl = typeof window !== 'undefined' ? window.location.origin : '';
+      
+      // Use Farcaster SDK to compose a cast with the frame embedded
+      const composeUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(shareText)}&embeds[]=${encodeURIComponent(frameUrl)}`;
+      
+      await sdk.actions.openUrl(composeUrl);
+    } catch (error) {
+      console.error('Error sharing on Farcaster:', error);
+      // Fallback: try without embed
+      try {
+        let shareText = '';
+        if (celebrationData?.winner && celebrationData.prize) {
+          shareText = `🏆 I won ${Number(celebrationData.prize).toFixed(4)} CELO finishing #${celebrationData.rank} in the Celo Crossword! Can you beat me? 🧩`;
+        } else if (celebrationData) {
+          shareText = `✅ I completed the Celo Crossword, finishing #${celebrationData.rank}! Try it yourself! 🧩`;
+        }
+        await sdk.actions.openUrl(`https://warpcast.com/~/compose?text=${encodeURIComponent(shareText)}`);
+      } catch (fallbackError) {
+        console.error('Fallback share also failed:', fallbackError);
+      }
+    }
+  };
+
   return (
     <>
+      {/* Celebration Modal */}
+      {(() => {
+        console.log('[LEADERBOARD DEBUG] Modal render check:', { showCelebrationModal, celebrationData });
+        return showCelebrationModal && celebrationData;
+      })() && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <Card className="relative w-full max-w-md border-4 border-black bg-card p-6 sm:p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+            <div className="flex flex-col items-center text-center space-y-4">
+              {celebrationData.winner ? (
+                <>
+                  <Trophy className="w-16 h-16 sm:w-20 sm:h-20 text-yellow-500 mb-2" />
+                  <h2 className="text-2xl sm:text-3xl font-black uppercase text-foreground">
+                    ¡Felicidades! 🎉
+                  </h2>
+                  <p className="text-lg sm:text-xl font-bold text-primary">
+                    Ganaste {celebrationData.prize} CELO
+                  </p>
+                  <p className="text-base sm:text-lg font-bold text-muted-foreground">
+                    Terminaste en el puesto #{celebrationData.rank}
+                  </p>
+                  <p className="text-sm text-muted-foreground px-2">
+                    Tu premio ha sido registrado en la blockchain. ¡Comparte tu logro!
+                  </p>
+                </>
+              ) : (
+                <>
+                  <Trophy className="w-16 h-16 sm:w-20 sm:h-20 text-primary mb-2" />
+                  <h2 className="text-2xl sm:text-3xl font-black uppercase text-foreground">
+                    ¡Completado! ✅
+                  </h2>
+                  <p className="text-lg sm:text-xl font-bold text-muted-foreground">
+                    Terminaste en el puesto #{celebrationData.rank}
+                  </p>
+                  <p className="text-sm text-muted-foreground px-2">
+                    ¡Buen trabajo! Tu participación ha sido registrada en la blockchain.
+                  </p>
+                </>
+              )}
+              
+              <div className="flex flex-col sm:flex-row gap-3 w-full mt-4">
+                <Button
+                  onClick={handleFarcasterShare}
+                  className="flex-1 border-4 border-black bg-purple-500 font-black uppercase text-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-purple-600 hover:shadow-none"
+                >
+                  <Share2 className="w-4 h-4 mr-2" />
+                  Compartir
+                </Button>
+                <Button
+                  onClick={() => setShowCelebrationModal(false)}
+                  className="flex-1 border-4 border-black bg-accent font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-accent hover:shadow-none"
+                >
+                  Cerrar
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
       <main className="min-h-screen p-4 bg-background sm:p-6 md:p-8">
         <div className="max-w-4xl mx-auto">
           <div className="mb-8 text-center">

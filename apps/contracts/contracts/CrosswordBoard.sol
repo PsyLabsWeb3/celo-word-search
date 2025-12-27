@@ -49,6 +49,32 @@ interface IAdminManager {
     function unpause() external;
 }
 
+interface IPublicCrosswordManager {
+    function createCrossword(bytes32 crosswordId, string memory name, string memory crosswordData, string memory sponsoredBy) external payable;
+    function createCrosswordWithNativeCELOPrizePool(bytes32 crosswordId, string memory name, string memory crosswordData, string memory sponsoredBy, uint256 maxWinners, uint256 prizePool, uint256[] calldata winnerPercentages, uint256 endTime) external payable;
+    function createCrosswordWithPrizePool(bytes32 crosswordId, string memory name, string memory crosswordData, string memory sponsoredBy, uint256 maxWinners, address token, uint256 prizePool, uint256[] calldata winnerPercentages, uint256 endTime) external;
+    function activateCrossword(bytes32 crosswordId) external;
+    function getCrosswordDetails(bytes32 crosswordId) external view returns (
+        string memory name,
+        string memory sponsoredBy,
+        string memory crosswordData,
+        address token,
+        uint256 totalPrizePool,
+        uint256 maxWinners,
+        uint256[] memory winnerPercentages,
+        uint256 activationTime,
+        uint256 endTime,
+        uint256 createdAt,
+        bool isActive,
+        bool isCompleted,
+        address creator
+    );
+    function getActiveCrosswordIds() external view returns (bytes32[] memory);
+    function getAllCrosswordIds() external view returns (bytes32[] memory);
+    function pause() external;
+    function unpause() external;
+}
+
 /**
  * @title CrosswordBoard (Modularized Version)
  * @dev Coordinator contract for the modularized Celo Crossword Learning App
@@ -61,9 +87,10 @@ contract CrosswordBoard is Ownable, ReentrancyGuard, Pausable {
     IUserProfiles public userProfiles;
     IConfigManager public configManager;
     IAdminManager public adminManager;
+    IPublicCrosswordManager public publicCrosswordManager;
 
     // Events
-    event ContractsUpdated(address core, address prizes, address profiles, address config, address admin);
+    event ContractsUpdated(address core, address prizes, address profiles, address config, address admin, address publicManager);
 
     /**
      * @dev Constructor - sets the addresses of the modular contracts
@@ -73,14 +100,16 @@ contract CrosswordBoard is Ownable, ReentrancyGuard, Pausable {
         address _crosswordPrizes,
         address _userProfiles,
         address _configManager,
-        address _adminManager
+        address _adminManager,
+        address _publicCrosswordManager
     ) Ownable(msg.sender) {
         updateContractAddresses(
             _crosswordCore,
             _crosswordPrizes,
             _userProfiles,
             _configManager,
-            _adminManager
+            _adminManager,
+            _publicCrosswordManager
         );
     }
 
@@ -92,21 +121,24 @@ contract CrosswordBoard is Ownable, ReentrancyGuard, Pausable {
         address _crosswordPrizes,
         address _userProfiles,
         address _configManager,
-        address _adminManager
+        address _adminManager,
+        address _publicCrosswordManager
     ) public onlyOwner {
         ValidationLib.validateNonZeroAddress(_crosswordCore, ErrorMessages.CROSSWORDBOARD_CORE_ZERO);
         ValidationLib.validateNonZeroAddress(_crosswordPrizes, ErrorMessages.CROSSWORDBOARD_PRIZES_ZERO);
         ValidationLib.validateNonZeroAddress(_userProfiles, ErrorMessages.CROSSWORDBOARD_PROFILES_ZERO);
         ValidationLib.validateNonZeroAddress(_configManager, ErrorMessages.CROSSWORDBOARD_CONFIG_ZERO);
         ValidationLib.validateNonZeroAddress(_adminManager, ErrorMessages.CROSSWORDBOARD_ADMIN_ZERO);
+        ValidationLib.validateNonZeroAddress(_publicCrosswordManager, ErrorMessages.CROSSWORDBOARD_ADMIN_ZERO); // Reusing error message
 
         crosswordCore = ICrosswordCore(_crosswordCore);
         crosswordPrizes = ICrosswordPrizes(_crosswordPrizes);
         userProfiles = IUserProfiles(_userProfiles);
         configManager = IConfigManager(_configManager);
         adminManager = IAdminManager(_adminManager);
+        publicCrosswordManager = IPublicCrosswordManager(_publicCrosswordManager);
 
-        emit ContractsUpdated(_crosswordCore, _crosswordPrizes, _userProfiles, _configManager, _adminManager);
+        emit ContractsUpdated(_crosswordCore, _crosswordPrizes, _userProfiles, _configManager, _adminManager, _publicCrosswordManager);
     }
 
     // Convenience functions that delegate to the appropriate contracts
@@ -157,6 +189,77 @@ contract CrosswordBoard is Ownable, ReentrancyGuard, Pausable {
         return crosswordPrizes.getUserRank(crosswordId, user);
     }
 
+    // Public Crossword Manager Functions
+    function createPublicCrossword(
+        bytes32 crosswordId,
+        string memory name,
+        string memory crosswordData,
+        string memory sponsoredBy
+    ) external payable {
+        publicCrosswordManager.createCrossword{value: msg.value}(crosswordId, name, crosswordData, sponsoredBy);
+    }
+
+    function createPublicCrosswordWithNativeCELOPrizePool(
+        bytes32 crosswordId,
+        string memory name,
+        string memory crosswordData,
+        string memory sponsoredBy,
+        uint256 maxWinners,
+        uint256 prizePool,
+        uint256[] calldata winnerPercentages,
+        uint256 endTime
+    ) external payable {
+        publicCrosswordManager.createCrosswordWithNativeCELOPrizePool{value: msg.value}(
+            crosswordId, name, crosswordData, sponsoredBy, maxWinners, prizePool, winnerPercentages, endTime
+        );
+    }
+
+    function createPublicCrosswordWithPrizePool(
+        bytes32 crosswordId,
+        string memory name,
+        string memory crosswordData,
+        string memory sponsoredBy,
+        uint256 maxWinners,
+        address token,
+        uint256 prizePool,
+        uint256[] calldata winnerPercentages,
+        uint256 endTime
+    ) external {
+        publicCrosswordManager.createCrosswordWithPrizePool(
+            crosswordId, name, crosswordData, sponsoredBy, maxWinners, token, prizePool, winnerPercentages, endTime
+        );
+    }
+
+    function activatePublicCrossword(bytes32 crosswordId) external {
+        publicCrosswordManager.activateCrossword(crosswordId);
+    }
+
+    function getPublicCrosswordDetails(bytes32 crosswordId) external view returns (
+        string memory name,
+        string memory sponsoredBy,
+        string memory crosswordData,
+        address token,
+        uint256 totalPrizePool,
+        uint256 maxWinners,
+        uint256[] memory winnerPercentages,
+        uint256 activationTime,
+        uint256 endTime,
+        uint256 createdAt,
+        bool isActive,
+        bool isCompleted,
+        address creator
+    ) {
+        return publicCrosswordManager.getCrosswordDetails(crosswordId);
+    }
+
+    function getActivePublicCrosswords() external view returns (bytes32[] memory) {
+        return publicCrosswordManager.getActiveCrosswordIds();
+    }
+
+    function getAllPublicCrosswords() external view returns (bytes32[] memory) {
+        return publicCrosswordManager.getAllCrosswordIds();
+    }
+
     // User Profile Functions
     function updateProfile(string calldata username, string calldata displayName, string calldata pfpUrl, string calldata bio, string calldata website) external {
         userProfiles.updateProfile(username, displayName, pfpUrl, bio, website);
@@ -180,6 +283,7 @@ contract CrosswordBoard is Ownable, ReentrancyGuard, Pausable {
         userProfiles.pause();
         configManager.pause();
         adminManager.pause();
+        publicCrosswordManager.pause();
     }
 
     function unpauseAll() external {
@@ -189,6 +293,7 @@ contract CrosswordBoard is Ownable, ReentrancyGuard, Pausable {
         userProfiles.unpause();
         configManager.unpause();
         adminManager.unpause();
+        publicCrosswordManager.unpause();
     }
 
     // Fallback function to accept native CELO

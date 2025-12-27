@@ -1385,3 +1385,351 @@ export const useGetCrosswordDetailsById = (crosswordId: `0x${string}` | undefine
     refetch: contractQuery.refetch,
   };
 };
+
+// Hook for creating public crossword (no prize pool)
+export const useCreatePublicCrossword = () => {
+  const contractConfig = getContractConfig('CrosswordBoard');
+  const { data, error: writeError, isPending, writeContract } = useWriteContract();
+
+  const { isLoading: isConfirming, isSuccess, isError: isTxError, error: txError } = useWaitForTransactionReceipt({
+    hash: data,
+  });
+
+  // Track if we've already shown the success/error toasts to prevent duplicates
+  const successShown = useRef(false);
+  const errorShown = useRef(false);
+
+  useEffect(() => {
+    if (isSuccess && !successShown.current) {
+      toast.success('Transaction confirmed', {
+        description: 'The public crossword has been successfully created on the blockchain.',
+      });
+      successShown.current = true;
+    }
+    if ((isTxError || writeError) && !errorShown.current) {
+      toast.error('Transaction failed', {
+        description: getErrorMessage(txError || writeError),
+      });
+      errorShown.current = true;
+    }
+  }, [isSuccess, isTxError, txError, writeError]);
+
+  // Reset the flags when a new transaction is initiated
+  useEffect(() => {
+    if (isPending) {
+      successShown.current = false;
+      errorShown.current = false;
+    }
+  }, [isPending]);
+
+  // Also reset when data changes (new transaction initiated)
+  useEffect(() => {
+    if (data) {
+      successShown.current = false;
+      errorShown.current = false;
+    }
+  }, [data]);
+
+  return {
+    createPublicCrossword: (args: [`0x${string}`, string, string, string]) =>
+      writeContract({
+        address: contractConfig.address,
+        abi: contractConfig.abi,
+        functionName: 'createPublicCrossword',
+        args
+      }, {
+        onError: (error) => {
+          toast.error('Error creating public crossword', {
+            description: getErrorMessage(error),
+          });
+          // Mark error as shown in case error occurs during writeContract
+          errorShown.current = true;
+        },
+        onSuccess: () => {
+          toast.success('Public crossword created successfully', {
+            description: 'The public crossword has been created.',
+          });
+        }
+      }),
+    isLoading: isPending || isConfirming,
+    isSuccess,
+    isError: !!writeError || isTxError,
+    error: writeError || txError,
+    txHash: data,
+  };
+};
+
+// Hook for creating public crossword with native CELO prize pool
+export const useCreatePublicCrosswordWithNativeCELOPrizePool = () => {
+  const contractConfig = getContractConfig('CrosswordBoard');
+  const { data, error: writeError, isPending, writeContract } = useWriteContract();
+
+  const { isLoading: isConfirming, isSuccess, isError: isTxError, error: txError } = useWaitForTransactionReceipt({
+    hash: data,
+  });
+
+  // Track if we've already shown the success/error toasts to prevent duplicates
+  const successShown = useRef(false);
+  const errorShown = useRef(false);
+
+  useEffect(() => {
+    if (isSuccess && !successShown.current) {
+      toast.success('Transaction confirmed', {
+        description: 'The public crossword with prize pool has been successfully created on the blockchain.',
+      });
+      successShown.current = true;
+    }
+    if ((isTxError || writeError) && !errorShown.current) {
+      toast.error('Transaction failed', {
+        description: getErrorMessage(txError || writeError),
+      });
+      errorShown.current = true;
+    }
+  }, [isSuccess, isTxError, txError, writeError]);
+
+  // Reset the flags when a new transaction is initiated
+  useEffect(() => {
+    if (isPending) {
+      successShown.current = false;
+      errorShown.current = false;
+    }
+  }, [isPending]);
+
+  // Also reset when data changes (new transaction initiated)
+  useEffect(() => {
+    if (data) {
+      successShown.current = false;
+      errorShown.current = false;
+    }
+  }, [data]);
+
+  return {
+    createPublicCrosswordWithNativeCELOPrizePool: (args: [`0x${string}`, string, string, string, bigint, bigint, bigint[], bigint]) =>
+      writeContract({
+        address: contractConfig.address,
+        abi: contractConfig.abi,
+        functionName: 'createPublicCrosswordWithNativeCELOPrizePool',
+        args,
+        value: args[5] // Send the prize pool amount as transaction value (args[5] is prizePool)
+      }, {
+        onError: (error) => {
+          toast.error('Error creating public crossword with CELO prize pool', {
+            description: getErrorMessage(error),
+          });
+          // Mark error as shown in case error occurs during writeContract
+          errorShown.current = true;
+        },
+        onSuccess: () => {
+          toast.success('Public crossword with CELO prize pool created successfully', {
+            description: 'The public crossword with prize pool has been created.',
+          });
+        }
+      }),
+    isLoading: isPending || isConfirming,
+    isSuccess,
+    isError: !!writeError || isTxError,
+    error: writeError || txError,
+    txHash: data,
+  };
+};
+
+// Hook for creating public crossword with token prize pool
+export const useCreatePublicCrosswordWithPrizePool = () => {
+  const contractConfig = getContractConfig('CrosswordBoard');
+  const { data, error: writeError, isPending, writeContract } = useWriteContract();
+
+  const { isLoading: isConfirming, isSuccess, isError: isTxError, error: txError } = useWaitForTransactionReceipt({
+    hash: data,
+  });
+
+  // Track if we've already shown the success/error toasts to prevent duplicates
+  const successShown = useRef(false);
+  const errorShown = useRef(false);
+
+  useEffect(() => {
+    if (isSuccess && !successShown.current) {
+      toast.success('Transaction confirmed', {
+        description: 'The public crossword with prize pool has been successfully created on the blockchain.',
+      });
+      successShown.current = true;
+    }
+    if ((isTxError || writeError) && !errorShown.current) {
+      toast.error('Transaction failed', {
+        description: getErrorMessage(txError || writeError),
+      });
+      errorShown.current = true;
+    }
+  }, [isSuccess, isTxError, txError, writeError]);
+
+  // Reset the flags when a new transaction is initiated
+  useEffect(() => {
+    if (isPending) {
+      successShown.current = false;
+      errorShown.current = false;
+    }
+  }, [isPending]);
+
+  // Also reset when data changes (new transaction initiated)
+  useEffect(() => {
+    if (data) {
+      successShown.current = false;
+      errorShown.current = false;
+    }
+  }, [data]);
+
+  return {
+    createPublicCrosswordWithPrizePool: (args: [`0x${string}`, string, string, string, bigint, `0x${string}`, bigint, bigint[], bigint]) =>
+      writeContract({
+        address: contractConfig.address,
+        abi: contractConfig.abi,
+        functionName: 'createPublicCrosswordWithPrizePool',
+        args
+      }, {
+        onError: (error) => {
+          toast.error('Error creating public crossword with token prize pool', {
+            description: getErrorMessage(error),
+          });
+          // Mark error as shown in case error occurs during writeContract
+          errorShown.current = true;
+        },
+        onSuccess: () => {
+          toast.success('Public crossword with token prize pool created successfully', {
+            description: 'The public crossword with prize pool has been created.',
+          });
+        }
+      }),
+    isLoading: isPending || isConfirming,
+    isSuccess,
+    isError: !!writeError || isTxError,
+    error: writeError || txError,
+    txHash: data,
+  };
+};
+
+// Hook for activating public crossword
+export const useActivatePublicCrossword = () => {
+  const contractConfig = getContractConfig('CrosswordBoard');
+  const { data, error: writeError, isPending, writeContract } = useWriteContract();
+
+  const { isLoading: isConfirming, isSuccess, isError: isTxError, error: txError } = useWaitForTransactionReceipt({
+    hash: data,
+  });
+
+  // Track if we've already shown the success/error toasts to prevent duplicates
+  const successShown = useRef(false);
+  const errorShown = useRef(false);
+
+  useEffect(() => {
+    if (isSuccess && !successShown.current) {
+      toast.success('Transaction confirmed', {
+        description: 'The public crossword has been successfully activated.',
+      });
+      successShown.current = true;
+    }
+    if ((isTxError || writeError) && !errorShown.current) {
+      toast.error('Transaction failed', {
+        description: getErrorMessage(txError || writeError),
+      });
+      errorShown.current = true;
+    }
+  }, [isSuccess, isTxError, txError, writeError]);
+
+  // Reset the flags when a new transaction is initiated
+  useEffect(() => {
+    if (isPending) {
+      successShown.current = false;
+      errorShown.current = false;
+    }
+  }, [isPending]);
+
+  // Also reset when data changes (new transaction initiated)
+  useEffect(() => {
+    if (data) {
+      successShown.current = false;
+      errorShown.current = false;
+    }
+  }, [data]);
+
+  return {
+    activatePublicCrossword: (args: [`0x${string}`]) =>
+      writeContract({
+        address: contractConfig.address,
+        abi: contractConfig.abi,
+        functionName: 'activatePublicCrossword',
+        args
+      }, {
+        onError: (error) => {
+          toast.error('Error activating public crossword', {
+            description: getErrorMessage(error),
+          });
+          // Mark error as shown in case error occurs during writeContract
+          errorShown.current = true;
+        },
+        onSuccess: () => {
+          toast.success('Public crossword activated successfully', {
+            description: 'The public crossword has been activated.',
+          });
+        }
+      }),
+    isLoading: isPending || isConfirming,
+    isSuccess,
+    isError: !!writeError || isTxError,
+    error: writeError || txError,
+    txHash: data,
+  };
+};
+
+// Hook for getting public crossword details
+export const useGetPublicCrosswordDetails = (crosswordId: `0x${string}`) => {
+  const contractConfig = getContractConfig('CrosswordBoard');
+
+  return useContractRead({
+    address: contractConfig.address,
+    abi: contractConfig.abi,
+    functionName: 'getPublicCrosswordDetails',
+    args: [crosswordId],
+    query: {
+      enabled: !!crosswordId,
+      staleTime: 120000,  // Cache for 2 minutes
+      gcTime: 300000,     // Garbage collect after 5 minutes
+      retry: 1,           // Only retry once
+      retryDelay: 5000,   // Wait 5 seconds between retries
+    },
+  });
+};
+
+// Hook for getting active public crosswords
+export const useGetActivePublicCrosswords = () => {
+  const contractConfig = getContractConfig('CrosswordBoard');
+
+  return useContractRead({
+    address: contractConfig.address,
+    abi: contractConfig.abi,
+    functionName: 'getActivePublicCrosswords',
+    query: {
+      staleTime: 60000,   // Cache for 1 minute
+      gcTime: 300000,     // Garbage collect after 5 minutes
+      retry: 1,           // Only retry once
+      retryDelay: 5000,   // Wait 5 seconds between retries
+      refetchInterval: 30000, // Refetch every 30 seconds
+    },
+  });
+};
+
+// Hook for getting all public crosswords
+export const useGetAllPublicCrosswords = () => {
+  const contractConfig = getContractConfig('CrosswordBoard');
+
+  return useContractRead({
+    address: contractConfig.address,
+    abi: contractConfig.abi,
+    functionName: 'getAllPublicCrosswords',
+    query: {
+      staleTime: 60000,   // Cache for 1 minute
+      gcTime: 300000,     // Garbage collect after 5 minutes
+      retry: 1,           // Only retry once
+      retryDelay: 5000,   // Wait 5 seconds between retries
+      refetchInterval: 60000, // Refetch every minute
+    },
+  });
+};

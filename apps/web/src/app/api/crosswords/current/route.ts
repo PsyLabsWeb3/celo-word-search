@@ -46,9 +46,24 @@ export async function GET(req: Request) {
       functionName: 'getCurrentCrossword',
     });
 
+    // Parse and sanitize to remove answers
+    let sanitizedData = crosswordData;
+    try {
+      const parsed = JSON.parse(crosswordData);
+      if (parsed.clues && Array.isArray(parsed.clues)) {
+        parsed.clues = parsed.clues.map((clue: any) => {
+          const { answer, ...rest } = clue;
+          return rest;
+        });
+      }
+      sanitizedData = JSON.stringify(parsed);
+    } catch (e) {
+      console.warn('Failed to sanitize crossword data', e);
+    }
+
     return NextResponse.json({
       crosswordId,
-      crosswordData,
+      crosswordData: sanitizedData,
       updatedAt: updatedAt.toString()
     });
 

@@ -322,6 +322,7 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
   const [waitingForTransaction, setWaitingForTransaction] = useState(false)
   const [mobilePopup, setMobilePopup] = useState<MobileInputPopup | null>(null)
   const [showCongratulations, setShowCongratulations] = useState(false)
+  const [winnerRank, setWinnerRank] = useState<number>(0) // Store winner's rank for redirect
   const [mobileInput, setMobileInput] = useState("")
   const [invalidCells, setInvalidCells] = useState<Set<string>>(new Set())
   const [isShaking, setIsShaking] = useState(false)
@@ -574,6 +575,7 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
 
           // Re-fetch the prize winner status after cache invalidation to ensure the latest state
           let updatedIsPrizeWinner = false;
+          let userRank = 0; // Declare outside try-catch to ensure it's in scope
           try {
             if (currentCrossword?.id && address && isConnected) {
               const contractInfo = (CONTRACTS as any)[chainId]?.['CrosswordBoard'];
@@ -660,11 +662,20 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
 
                 // Check if user is in the completions array (meaning they are a prize winner)
                 const completionsArray = Array.isArray(crosswordDetails) ? (crosswordDetails[3] as any[]) : []; // completions is at index 3
+                console.log('[DEBUG] Completions array:', completionsArray);
                 updatedIsPrizeWinner = completionsArray.some(completion => {
                   const completionUser = completion.user || completion[0]; // Handle both object and tuple formats
-                  return completionUser.toLowerCase() === address.toLowerCase();
+                  const rank = completion.rank || completion[2]; // Get rank from completion record
+                  console.log('[DEBUG] Checking completion:', { completionUser, rank, myAddress: address });
+                  if (completionUser.toLowerCase() === address.toLowerCase()) {
+                    userRank = Number(rank);
+                    console.log('[DEBUG] MATCH! User rank:', userRank);
+                    return true;
+                  }
+                  return false;
                 });
 
+                console.log('[DEBUG] After check - updatedIsPrizeWinner:', updatedIsPrizeWinner, 'userRank:', userRank);
 
               }
             }
@@ -675,21 +686,94 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
           }
 
           // Only show the congratulations dialog if the user is a prize winner
+          console.log('[DEBUG] Final decision - updatedIsPrizeWinner:', updatedIsPrizeWinner);
           if (updatedIsPrizeWinner) {
+            // Store the winner's rank for the redirect
+            console.log('[DEBUG] Setting winner rank:', userRank);
+            setWinnerRank(userRank);
             // Call the callback when crossword is completed to update parent state
             if (onCrosswordCompleted) {
               onCrosswordCompleted();
             }
             // Show the congratulations dialog instead of redirecting
+            console.log('[DEBUG] Setting showCongratulations to true');
             setShowCongratulations(true);
           } else {
             // Call the callback when crossword is completed to update parent state
             if (onCrosswordCompleted) {
               onCrosswordCompleted();
             }
-            // For non-winners, still redirect to leaderboard
-            setTimeout(() => {
-              router.push("/leaderboard");
+            // For non-winners, redirect to leaderboard with completion parameters
+            // We need to get the user's rank from all completions
+            setTimeout(async () => {
+              try {
+                // Fetch all completions to determine rank
+                const contractInfo = (CONTRACTS as any)[chainId]?.['CrosswordBoard'];
+                if (contractInfo && currentCrossword?.id) {
+                  const getCompletionsABI = () => {
+                    return [
+                      {
+                        "inputs": [
+                          {
+                            "internalType": "bytes32",
+                            "name": "crosswordId",
+                            "type": "bytes32"
+                          }
+                        ],
+                        "name": "getCrosswordCompletions",
+                        "outputs": [
+                          {
+                            "components": [
+                              {
+                                "internalType": "address",
+                                "name": "user",
+                                "type": "address"
+                              },
+                              {
+                                "internalType": "uint256",
+                                "name": "completionTimestamp",
+                                "type": "uint256"
+                              },
+                              {
+                                "internalType": "uint256",
+                                "name": "durationMs",
+                                "type": "uint256"
+                              }
+                            ],
+                            "internalType": "struct CrosswordBoard.Completion[]",
+                            "name": "",
+                            "type": "tuple[]"
+                          }
+                        ],
+                        "stateMutability": "view",
+                        "type": "function"
+                      }
+                    ];
+                  };
+
+                  const completions = await readContract(config, {
+                    address: contractInfo.address as `0x${string}`,
+                    abi: getCompletionsABI(),
+                    functionName: 'getCrosswordCompletions',
+                    args: [currentCrossword.id as `0x${string}`],
+                  });
+
+                  // Find user's rank by position in completions array
+                  const allCompletions = Array.isArray(completions) ? completions : [];
+                  const userIndex = allCompletions.findIndex(completion => {
+                    const completionUser = completion.user || completion[0];
+                    return completionUser.toLowerCase() === address.toLowerCase();
+                  });
+
+                  const nonWinnerRank = userIndex !== -1 ? userIndex + 1 : 0;
+                  router.push(`/leaderboard?completed=true&winner=false&rank=${nonWinnerRank}`);
+                } else {
+                  router.push("/leaderboard?completed=true&winner=false");
+                }
+              } catch (error) {
+                console.error("Error fetching rank:", error);
+                router.push("/leaderboard?completed=true&winner=false");
+              }
             }, 1000); // 1 second delay to allow cache to refresh and blockchain propagation
           }
         }).catch(error => {
@@ -707,7 +791,7 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
             if (onCrosswordCompleted) {
               onCrosswordCompleted();
             }
-            router.push("/leaderboard");
+            router.push("/leaderboard?completed=true&winner=false");
           }
         });
       }, 2000); // 2 second delay to allow blockchain transaction to be confirmed before cache invalidation
@@ -1740,8 +1824,11 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
               </p>
               <Button
                 onClick={() => {
+                  console.log('[DEBUG] Redirecting to leaderboard with winnerRank:', winnerRank);
                   setShowCongratulations(false);
-                  router.push("/leaderboard");
+                  const redirectUrl = `/leaderboard?completed=true&winner=true&rank=${winnerRank}`;
+                  console.log('[DEBUG] Redirect URL:', redirectUrl);
+                  router.push(redirectUrl);
                 }}
                 className="w-full max-w-[200px] border-4 border-black bg-primary font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-primary hover:shadow-none"
               >

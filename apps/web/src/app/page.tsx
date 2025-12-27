@@ -6,7 +6,7 @@ import Image from "next/image";
 import { useAccount } from "wagmi";
 import CrosswordGame from "@/components/crossword-game"
 import { Button } from "@/components/ui/button"
-import { AlertCircle, Wallet, Play, History, BarChart3, Trophy, ArrowRight } from "lucide-react"
+import { AlertCircle, Wallet, Play, History, BarChart3, Trophy, ArrowRight, Plus, Loader2 } from "lucide-react"
 import { useCrossword } from "@/contexts/crossword-context";
 import { useCeloNetworkValidation } from "@/hooks/useCeloNetworkValidation";
 import { CeloNetworkButton } from "@/components/celo-network-button";
@@ -51,6 +51,22 @@ export default function Page() {
   // Use actual wallet connection state
   const { isConnected, address } = useAccount();
   const { refetchCrossword, currentCrossword } = useCrossword();
+  const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+  const [isRedirecting, setIsRedirecting] = useState(false);
+
+  // Auto-start if play=true is in URL and we have a crossword
+  useEffect(() => {
+    if (searchParams?.get('play') === 'true') {
+      setIsRedirecting(true);
+      if (currentCrossword?.id) {
+        setGameStarted(true);
+        setIsRedirecting(false);
+        // Clean up the URL to remove the parameter
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, '', newUrl);
+      }
+    }
+  }, [currentCrossword, searchParams]);
 
   // Check completions for the current crossword to see if user has completed it
   const { data: onChainCompletions, isLoading: isCompletionsLoading } = useGetCrosswordCompletions(
@@ -89,9 +105,12 @@ export default function Page() {
   } = useCeloNetworkValidation();
 
   // Forzar refresco del crucigrama del contrato cuando se monta la página
+  // Solo si no tenemos ya uno activo (por ejemplo, seleccionado manualmente desde active-crosswords)
   useEffect(() => {
-    refetchCrossword();
-  }, []);
+    if (!currentCrossword?.id) {
+      refetchCrossword();
+    }
+  }, [currentCrossword?.id, refetchCrossword]);
 
   const handleStartNewGame = () => {
     // Establecer que NO se debe ignorar los datos guardados (queremos el crucigrama actual)
@@ -131,6 +150,15 @@ export default function Page() {
 
   return (
     <>
+      {isRedirecting && (
+        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-background/60 backdrop-blur-md">
+          <div className="border-4 border-black bg-white p-12 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] text-center space-y-4">
+            <Loader2 className="w-16 h-16 animate-spin mx-auto text-primary" />
+            <h2 className="text-2xl font-black uppercase">Loading Crossword</h2>
+            <p className="text-muted-foreground font-bold">Bringing the board to life...</p>
+          </div>
+        </div>
+      )}
       <main className="relative flex items-center justify-center min-h-screen p-4 overflow-hidden bg-background">
         {/* Animated crossword grid background */}
         <div className="absolute inset-0 opacity-10">
@@ -169,13 +197,23 @@ export default function Page() {
           <div className="grid w-full max-w-4xl gap-4 mx-auto mt-8 sm:grid-cols-2 lg:grid-cols-2">
             {isConnected && (
               <>
-                <CeloNetworkButton
-                  onClick={handleStartNewGame}
-                  className="h-32 w-full border-4 border-black bg-accent p-4 text-2xl font-black uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 active:translate-x-1 active:translate-y-1 hover:bg-accent active:bg-accent hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary flex flex-col items-center justify-center gap-2"
-                >
-                  <Play className="w-10 h-10" />
-                  <span>Start Game</span>
-                </CeloNetworkButton>
+                <Link href="/active-crosswords" passHref className="w-full">
+                  <CeloNetworkButton
+                    className="h-32 w-full border-4 border-black bg-purple-500 p-4 text-2xl font-black uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 active:translate-x-1 active:translate-y-1 hover:bg-purple-600 active:bg-purple-600 hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary flex flex-col items-center justify-center gap-2"
+                  >
+                    <Play className="w-10 h-10" />
+                    <span>Play Crosswords</span>
+                  </CeloNetworkButton>
+                </Link>
+
+                <Link href="/create-crossword" passHref className="w-full">
+                  <CeloNetworkButton
+                    className="h-32 w-full border-4 border-black bg-blue-500 p-4 text-2xl font-black uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 active:translate-x-1 active:translate-y-1 hover:bg-blue-600 active:bg-blue-600 hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary flex flex-col items-center justify-center gap-2"
+                  >
+                    <Plus className="w-10 h-10" />
+                    <span>Create Crossword</span>
+                  </CeloNetworkButton>
+                </Link>
 
                 <Link href="/history" passHref className="w-full">
                   <CeloNetworkButton
@@ -223,8 +261,9 @@ export default function Page() {
             )}
           </div>
 
-          {/* Features */}
-          <div className="grid gap-4 mt-12 sm:grid-cols-3">
+
+        {/* Features */}
+          <div className="grid gap-4 mt-8 sm:grid-cols-3">
             {[
               {
                 emoji: (
