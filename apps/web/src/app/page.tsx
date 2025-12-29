@@ -1,9 +1,10 @@
 "use client"
 
-import { useState, useEffect, useCallback, useMemo } from "react"
+import { useState, useEffect, useCallback, useMemo, Suspense } from "react"
 import Link from "next/link";
 import Image from "next/image";
 import { useAccount } from "wagmi";
+import { useSearchParams } from "next/navigation";
 import CrosswordGame from "@/components/crossword-game"
 import { Button } from "@/components/ui/button"
 import { AlertCircle, Wallet, Play, History, BarChart3, Trophy, ArrowRight, Plus, Loader2 } from "lucide-react"
@@ -31,7 +32,7 @@ const AlphabetAnimation = () => {
   );
 };
 
-export default function Page() {
+function PageContent() {
   const [walletConnected, setWalletConnected] = useState(false)
 
   // We no longer check for saved user progress in localStorage - all data is on-chain
@@ -51,20 +52,30 @@ export default function Page() {
   // Use actual wallet connection state
   const { isConnected, address } = useAccount();
   const { refetchCrossword, currentCrossword } = useCrossword();
-  const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-  const [isRedirecting, setIsRedirecting] = useState(false);
+  const searchParams = useSearchParams();
+  
+  // Initialize loading state immediately if play=true is present
+  const [isRedirecting, setIsRedirecting] = useState(() => {
+    return searchParams?.get('play') === 'true';
+  });
 
   // Auto-start if play=true is in URL and we have a crossword
   useEffect(() => {
     if (searchParams?.get('play') === 'true') {
-      setIsRedirecting(true);
       if (currentCrossword?.id) {
-        setGameStarted(true);
-        setIsRedirecting(false);
-        // Clean up the URL to remove the parameter
-        const newUrl = window.location.pathname;
-        window.history.replaceState({}, '', newUrl);
+        // Add a small artificial delay to make the transition smoother (min 800ms)
+        const timer = setTimeout(() => {
+          setGameStarted(true);
+          setIsRedirecting(false);
+          // Clean up the URL to remove the parameter
+          const newUrl = window.location.pathname;
+          window.history.replaceState({}, '', newUrl);
+        }, 800);
+        
+        return () => clearTimeout(timer);
       }
+    } else {
+      setIsRedirecting(false);
     }
   }, [currentCrossword, searchParams]);
 
@@ -199,18 +210,18 @@ export default function Page() {
               <>
                 <Link href="/active-crosswords" passHref className="w-full">
                   <CeloNetworkButton
-                    className="h-32 w-full border-4 border-black bg-purple-500 p-4 text-2xl font-black uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 active:translate-x-1 active:translate-y-1 hover:bg-purple-600 active:bg-purple-600 hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary flex flex-col items-center justify-center gap-2"
+                    className="h-auto min-h-32 w-full border-4 border-black bg-green-500 p-4 text-xl sm:text-2xl font-black uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 active:translate-x-1 active:translate-y-1 hover:bg-green-600 active:bg-green-600 hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary flex flex-col items-center justify-center gap-2 whitespace-normal leading-tight"
                   >
-                    <Play className="w-10 h-10" />
+                    <Play className="w-10 h-10 shrink-0" />
                     <span>Play Crosswords</span>
                   </CeloNetworkButton>
                 </Link>
 
                 <Link href="/create-crossword" passHref className="w-full">
                   <CeloNetworkButton
-                    className="h-32 w-full border-4 border-black bg-blue-500 p-4 text-2xl font-black uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 active:translate-x-1 active:translate-y-1 hover:bg-blue-600 active:bg-blue-600 hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary flex flex-col items-center justify-center gap-2"
+                    className="h-auto min-h-32 w-full border-4 border-black bg-indigo-500 p-4 text-xl sm:text-2xl font-black uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 active:translate-x-1 active:translate-y-1 hover:bg-indigo-600 active:bg-indigo-600 hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary flex flex-col items-center justify-center gap-2 whitespace-normal leading-tight"
                   >
-                    <Plus className="w-10 h-10" />
+                    <Plus className="w-10 h-10 shrink-0" />
                     <span>Create Crossword</span>
                   </CeloNetworkButton>
                 </Link>
@@ -218,9 +229,9 @@ export default function Page() {
                 <Link href="/history" passHref className="w-full">
                   <CeloNetworkButton
                     variant="secondary"
-                    className="h-32 w-full border-4 border-black bg-purple-500 p-4 text-2xl font-black uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 active:translate-x-1 active:translate-y-1 hover:bg-purple-500 active:bg-purple-500 hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary flex flex-col items-center justify-center gap-2"
+                    className="h-auto min-h-32 w-full border-4 border-black bg-teal-500 p-4 text-xl sm:text-2xl font-black uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 active:translate-x-1 active:translate-y-1 hover:bg-teal-600 active:bg-teal-600 hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary flex flex-col items-center justify-center gap-2 whitespace-normal leading-tight"
                   >
-                    <History className="w-10 h-10" />
+                    <History className="w-10 h-10 shrink-0" />
                     <span>History</span>
                   </CeloNetworkButton>
                 </Link>
@@ -228,9 +239,9 @@ export default function Page() {
                 <Link href="/stats" passHref className="w-full">
                   <CeloNetworkButton
                     variant="secondary"
-                    className="h-32 w-full border-4 border-black bg-orange-500 p-4 text-2xl font-black uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 active:translate-x-1 active:translate-y-1 hover:bg-orange-500 active:bg-orange-500 hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary flex flex-col items-center justify-center gap-2"
+                    className="h-auto min-h-32 w-full border-4 border-black bg-orange-500 p-4 text-xl sm:text-2xl font-black uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 active:translate-x-1 active:translate-y-1 hover:bg-orange-600 active:bg-orange-600 hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary flex flex-col items-center justify-center gap-2 whitespace-normal leading-tight"
                   >
-                    <BarChart3 className="w-10 h-10" />
+                    <BarChart3 className="w-10 h-10 shrink-0" />
                     <span>Stats</span>
                   </CeloNetworkButton>
                 </Link>
@@ -239,9 +250,9 @@ export default function Page() {
                   <Link href="/leaderboard" passHref className="w-full">
                     <CeloNetworkButton
                       variant="secondary"
-                      className="h-32 w-full border-4 border-black bg-blue-500 p-4 text-2xl font-black uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 active:translate-x-1 active:translate-y-1 hover:bg-blue-500 active:bg-blue-500 hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary flex flex-col items-center justify-center gap-2"
+                      className="h-auto min-h-32 w-full border-4 border-black bg-yellow-400 p-4 text-xl sm:text-2xl font-black uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 active:translate-x-1 active:translate-y-1 hover:bg-yellow-500 active:bg-yellow-500 hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary flex flex-col items-center justify-center gap-2 whitespace-normal leading-tight"
                     >
-                      <Trophy className="w-10 h-10" />
+                      <Trophy className="w-10 h-10 shrink-0" />
                       <span>Leaderboard</span>
                     </CeloNetworkButton>
                   </Link>
@@ -251,10 +262,10 @@ export default function Page() {
                   <CeloNetworkButton
                     variant="secondary"
                     onClick={handleContinueGame}
-                    className="col-span-1 sm:col-span-2 h-24 w-full border-4 border-black bg-primary p-4 text-xl font-black uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 active:translate-x-1 active:translate-y-1 hover:bg-primary active:bg-primary hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary flex items-center justify-center gap-2 mt-4"
+                    className="col-span-1 sm:col-span-2 h-auto min-h-24 w-full border-4 border-black bg-rose-500 p-4 text-lg sm:text-xl font-black uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 active:translate-x-1 active:translate-y-1 hover:bg-rose-600 active:bg-rose-600 hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary flex items-center justify-center gap-2 mt-4 whitespace-normal leading-tight"
                   >
                     <span>Continue Crossword</span>
-                    <ArrowRight className="w-6 h-6" />
+                    <ArrowRight className="w-6 h-6 shrink-0" />
                   </CeloNetworkButton>
                 )}
               </>
@@ -306,5 +317,20 @@ export default function Page() {
         </div>
       </main>
     </>
+  )
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={
+      <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-background/60 backdrop-blur-md">
+        <div className="border-4 border-black bg-white p-12 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] text-center space-y-4">
+          <Loader2 className="w-16 h-16 animate-spin mx-auto text-primary" />
+          <h2 className="text-2xl font-black uppercase">Loading...</h2>
+        </div>
+      </div>
+    }>
+      <PageContent />
+    </Suspense>
   )
 }

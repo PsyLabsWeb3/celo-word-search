@@ -233,7 +233,7 @@ export default function CreateCrosswordPage() {
         amountInWei,
         winnerPercentagesBigInt,
         endTimeBigInt
-      ]);
+      ], amountInWei);  // Send the prize pool amount as transaction value
     } else {
       createPublicCrosswordWithPrizePool([
         crosswordId as `0x${string}`,
@@ -298,8 +298,8 @@ export default function CreateCrosswordPage() {
           </p>
         </div>
 
-        <div className="mb-8">
-          <Card className="border-4 border-black bg-card p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+        <div className="mb-8 w-full max-w-full">
+          <Card className="border-4 border-black bg-card p-4 sm:p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] max-w-full">
             <div className="flex items-center mb-6">
               <Settings className="w-6 h-6 mr-3 text-foreground" />
               <h2 className="text-2xl font-black uppercase text-foreground">Configuration</h2>
@@ -307,7 +307,7 @@ export default function CreateCrosswordPage() {
 
             <div className="flex flex-col gap-6 lg:flex-row lg:gap-6">
               <div className="flex-1 min-w-0">
-                <Card className="border-4 border-black bg-popover p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] h-full">
+                <Card className="border-4 border-black bg-popover p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] h-full w-full max-w-full">
                   <h3 className="mb-3 text-lg font-black uppercase text-foreground">Details</h3>
                   <div className="space-y-4">
                     <div>
@@ -386,33 +386,64 @@ export default function CreateCrosswordPage() {
           </Card>
         </div>
 
-        <div className="grid gap-8 xl:grid-cols-12">
-          <div className="space-y-6 xl:col-span-4">
-             <Card className="border-4 border-black bg-card p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
-                <h2 className="mb-4 text-xl font-black uppercase">Grid Settings</h2>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-sm font-bold">Rows</Label>
-                    <Input
-                      type="number"
-                      value={gridSize.rows}
-                      onChange={(e) => setGridSize({ ...gridSize, rows: Number.parseInt(e.target.value) || 1 })}
-                      className="border-4 border-black font-bold"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-sm font-bold">Cols</Label>
-                    <Input
-                      type="number"
-                      value={gridSize.cols}
-                      onChange={(e) => setGridSize({ ...gridSize, cols: Number.parseInt(e.target.value) || 1 })}
-                      className="border-4 border-black font-bold"
-                    />
+        <div className="flex flex-col gap-8 min-w-0 w-full">
+          <div className="min-w-0 overflow-hidden w-full max-w-full">
+            <Card className="border-4 border-black bg-card p-4 sm:p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] h-full w-full max-w-full overflow-hidden">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-4">
+                  <h2 className="text-xl font-black uppercase">
+                    Preview {conflictCells.size > 0 && <span className="text-destructive">({conflictCells.size} conflicts)</span>}
+                  </h2>
+                  <div className="flex gap-2 w-full sm:w-auto">
+                    <div className="flex items-center gap-2">
+                      <Label className="text-sm font-bold whitespace-nowrap">Rows:</Label>
+                      <Input
+                        type="number"
+                        value={gridSize.rows}
+                        onChange={(e) => setGridSize({ ...gridSize, rows: Number.parseInt(e.target.value) || 1 })}
+                        className="w-16 h-8 border-2 border-black font-bold"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Label className="text-sm font-bold whitespace-nowrap">Cols:</Label>
+                      <Input
+                        type="number"
+                        value={gridSize.cols}
+                        onChange={(e) => setGridSize({ ...gridSize, cols: Number.parseInt(e.target.value) || 1 })}
+                        className="w-16 h-8 border-2 border-black font-bold"
+                      />
+                    </div>
                   </div>
                 </div>
-              </Card>
+                <div className="flex items-center justify-center overflow-auto p-4">
+                  <div className="inline-block border-4 border-black bg-white p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                    <div className="grid gap-0" style={{ gridTemplateColumns: `repeat(${gridSize.cols}, 1fr)` }}>
+                      {gridPreview.map((row, rowIdx) =>
+                        row.map((cell, colIdx) => {
+                          const isSelected = selectedCell?.row === rowIdx && selectedCell?.col === colIdx
+                          const hasConflict = conflictCells.has(`${rowIdx}-${colIdx}`)
+                          const cellNumber = clues.find(c => c.row === rowIdx && c.col === colIdx)?.number
+                          return (
+                            <div
+                              key={`${rowIdx}-${colIdx}`}
+                              onClick={() => handleCellClick(rowIdx, colIdx)}
+                              className={`relative flex h-8 w-8 sm:h-10 sm:w-10 cursor-pointer items-center justify-center border-2 border-black text-[10px] sm:text-xs font-black ${
+                                cell === null ? "bg-gray-800" : "bg-white"
+                              } ${isSelected ? "ring-4 ring-primary" : ""} ${hasConflict ? "bg-destructive text-destructive-foreground" : ""}`}
+                            >
+                              {cellNumber && <span className="absolute left-0.5 top-0.5 text-[6px] sm:text-[8px] text-primary">{cellNumber}</span>}
+                              {cell}
+                            </div>
+                          )
+                        })
+                      )}
+                    </div>
+                  </div>
+                </div>
+            </Card>
+          </div>
 
-            <Card className="border-4 border-black bg-popover p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+          <div className="space-y-6 min-w-0 max-w-full">
+            <Card className="border-4 border-black bg-popover p-4 sm:p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] w-full max-w-full">
               <h2 className="mb-4 text-xl font-black uppercase">Add Word</h2>
                {selectedCell && (
                   <div className="p-2 mb-3 font-bold text-center border-2 rounded border-primary bg-primary/10">
@@ -466,43 +497,10 @@ export default function CreateCrosswordPage() {
                </div>
             </Card>
           </div>
-
-          <div className="xl:col-span-8">
-            <Card className="border-4 border-black bg-card p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] h-full">
-                <h2 className="mb-4 text-xl font-black uppercase">
-                  Preview {conflictCells.size > 0 && <span className="text-destructive">({conflictCells.size} conflicts)</span>}
-                </h2>
-                <div className="flex items-center justify-center overflow-auto p-4">
-                  <div className="inline-block border-4 border-black bg-white p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                    <div className="grid gap-0" style={{ gridTemplateColumns: `repeat(${gridSize.cols}, 1fr)` }}>
-                      {gridPreview.map((row, rowIdx) =>
-                        row.map((cell, colIdx) => {
-                          const isSelected = selectedCell?.row === rowIdx && selectedCell?.col === colIdx
-                          const hasConflict = conflictCells.has(`${rowIdx}-${colIdx}`)
-                          const cellNumber = clues.find(c => c.row === rowIdx && c.col === colIdx)?.number
-                          return (
-                            <div
-                              key={`${rowIdx}-${colIdx}`}
-                              onClick={() => handleCellClick(rowIdx, colIdx)}
-                              className={`relative flex h-10 w-10 cursor-pointer items-center justify-center border-2 border-black text-xs font-black ${
-                                cell === null ? "bg-gray-800" : "bg-white"
-                              } ${isSelected ? "ring-4 ring-primary" : ""} ${hasConflict ? "bg-destructive text-destructive-foreground" : ""}`}
-                            >
-                              {cellNumber && <span className="absolute left-0.5 top-0.5 text-[8px] text-primary">{cellNumber}</span>}
-                              {cell}
-                            </div>
-                          )
-                        })
-                      )}
-                    </div>
-                  </div>
-                </div>
-            </Card>
-          </div>
         </div>
 
         {clues.length > 0 && (
-          <Card className="mt-8 border-4 border-black bg-popover p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+          <Card className="mt-8 border-4 border-black bg-popover p-4 sm:p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] w-full max-w-full">
             <h2 className="mb-4 text-xl font-black uppercase">Added Words ({clues.length})</h2>
             <div className="space-y-2 max-h-96 overflow-auto">
               {clues.map((clue, index) => (
