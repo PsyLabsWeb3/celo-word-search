@@ -46,23 +46,26 @@ const CrosswordCard = ({ crosswordId, onPlay }: CrosswordCardProps) => {
   const tokenSymbol = token === '0x0000000000000000000000000000000000000000' ? 'CELO' : 'cUSD'; // Simplified for demo
 
   return (
-    <Card className="p-6 border-4 border-black bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-shadow">
-      <div className="flex justify-between items-start">
-        <div className="flex-1 min-w-0">
-          <h3 className="text-xl font-bold truncate">{name || "Untitled Crossword"}</h3>
+    <Card className="p-4 sm:p-6 border-4 border-black bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-shadow">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex-1 min-w-0 w-full">
           {sponsoredBy && (
-            <p className="text-sm text-muted-foreground mt-1">Sponsored by: {sponsoredBy}</p>
+            <div className="inline-block mb-2 px-2 py-1 bg-yellow-300 border-2 border-black text-xs font-black uppercase tracking-wider transform -rotate-1">
+              Sponsored by {sponsoredBy}
+            </div>
           )}
+          <h3 className="text-xl font-black truncate">{name || "Untitled Crossword"}</h3>
+          
           <div className="mt-3 space-y-2">
-            <div className="flex items-center text-sm">
+            <div className="flex items-center text-sm font-bold">
               <Coins className="w-4 h-4 mr-2" />
               <span>Prize Pool: {formattedPrize} {tokenSymbol}</span>
             </div>
-            <div className="flex items-center text-sm">
+            <div className="flex items-center text-sm font-bold">
               <Trophy className="w-4 h-4 mr-2" />
               <span>Up to {Number(maxWinners)} winners</span>
             </div>
-            <div className="flex items-center text-sm">
+            <div className="flex items-center text-sm font-bold text-muted-foreground">
               <Calendar className="w-4 h-4 mr-2" />
               <span>Created: {new Date(Number(createdAt) * 1000).toLocaleDateString()}</span>
             </div>
@@ -70,10 +73,10 @@ const CrosswordCard = ({ crosswordId, onPlay }: CrosswordCardProps) => {
         </div>
         <Button
           onClick={() => onPlay(crosswordId, crosswordData)}
-          className="ml-4 border-2 border-black bg-green-500 font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-green-600 active:translate-x-1 active:translate-y-1 hover:shadow-none active:shadow-none"
+          className="w-full sm:w-auto ml-0 sm:ml-4 border-2 border-black bg-green-500 font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-green-600 active:translate-x-1 active:translate-y-1 hover:shadow-none active:shadow-none whitespace-normal h-auto py-3 sm:py-2"
           disabled={!isActive}
         >
-          <Play className="w-4 h-4 mr-2" />
+          <Play className="w-4 h-4 mr-2 shrink-0" />
           Play
         </Button>
       </div>
@@ -106,9 +109,9 @@ export default function ActiveCrosswordsPage() {
     return (
       <main className="min-h-screen p-4 bg-background flex items-center justify-center">
         <div className="max-w-md text-center">
-          <h1 className="text-3xl font-bold mb-4">Connect Your Wallet</h1>
-          <p className="text-muted-foreground mb-6">Please connect your wallet to view active crosswords</p>
-          <CeloNetworkButton className="border-4 border-black bg-accent font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+          <h1 className="text-3xl font-black mb-4 uppercase">Connect Your Wallet</h1>
+          <p className="font-bold text-muted-foreground mb-6">Please connect your wallet to view active crosswords</p>
+          <CeloNetworkButton className="h-auto w-full border-4 border-black bg-accent font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] px-6 py-4 text-xl">
             Connect Wallet
           </CeloNetworkButton>
         </div>
@@ -132,9 +135,9 @@ export default function ActiveCrosswordsPage() {
         <div className="flex justify-center mb-8">
           <Button
             onClick={() => router.push("/")}
-            className="border-4 border-black bg-accent font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-accent hover:shadow-none"
+            className="border-4 border-black bg-accent font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-accent hover:shadow-none whitespace-normal h-auto min-h-[44px]"
           >
-            <ArrowLeft className="w-4 h-4 mr-2" />
+            <ArrowLeft className="w-4 h-4 mr-2 shrink-0" />
             Back
           </Button>
         </div>
@@ -144,11 +147,11 @@ export default function ActiveCrosswordsPage() {
           {isLoading ? (
             <div className="py-12 text-center">
               <div className="inline-block w-8 h-8 border-t-2 border-b-2 rounded-full animate-spin border-primary"></div>
-              <p className="mt-4 text-muted-foreground">Loading active crosswords...</p>
+              <p className="mt-4 font-bold text-muted-foreground">Loading active crosswords...</p>
             </div>
           ) : isError ? (
             <div className="py-12 text-center">
-              <div className="text-red-500">Error loading crosswords. Please try again later.</div>
+              <div className="font-bold text-red-500">Error loading crosswords. Please try again later.</div>
             </div>
           ) : activeCrosswords && activeCrosswords.length > 0 ? (
             <div className="grid gap-6">
@@ -162,7 +165,7 @@ export default function ActiveCrosswordsPage() {
             </div>
           ) : (
             <div className="py-12 text-center">
-              <div className="text-muted-foreground">No active crosswords at the moment. Check back later!</div>
+              <div className="font-bold text-muted-foreground">No active crosswords at the moment. Check back later!</div>
             </div>
           )}
         </div>
@@ -171,9 +174,9 @@ export default function ActiveCrosswordsPage() {
         <div className="flex justify-center mt-8">
           <Button
             onClick={() => router.push("/")}
-            className="border-4 border-black bg-accent font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-accent hover:shadow-none"
+            className="border-4 border-black bg-accent font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-accent hover:shadow-none whitespace-normal h-auto min-h-[44px]"
           >
-            <History className="w-4 h-4 mr-2" />
+            <History className="w-4 h-4 mr-2 shrink-0" />
             Return to Home
           </Button>
         </div>
