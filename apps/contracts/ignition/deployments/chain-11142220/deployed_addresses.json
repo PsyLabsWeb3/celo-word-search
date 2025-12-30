@@ -1,0 +1,8 @@
+{
+  "CrosswordCompleteModule#AdminManager": "0x9eEb63FA20784F80e1BABb0F25F6112646a66c91",
+  "CrosswordCompleteModule#ConfigManager": "0xeE78A44b345FE44491E773E771DFc5EEf1A0E4C5",
+  "CrosswordCompleteModule#CrosswordCore": "0xAae04A2eCcaecEE141E54AE124Dc727239a0529e",
+  "CrosswordCompleteModule#CrosswordPrizes": "0x4D7223d1AE35D91627D8A2DD10883Bddd004e605",
+  "CrosswordCompleteModule#UserProfiles": "0x16deE587a1f07239834DFF39Ae4A13e44CfA479F",
+  "CrosswordCompleteModule#CrosswordBoard": "0x475aE70e6Be5D1694F9D6f30143F580930BE5F36"
+}

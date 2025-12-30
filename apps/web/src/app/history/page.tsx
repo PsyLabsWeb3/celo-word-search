@@ -9,8 +9,8 @@ import { useRouter } from "next/navigation"
 import { useChainId } from "wagmi"
 import { CONTRACTS } from "@/lib/contracts"
 import { useGetCrosswordHistory } from "@/hooks/useGetCrosswordHistory"
+import { getHistoricalCrosswordData } from "@/lib/historical-crosswords"
 import { CrosswordHistoryCard } from "@/components/crossword-history-card"
-import { LegacyCrosswordHistory } from "@/components/legacy-crossword-history"
 
 export default function HistoryPage() {
   const router = useRouter()
@@ -27,24 +27,11 @@ export default function HistoryPage() {
   // Assuming the hook handles discovery or we'll add IDs here later.
   // For this step, we just render Legacy and an empty/placeholder dynamic list.
 
-  const legacyIds = [
-    '0x28d1ba71976f4f4fa7344c7025215739bd3f6aa515d13e1fdfbe5245ea419ce2',
-    '0xdb4764000c54b9390a601e96783d76e3e3e9d06329637cdd119045bf32624e32'
-  ];
+  // Fetch all crosswords from all configured board contracts
+  const { crosswords: rawDynamicCrosswords, isLoading, isError } = useGetCrosswordHistory();
 
-  // Logic to fetch *other* crosswords would go here. 
-  // currently useGetCrosswordHistory(undefined) fetches "current". We want to avoid that if "current" is in legacy.
-  // So we will pass an empty array for now to show NO other crosswords.
-  const { crosswords: rawDynamicCrosswords, isLoading, isError, hasMore, loadMore } = useGetCrosswordHistory({
-    crosswordIds: [] 
-  })
-
-  // Filter out legacy IDs to avoid duplicates (since useGetCrosswordHistory defaults to returning current crossword)
-  // Also filter out test crosswords
-  const dynamicCrosswords = rawDynamicCrosswords.filter(c => 
-    !legacyIds.includes(c.crosswordId) && 
-    !c.gridData?.isTest
-  )
+  // Show all crosswords as requested
+  const dynamicCrosswords = rawDynamicCrosswords;
 
   return (
     <main className="min-h-screen p-4 bg-background sm:p-6 md:p-8">
@@ -72,7 +59,7 @@ export default function HistoryPage() {
           </Button>
         </div>
 
-        {/* Dynamic / Future Crosswords */}
+        {/* Dynamic / Future Crosswords (Unified) */}
         {dynamicCrosswords.length > 0 && (
             <div className="mb-8 space-y-4">
                 {dynamicCrosswords.map((crossword) => (
@@ -82,8 +69,12 @@ export default function HistoryPage() {
                     token={crossword.token}
                     prizePool={crossword.prizePool}
                     timestamp={crossword.timestamp}
+                    contractAddress={crossword.contractAddress}
+                    coreAddress={crossword.coreAddress}
+                    isLegacy={crossword.isLegacy}
                     initialName={crossword.name}
                     initialSponsoredBy={crossword.sponsoredBy}
+                    initialCompletions={(getHistoricalCrosswordData(crossword.crosswordId) as any)?.completions}
                     initialGridData={crossword.gridData ? {
                       ...crossword.gridData,
                       name: crossword.name,
@@ -98,18 +89,6 @@ export default function HistoryPage() {
                 ))}
             </div>
         )}
-
-        {/* Loading State for Dynamic */}
-        {isLoading && dynamicCrosswords.length === 0 && (
-             <div className="mb-8 py-8 text-center">
-                <div className="inline-block w-8 h-8 border-t-2 border-b-2 rounded-full animate-spin border-primary"></div>
-             </div>
-        )}
-
-        {/* Legacy / Hardcoded Crosswords */}
-        <div className="mb-8 space-y-4">
-             <LegacyCrosswordHistory />
-        </div>
 
         {/* Home Button */}
         <div className="flex justify-center mt-8">

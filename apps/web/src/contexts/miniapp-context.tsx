@@ -93,9 +93,9 @@ export function MiniAppProvider({ children, addMiniAppOnLoad }: MiniAppProviderP
     if (isMiniAppReady && !context?.client?.added && addMiniAppOnLoad) {
       // Usar setTimeout para asegurar que no se actualice durante la hidratación
       const addMiniAppTimeout = setTimeout(() => {
-        handleAddMiniApp().catch(error => {
-          console.error("Error adding mini app:", error);
-        });
+        // handleAddMiniApp().catch(error => {
+        //   console.error("Error adding mini app:", error);
+        // });
       }, 0);
 
       return () => clearTimeout(addMiniAppTimeout);

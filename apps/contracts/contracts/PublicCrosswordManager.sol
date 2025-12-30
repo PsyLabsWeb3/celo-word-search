@@ -78,7 +78,7 @@ contract PublicCrosswordManager is Ownable, ReentrancyGuard, Pausable {
         uint256[] calldata winnerPercentages,
         uint256 endTime
     ) external payable whenNotPaused {
-        require(msg.value == prizePool, ErrorMessages.VALUE_MISMATCH);
+        // require(msg.value == prizePool, ErrorMessages.VALUE_MISMATCH); // FIX: Funds are handled by CrosswordPrizes
         _createCrossword(crosswordId, name, crosswordData, sponsoredBy, address(0), prizePool, winnerPercentages, endTime, maxWinners);
     }
 
@@ -130,7 +130,11 @@ contract PublicCrosswordManager is Ownable, ReentrancyGuard, Pausable {
         }
         
         if (endTime != 0) {
-            ValidationLib.validateMaxValue(endTime, CommonConstants.MAX_END_TIME, ErrorMessages.END_TIME_TOO_FAR);
+            if (endTime > block.timestamp) {
+                ValidationLib.validateMaxValue(endTime - block.timestamp, CommonConstants.MAX_END_TIME, ErrorMessages.END_TIME_TOO_FAR);
+            } else {
+                revert(ErrorMessages.INVALID_END_TIME);
+            }
         }
 
         // Check creation fee if applicable

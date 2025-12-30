@@ -281,9 +281,14 @@ The frontend can be deployed to:
 - **Admin Whitelist**: `0x0c9Adb5b5483130F88F10DB4978772986B1E953B` (to be added after deployment)
 
 ### Latest Deployment:
-- **CrosswordBoard Contract**: `0xdc2a624dffc1f6343f62a02001906252e3ca8fd2`
-- **CrosswordPrizes Contract**: `0x6fd840cdb33fe6b6a9712a5d1fb812853b3f4946`
-- **Deployed At**: November 8, 2025
+- **Deployment Date**: Monday, December 29, 2025
+- **CrosswordBoard (Coordinator)**: `0xe83fbe75d46ad64f045b996de0365b47b6f634af`
+- **CrosswordCore**: `0xbef1cab73361fb01a440ab937d4c7ae3a5eea481`
+- **CrosswordPrizes**: `0x817a51755be9b6b0dc408bde7edf796706ceb4cb`
+- **UserProfiles**: `0x6bf6930d5567c4b3e010f498154cd34cb94bf49e`
+- **ConfigManager**: `0xec06773b5da4aa2632af4fe2e181f7a191a570e8`
+- **AdminManager**: `0xfaaf90fc471663aa98aa49c3fc1af1e3deee6526`
+- **PublicCrosswordManager**: `0x4a6f2c2b2609ddfdaac9306a4a94696658eb1fac`
 
 ### Previous Deployments:
 - **CrosswordBoard Contract**: `0x5fbdb2315678afecb367f032d93f642f64180aa3` (Local)

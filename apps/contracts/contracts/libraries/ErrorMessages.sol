@@ -37,6 +37,8 @@ library ErrorMessages {
     string public constant TOKEN_NOT_ALLOWED = "Token not allowed";
     string public constant PRIZE_POOL_GT_ZERO = "Prize > 0";
     
+    string public constant INVALID_END_TIME = "Invalid end time";
+    
     // String validation errors
     string public constant INVALID_USERNAME = "Invalid username";
     string public constant INVALID_DISPLAY_NAME = "Invalid display name";

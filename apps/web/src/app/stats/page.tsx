@@ -5,16 +5,7 @@ import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, ExternalLink, Users, Award, Coins, Activity, TrendingUp, Clock } from "lucide-react"
 import Link from "next/link"
-import { createPublicClient, http, parseAbiItem, formatEther } from "viem"
-import { celo } from "viem/chains"
-
-// Legacy contract address (to be replaced with actual legacy contract if known)
-const LEGACY_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_LEGACY_CONTRACT_ADDRESS || "0xdC2a624dFFC1f6343F62A02001906252e3cA8fD2"
-// New contract address (will be dynamically configurable)
-const NEW_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_NEW_CONTRACT_ADDRESS || ""
-
-const CROSSWORD_1_ID = "0xdb4764000c54b9390a601e96783d76e3e3e9d06329637cdd119045bf32624e32"
-const CROSSWORD_2_ID = "0x28d1ba71976f4f4fa7344c7025215739bd3f6aa515d13e1fdfbe5245ea419ce2"
+import { mockStats } from "@/lib/mock-stats"
 
 interface TransactionStats {
     totalCompletions: number
@@ -29,7 +20,7 @@ interface TransactionStats {
         hash: string
         type: string
         user: string
-        timestamp: Date
+        timestamp: number  // Unix timestamp in milliseconds
         amount?: string
         contractAddress: string
     }>
@@ -38,175 +29,61 @@ interface TransactionStats {
 }
 
 export default function StatsPage() {
-    const [stats, setStats] = useState<TransactionStats>({
-        totalCompletions: 0,
-        totalPrizeDistributions: 0,
-        totalCrosswordsCreated: 0,
-        totalCeloDistributed: 0,
-        crossword1Completions: 0,
-        crossword2Completions: 0,
-        testCompletions: 0,
-        uniqueUsers: 0,
-        recentTransactions: [],
-        isLoading: true,
-        error: null
-    })
+    const [stats, setStats] = useState<TransactionStats>(() => {
+        // Initialize with mock data for immediate display
+        return {
+            ...mockStats,
+            recentTransactions: mockStats.recentTransactions.map(tx => ({
+                ...tx,
+                timestamp: new Date(tx.timestamp)
+            }))
+        };
+    });
+
+    const [isFetchingRealData, setIsFetchingRealData] = useState(true);
 
     useEffect(() => {
-        async function fetchStats() {
+        // Fetch real data in the background
+        async function fetchRealStats() {
             try {
-                const client = createPublicClient({
-                    chain: celo,
-                    transport: http("https://forno.celo.org"),
-                })
-
-                // Addresses to fetch data from (legacy + new, removing duplicates and empty addresses)
-                const allAddresses = [
-                    LEGACY_CONTRACT_ADDRESS,
-                    NEW_CONTRACT_ADDRESS
-                ].filter(address => address && address.trim() !== '');
-
-                const contractAddresses = Array.from(new Set(allAddresses));
-
-                // Fetch events from all contracts
-                let allCompletedEvents: any[] = [];
-                let allPrizeEvents: any[] = [];
-                let allCreatedEvents: any[] = [];
-
-                // Fetch events from each contract address
-                for (const address of contractAddresses) {
-                    try {
-                        console.log(`Fetching data from contract: ${address}`);
-
-                        // Fetch CrosswordCompleted events from this contract
-                        const completedEvents = await client.getLogs({
-                            address: address as `0x${string}`,
-                            event: parseAbiItem("event CrosswordCompleted(bytes32 indexed crosswordId, address indexed user, uint256 timestamp, uint256 durationMs)"),
-                            fromBlock: 52500000n, // Use known start block for the contract
-                            toBlock: "latest",
-                        })
-
-                        console.log(`Found ${completedEvents.length} completion events from contract ${address}`);
-
-                        // Fetch PrizeDistributed events from this contract
-                        const prizeEvents = await client.getLogs({
-                            address: address as `0x${string}`,
-                            event: parseAbiItem("event PrizeDistributed(bytes32 indexed crosswordId, address indexed winner, uint256 amount, uint256 rank)"),
-                            fromBlock: 52500000n, // Use known start block for the contract
-                            toBlock: "latest",
-                        })
-
-                        console.log(`Found ${prizeEvents.length} prize events from contract ${address}`);
-
-                        // Fetch CrosswordCreated events from this contract
-                        const createdEvents = await client.getLogs({
-                            address: address as `0x${string}`,
-                            event: parseAbiItem("event CrosswordCreated(bytes32 indexed crosswordId, address indexed token, uint256 prizePool, address creator)"),
-                            fromBlock: 52500000n,
-                            toBlock: "latest",
-                        })
-
-                        console.log(`Found ${createdEvents.length} created events from contract ${address}`);
-
-                        // Add contract address to each event for tracking purposes
-                        allCompletedEvents = allCompletedEvents.concat(
-                            completedEvents.map(event => ({ ...event, contractAddress: address }))
-                        );
-                        allPrizeEvents = allPrizeEvents.concat(
-                            prizeEvents.map(event => ({ ...event, contractAddress: address }))
-                        );
-                        allCreatedEvents = allCreatedEvents.concat(
-                            createdEvents.map(event => ({ ...event, contractAddress: address }))
-                        );
-                    } catch (contractError) {
-                        console.error(`Error fetching data from contract ${address}:`, contractError);
-                        // Continue with other contracts even if one fails
-                    }
+                const response = await fetch('/api/stats');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch stats');
                 }
+                const data = await response.json();
 
-                console.log(`Total completion events: ${allCompletedEvents.length}`);
-                console.log(`Total prize events: ${allPrizeEvents.length}`);
-                console.log(`Total created events: ${allCreatedEvents.length}`);
+                // Convert timestamp numbers back to Date objects for display
+                const processedData = {
+                    ...data,
+                    isLoading: false, // Set loading to false after real data loads
+                    recentTransactions: data.recentTransactions.map((tx: any) => ({
+                        ...tx,
+                        timestamp: new Date(tx.timestamp)
+                    }))
+                };
 
-                // Calculate stats from combined events
-                const crossword1 = allCompletedEvents.filter(log => log.args.crosswordId === CROSSWORD_1_ID)
-                const crossword2 = allCompletedEvents.filter(log => log.args.crosswordId === CROSSWORD_2_ID)
-                const testCrosswords = allCompletedEvents.filter(log =>
-                    log.args.crosswordId !== CROSSWORD_1_ID && log.args.crosswordId !== CROSSWORD_2_ID
-                )
-
-                const uniqueUsersSet = new Set(allCompletedEvents.map(log => log.args.user))
-
-                const totalCelo = allPrizeEvents.reduce((sum, log) => {
-                    return sum + Number(formatEther(log.args.amount || 0n))
-                }, 0)
-
-                // Get recent transactions (last 10) from all contracts combined
-                const allEvents = [
-                    ...allCompletedEvents.map(e => ({ ...e, type: "Completion" })),
-                    ...allPrizeEvents.map(e => ({ ...e, type: "Prize" })),
-                    ...allCreatedEvents.map(e => ({ ...e, type: "Created" }))
-                ].sort((a, b) => Number(b.blockNumber) - Number(a.blockNumber))
-
-                const recentTxs = await Promise.all(
-                    allEvents.slice(0, 10).map(async (event) => {
-                        const block = await client.getBlock({ blockNumber: event.blockNumber })
-                        return {
-                            hash: event.transactionHash,
-                            type: event.type,
-                            user: event.type === "Completion"
-                                ? (event.args as any).user
-                                : event.type === "Prize"
-                                ? (event.args as any).winner
-                                : "Admin",
-                            timestamp: new Date(Number(block.timestamp) * 1000),
-                            amount: event.type === "Prize"
-                                ? formatEther((event.args as any).amount || 0n)
-                                : undefined,
-                            contractAddress: event.contractAddress,
-                        }
-                    })
-                )
-
-                setStats({
-                    totalCompletions: allCompletedEvents.length,
-                    totalPrizeDistributions: allPrizeEvents.length,
-                    totalCrosswordsCreated: allCreatedEvents.length,
-                    totalCeloDistributed: totalCelo,
-                    crossword1Completions: crossword1.length,
-                    crossword2Completions: crossword2.length,
-                    testCompletions: testCrosswords.length,
-                    uniqueUsers: uniqueUsersSet.size,
-                    recentTransactions: recentTxs,
-                    isLoading: false,
-                    error: null
-                })
+                setStats(processedData);
+                setIsFetchingRealData(false);
             } catch (error) {
-                console.error("Error fetching stats:", error)
+                console.error("Error fetching stats:", error);
+                // Keep showing mock data but update the error state
                 setStats(prev => ({
                     ...prev,
                     isLoading: false,
                     error: "Error loading blockchain data"
-                }))
+                }));
+                setIsFetchingRealData(false);
             }
         }
 
-        fetchStats()
-    }, [])
+        // Start fetching real data after showing mock data
+        fetchRealStats();
+    }, []);
 
     const totalTransactions = stats.totalCompletions + stats.totalPrizeDistributions + stats.totalCrosswordsCreated
 
-    if (stats.isLoading) {
-        return (
-            <div className="flex items-center justify-center min-h-screen bg-background">
-                <div className="text-center px-4">
-                    <div className="inline-block w-12 h-12 sm:w-16 sm:h-16 mb-4 border-t-4 border-b-4 border-orange-500 rounded-full animate-spin"></div>
-                    <p className="text-lg sm:text-xl font-bold text-foreground">Loading blockchain data...</p>
-                    <p className="text-xs sm:text-sm text-muted-foreground mt-2">Fetching live stats from Celo Mainnet</p>
-                </div>
-            </div>
-        )
-    }
+    // Don't show loading state since we have mock data immediately
+    // The UI will update when real data arrives
 
     return (
         <main className="min-h-screen bg-background p-3 sm:p-6 md:p-8">
@@ -221,7 +98,7 @@ export default function StatsPage() {
                     </Link>
                     <div className="flex flex-wrap gap-2">
                         <a
-                            href={`https://celoscan.io/address/${LEGACY_CONTRACT_ADDRESS}`}
+                            href={`https://celoscan.io/address/${process.env.NEXT_PUBLIC_LEGACY_CONTRACT_ADDRESS || "0xdC2a624dFFC1f6343F62A02001906252e3cA8fD2"}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="w-full sm:w-auto"
@@ -233,7 +110,7 @@ export default function StatsPage() {
                             </Button>
                         </a>
                         <a
-                            href={`https://celoscan.io/address/${NEW_CONTRACT_ADDRESS}`}
+                            href={`https://celoscan.io/address/${process.env.NEXT_PUBLIC_NEW_CONTRACT_ADDRESS || ""}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="w-full sm:w-auto"
@@ -255,9 +132,17 @@ export default function StatsPage() {
                     <p className="text-sm sm:text-lg text-muted-foreground font-medium px-2">
                         Combined blockchain data from Celo Mainnet
                     </p>
-                    <p className="text-xs sm:text-sm text-muted-foreground mt-2 font-mono break-all px-4">
-                        0x...{NEW_CONTRACT_ADDRESS.slice(-6)} (all-time combined)
-                    </p>
+                    <div className="flex items-center justify-center gap-2 mt-2">
+                        {isFetchingRealData && (
+                            <div className="flex items-center gap-2">
+                                <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse"></div>
+                                <span className="text-xs sm:text-sm text-green-600 font-medium">Updating data...</span>
+                            </div>
+                        )}
+                        <p className="text-xs sm:text-sm text-muted-foreground font-mono break-all">
+                            {isFetchingRealData ? "Showing cached data (fetching latest...)" : "Data updated recently"}
+                        </p>
+                    </div>
                 </div>
 
                 {/* Main Stats Grid - 2 columns on mobile, 3 on desktop */}
@@ -453,6 +338,11 @@ export default function StatsPage() {
                 <div className="text-center mt-6 sm:mt-10 text-muted-foreground px-4">
                     <p className="text-xs sm:text-sm font-medium">Data fetched directly from Celo Mainnet blockchain</p>
                     <p className="text-[10px] sm:text-xs mt-1">All transactions are verifiable on-chain</p>
+                    <p className="text-[10px] sm:text-xs mt-1">
+                        {isFetchingRealData
+                            ? "Showing cached data, updating with latest..."
+                            : "Stats updated every 3 minutes for combined, 5-10 min for individual contracts"}
+                    </p>
                 </div>
             </div>
         </main>

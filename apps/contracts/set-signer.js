@@ -1,7 +1,7 @@
 const hre = require("hardhat");
 
 async function main() {
-  const CONTRACT_ADDRESS = "0x9057D09e0C9cBb863C002FC0E1Af1098df5B7648";
+  const CONTRACT_ADDRESS = "0x560e42112b88b8daa91f7310e7e7ae903572733c";
   
   // Get the signer (deployer wallet)
   const [deployer] = await hre.viem.getWalletClients();

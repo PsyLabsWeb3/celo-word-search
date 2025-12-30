@@ -1,5 +1,5 @@
-import { createContext, useContext, ReactNode, useState, useEffect } from 'react';
-import { useGetCurrentCrossword, useIsAdmin, useGetActivePublicCrosswords } from '../hooks/useContract';
+import { createContext, useContext, ReactNode, useState, useEffect, useMemo } from 'react';
+import { useGetCurrentCrossword, useIsAdmin, useGetActivePublicCrosswords, useGetPublicCrosswordDetails } from '../hooks/useContract';
 import { useAccount } from 'wagmi';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -7,6 +7,8 @@ interface Crossword {
   id: string;
   data: string;
   updatedAt: bigint;
+  isPublic?: boolean;
+  sponsoredBy?: string;
 }
 
 interface CrosswordContextType {
@@ -15,7 +17,7 @@ interface CrosswordContextType {
   isLoading: boolean;
   isAdmin: boolean;
   refetchCrossword: () => void;
-  setActiveCrossword: (crosswordId: string, crosswordData: string) => void;
+  setActiveCrossword: (crosswordId: string, crosswordData: string, sponsoredBy?: string) => void;
 }
 
 const CrosswordContext = createContext<CrosswordContextType | undefined>(undefined);
@@ -44,9 +46,22 @@ export const CrosswordProvider = ({ children }: { children: ReactNode }) => {
   } = useGetActivePublicCrosswords();
 
   const { data: isAdminData } = useIsAdmin();
+  
+  const queryParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+  const urlId = queryParams?.get('id');
+  const urlIsPublic = queryParams?.get('isPublic') === 'true';
 
   // Update current crossword when contract data changes
   useEffect(() => {
+    // If we have URL parameters, initialize with those
+    if (urlId && urlIsPublic && !isManualSelection) {
+      setIsManualSelection(true);
+      // We don't have the data yet, but setting the ID will help
+      // The component using this context will likely trigger a fetch
+      // or we can fetch it here if needed.
+      return;
+    }
+
     // Only update from contract if we haven't manually selected a crossword
     if (isManualSelection) return;
 
@@ -57,7 +72,8 @@ export const CrosswordProvider = ({ children }: { children: ReactNode }) => {
         setCurrentCrossword({
           id,
           data,
-          updatedAt
+          updatedAt,
+          isPublic: false
         });
       } else {
         setCurrentCrossword(null);
@@ -66,7 +82,31 @@ export const CrosswordProvider = ({ children }: { children: ReactNode }) => {
       // Si no hay datos, asegurarse de que se limpie el estado
       setCurrentCrossword(null);
     }
-  }, [crosswordData, isManualSelection]);
+  }, [crosswordData, isManualSelection, urlId, urlIsPublic]);
+
+  // Fetch details for manual selection if missing data (e.g. on reload)
+  const { data: manualCrosswordDetails } = useGetPublicCrosswordDetails(
+    (urlId && isManualSelection && !currentCrossword?.data) ? urlId as `0x${string}` : undefined as any
+  );
+
+  useEffect(() => {
+    if (manualCrosswordDetails && !currentCrossword?.data && urlId && isManualSelection) {
+      const d = manualCrosswordDetails as any;
+      const data = d[2]; // crosswordData is at index 2
+      const sponsoredBy = d[1]; // sponsoredBy is at index 1
+      const createdAt = d[9]; // createdAt is at index 9
+      
+      if (data) {
+        setCurrentCrossword({
+          id: urlId,
+          data: data,
+          updatedAt: BigInt(createdAt || 0),
+          isPublic: true,
+          sponsoredBy: sponsoredBy
+        });
+      }
+    }
+  }, [manualCrosswordDetails, currentCrossword, urlId, isManualSelection]);
 
   // Update active crosswords when contract data changes
   useEffect(() => {
@@ -111,7 +151,8 @@ export const CrosswordProvider = ({ children }: { children: ReactNode }) => {
         setCurrentCrossword({
           id,
           data,
-          updatedAt
+          updatedAt,
+          isPublic: false
         });
       } else {
         setCurrentCrossword(null);
@@ -126,12 +167,14 @@ export const CrosswordProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // Function to set a specific crossword as the active one
-  const setActiveCrossword = (crosswordId: string, crosswordData: string) => {
+  const setActiveCrossword = (crosswordId: string, crosswordData: string, sponsoredBy?: string) => {
     setIsManualSelection(true);
     setCurrentCrossword({
       id: crosswordId,
       data: crosswordData,
-      updatedAt: BigInt(Math.floor(Date.now() / 1000))
+      updatedAt: BigInt(Math.floor(Date.now() / 1000)),
+      isPublic: true,
+      sponsoredBy: sponsoredBy
     });
   };
 

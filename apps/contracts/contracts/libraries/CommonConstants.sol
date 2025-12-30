@@ -16,7 +16,7 @@ library CommonConstants {
     // Prize distribution limits
     uint256 public constant MAX_CONFIGURABLE_WINNERS = 1000;
     uint256 public constant MAX_PERCENTAGE = 10000; // 100% represented as 10000 basis points
-    uint256 public constant MAX_SINGLE_WINNER_PERCENTAGE = 8000; // 80% represented as 8000 basis points
+    uint256 public constant MAX_SINGLE_WINNER_PERCENTAGE = 10000; // 100% represented as 10000 basis points
     
     // Time limits
     uint256 public constant MAX_END_TIME = 30 days;

@@ -5,31 +5,7 @@ import { CrosswordPrizesABI } from './abis/CrosswordPrizes';
 // Mainnet configuration
 const MAINNET_CONTRACTS = {
   CrosswordBoard: {
-    address: "YOUR_MAINNET_CROSSWORD_BOARD_ADDRESS_HERE",
-    abi: CrosswordBoardABI,
-  },
-  CrosswordPrizes: {
-    address: "YOUR_MAINNET_CROSSWORD_PRIZES_ADDRESS_HERE",
-    abi: CrosswordPrizesABI,
-  },
-};
-
-// Alfajores testnet configuration
-const ALFAJORES_CONTRACTS = {
-  CrosswordBoard: {
-    address: "YOUR_ALFAJORES_CROSSWORD_BOARD_ADDRESS_HERE",
-    abi: CrosswordBoardABI,
-  },
-  CrosswordPrizes: {
-    address: "YOUR_ALFAJORES_CROSSWORD_PRIZES_ADDRESS_HERE",
-    abi: CrosswordPrizesABI,
-  },
-};
-
-// Sepolia network configuration
-const SEPOLIA_CONTRACTS = {
-  CrosswordBoard: {
-    address: "0xF12c74B6339290849616afe59DbBFf2a557396dF",
+      address: "0x1d0742305f4873cea2f9daa36c3f05f572b494a4",
     abi: [
       {
         "inputs": [
@@ -433,7 +409,7 @@ const SEPOLIA_CONTRACTS = {
     ],
   },
   CrosswordPrizes: {
-    address: "0xC62bE6f1aCa9c7A4dC7726283A3E027F6cEa5892",
+      address: "0xd9110b8eedc6a3a66e951de728fe5be6736a5fee",
     abi: [
       {
         "inputs": [

@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/button"
 import { Trophy, Medal, Award, Home, Clock, ChevronDown, ArrowLeft, Share2 } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useCrossword } from "@/contexts/crossword-context"
-import { useGetCrosswordCompletions, useClaimPrize, useCrosswordPrizesDetails } from "@/hooks/useContract"
 import { useAccount } from "wagmi";
+import { useUnifiedCrosswordPrizes, useClaimPrize, useGetCrosswordCompletions } from '@/hooks/useContract';
 import { sdk } from "@farcaster/frame-sdk";
 import FarcasterUserDisplay from "@/components/farcaster-user-display";
 import { readContract } from 'wagmi/actions';
@@ -19,6 +19,7 @@ import { formatEther } from "viem";
 import confetti from 'canvas-confetti';
 
 export default function LeaderboardPage() {
+  const [selectedCrosswordId, setSelectedCrosswordId] = useState<string | null>(null);
   const [completions, setCompletions] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -34,96 +35,104 @@ export default function LeaderboardPage() {
   const searchParams = useSearchParams();
   const chainId = useChainId();
 
-  // Effect to check if user has already claimed their prize by calling the contract function
   useEffect(() => {
-    const checkClaimStatus = async () => {
-      if (!connectedAddress || !currentCrossword?.id || !isConnected) {
-        setUserHasClaimed(null);
+    const crosswordIdFromUrl = searchParams.get('id');
+    if (crosswordIdFromUrl) {
+      setSelectedCrosswordId(crosswordIdFromUrl);
+    } else {
+      setLoading(false);
+    }
+  }, [searchParams]);
+
+  // Effect to check if user has already claimed their prize using localStorage and contract simulation
+  useEffect(() => {
+    async function checkClaimStatus() {
+      if (!connectedAddress || !selectedCrosswordId || checkingClaimStatus) {
         return;
       }
 
       setCheckingClaimStatus(true);
+      
+      // 1. Check localStorage first (fastest)
+      const claimKey = `claimed_${selectedCrosswordId}_${connectedAddress.toLowerCase()}`;
+      const localStatus = localStorage.getItem(claimKey) === 'true';
+      
+      if (localStatus) {
+        console.log(`[Claim Status] Found claimed status in localStorage for ${claimKey}`);
+        setUserHasClaimed(true);
+        setCheckingClaimStatus(false);
+        return;
+      }
 
+      // 2. Fallback to contract simulation to check if already claimed on-chain
+      // This helps if localStorage was cleared or user is on a different device
       try {
-        const contractInfo = (CONTRACTS as any)[chainId]?.['CrosswordBoard'];
-        if (contractInfo) {
-          // Define the ABI for the hasClaimedPrize function
-          const getCrosswordBoardABI = () => {
-            return [
-              {
-                inputs: [
-                  {
-                    internalType: "bytes32",
-                    name: "crosswordId",
-                    type: "bytes32"
-                  },
-                  {
-                    internalType: "address",
-                    name: "user",
-                    type: "address"
-                  }
-                ],
-                name: "hasClaimedPrize",
-                outputs: [
-                  {
-                    internalType: "bool",
-                    name: "",
-                    type: "bool"
-                  }
-                ],
-                stateMutability: "view",
-                type: "function"
-              }
-            ];
-          };
-
-          const abi = getCrosswordBoardABI();
-
-          const hasClaimed = await readContract(config, {
+        const contractInfo = (CONTRACTS as any)[chainId]?.['CrosswordPrizes'];
+        
+        if (contractInfo?.address) {
+          console.log(`[Claim Status] Checking on-chain status for ${selectedCrosswordId}...`);
+          
+          // We simulate a claimPrize call. If it reverts with "Already claimed", 
+          // we know the user has already claimed it.
+          await readContract(config, {
             address: contractInfo.address as `0x${string}`,
-            abi: abi,
-            functionName: 'hasClaimedPrize',
-            args: [currentCrossword.id as `0x${string}`, connectedAddress as `0x${string}`],
+            abi: [{
+              "inputs": [{"internalType": "bytes32", "name": "crosswordId", "type": "bytes32"}],
+              "name": "claimPrize",
+              "outputs": [],
+              "stateMutability": "nonpayable",
+              "type": "function"
+            }],
+            functionName: 'claimPrize',
+            args: [selectedCrosswordId as `0x${string}`],
+            account: connectedAddress as `0x${string}`,
           });
-
-
-          setUserHasClaimed(Boolean(hasClaimed));
+          
+          // If it doesn't revert, it means it's possible to claim (or other error)
+          setUserHasClaimed(false);
         }
-      } catch (error) {
-        // If there's an error checking the contract, we'll keep the state as null to try again later
-        setUserHasClaimed(null);
+      } catch (e: any) {
+        const errorMessage = e.message || "";
+        console.log(`[Claim Status] Simulation result for ${selectedCrosswordId}:`, errorMessage);
+        
+        if (errorMessage.toLowerCase().includes("already claimed")) {
+          console.log(`[Claim Status] On-chain check confirmed: Already claimed.`);
+          setUserHasClaimed(true);
+          // Persist to localStorage since we verified it on-chain
+          localStorage.setItem(claimKey, 'true');
+        } else {
+          setUserHasClaimed(false);
+        }
       } finally {
         setCheckingClaimStatus(false);
       }
-    };
-
-    // Always check the contract state when the dependencies change
-    // This ensures the state is updated after reload
-    if (connectedAddress && currentCrossword?.id && isConnected) {
-      checkClaimStatus();
-    } else {
-      setUserHasClaimed(null);
     }
-  }, [connectedAddress, currentCrossword?.id, isConnected, chainId, isClaimSuccess]); // Added isClaimSuccess to trigger recheck when claim succeeds
+
+    checkClaimStatus();
+  }, [connectedAddress, selectedCrosswordId, chainId]);
+
 
   // Get the specific crossword details that includes the actual winners (completions array with ranks)
-  const { data: crosswordDetails, isLoading: isCrosswordDetailsLoading } = useCrosswordPrizesDetails(currentCrossword?.id as `0x${string}` || undefined);
+  const isPublicParam = searchParams.get('isPublic') === 'true';
+  const { prizeDetails: crosswordPrizesDetails, isLoading: isLoadingPrizes, error: prizesError } = useUnifiedCrosswordPrizes(
+    selectedCrosswordId as `0x${string}`,
+    isPublicParam
+  );
 
   // Helper functions to handle both tuple-style and object-style completion data
   const getCompletionTimestamp = useCallback((completion: any): bigint => {
     if (!completion) return 0n;
-    // Handle both named properties and array indices
     const timestamp = completion.completionTimestamp ?? completion[1];
     return timestamp ?? 0n;
-  }, []); // Empty dependency array since the function doesn't change
+  }, []);
 
   const getCompletionUser = useCallback((completion: any): string => {
     return completion.user ?? completion[0];
-  }, []); // Empty dependency array since the function doesn't change
+  }, []);
 
   const getCompletionDuration = useCallback((completion: any): bigint => {
     return completion.durationMs ?? completion[2];
-  }, []); // Empty dependency array since the function doesn't change
+  }, []);
 
   // Helper function to get winner-specific data from crosswordDetails
   const getWinnerUser = useCallback((winner: any): string => {
@@ -142,20 +151,16 @@ export default function LeaderboardPage() {
 
   // Get completions for the current crossword from blockchain
   const {
-    data: onChainCompletions,
+    completions: onChainCompletions,
     isLoading: isCompletionsLoading,
     isError,
     refetch
-  } = useGetCrosswordCompletions(currentCrossword?.id as `0x${string}` || `0x0000000000000000000000000000000000000000000000000000000000000000`)
+  } = useGetCrosswordCompletions(selectedCrosswordId as `0x${string}` || `0x0000000000000000000000000000000000000000000000000000000000000000`)
 
   // Calculate max winners allowed based on crossword details
   const maxWinnersAllowed = (() => {
-    if (crosswordDetails) {
-      // The winnerPercentages array at index 2 indicates how many winners are allowed
-      const winnerPercentages = Array.isArray(crosswordDetails) ? crosswordDetails[2] : null;
-      if (Array.isArray(winnerPercentages)) {
-        return winnerPercentages.length;
-      }
+    if (crosswordPrizesDetails?.winnerPercentages) {
+      return crosswordPrizesDetails.winnerPercentages.length;
     }
     return 0;
   })();
@@ -163,35 +168,42 @@ export default function LeaderboardPage() {
   // Handle claim prize errors
   useEffect(() => {
     if (isClaimError) {
-      // Debug logs removed - Claim transaction failed
-
       const errorMessage = claimError?.message || claimError?.name || 'Unknown error';
 
       if (errorMessage.toLowerCase().includes('crossword not complete') || errorMessage.toLowerCase().includes('prizes already distributed')) {
-        // Debug log removed - Prizes already distributed or crossword not complete
         alert("Cannot claim prize: " + errorMessage +
           "\nThis means:\n" +
           "- The prizes have already been distributed to winners\n" +
           "- You may have already claimed your prize\n" +
           "- The claiming period has ended\n\n" +
           "Note: You are seeing this message because the contract has already processed prize distribution.");
+      } else if (errorMessage.toLowerCase().includes('does not exist')) {
+        alert("Cannot claim prize: This crossword was created using an older version of the contract that doesn't fully support the manual claim system." +
+          "\n\nWait for the next crossword, it will work perfectly!");
       } else if (errorMessage.toLowerCase().includes('insufficient funds') || errorMessage.toLowerCase().includes('gas')) {
-        // Debug log removed - Insufficient funds error
         alert("Insufficient CELO for gas fees. Please get some CELO on Celo Sepolia testnet to claim your prize.");
       } else {
-        // Debug log removed - Other claim error
         alert("Error claiming prize: " + errorMessage);
       }
     } else if (isClaimSuccess) {
-      // Debug log removed - Prize claimed successfully
+      // Immediately update the claim status to prevent duplicate claims
+      setUserHasClaimed(true);
+      
+      // Save to localStorage
+      if (connectedAddress && selectedCrosswordId) {
+        const claimKey = `claimed_${selectedCrosswordId}_${connectedAddress.toLowerCase()}`;
+        localStorage.setItem(claimKey, 'true');
+        console.log(`[Claim Success] Saved claim status to localStorage: ${claimKey}`);
+      }
+      
       alert("Prize claimed successfully!");
-      // Refetch the completions to update the UI after claiming
       refetch();
     }
-  }, [isClaimError, isClaimSuccess, claimError, refetch]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isClaimError, isClaimSuccess, claimError]); // Removed refetch from dependencies to avoid loop
 
   useEffect(() => {
-    if (currentCrossword?.id) {
+    if (selectedCrosswordId) {
       setLoading(true);
       setError(null);
 
@@ -199,132 +211,87 @@ export default function LeaderboardPage() {
         setLoading(false);
       });
     }
-  }, [currentCrossword?.id]); // Removed refetch from dependencies to prevent infinite loop
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCrosswordId]); // Removed refetch to avoid loop
 
   // When we get the on-chain data, sort by completion timestamp (earliest first)
   useEffect(() => {
-    // Debug log removed - On-chain completions received
-
     if (onChainCompletions && !isCompletionsLoading) {
-      // Create a copy and sort completions by timestamp (earliest completion = better rank)
       const completionsCopy = Array.isArray(onChainCompletions) ? [...onChainCompletions] : [];
-      // Debug log removed - Found completions
-
       const sorted = completionsCopy.sort((a, b) => {
-        // Extract timestamps using helper functions
         const timeA = getCompletionTimestamp(a);
         const timeB = getCompletionTimestamp(b);
         return Number(timeA - timeB);
       });
       setCompletions(sorted);
-      // Debug log removed - Set sorted completions
     }
-  }, [onChainCompletions, isCompletionsLoading]); // Removed getCompletionTimestamp to prevent infinite loop
+  }, [onChainCompletions, isCompletionsLoading, getCompletionTimestamp]);
 
-  // Effect to check URL parameters and show celebration modal
+  // Effect to check URL parameters and trigger celebration
   useEffect(() => {
-    const completed = searchParams.get('completed');
-    const winner = searchParams.get('winner');
-    const rank = searchParams.get('rank');
+    if (typeof window === 'undefined') return;
 
-    console.log('[LEADERBOARD DEBUG] URL params:', { completed, winner, rank, showCelebrationModal });
+    const completed = searchParams.get('completed') === 'true';
+    const winner = searchParams.get('winner') === 'true';
+    const rank = parseInt(searchParams.get('rank') || '0');
 
-    if (completed === 'true' && !showCelebrationModal) {
-      const isWinner = winner === 'true';
-      const userRank = rank ? parseInt(rank) : 0;
-      
-      console.log('[LEADERBOARD DEBUG] Processing completion:', { isWinner, userRank });
+    if (completed && !showCelebrationModal) {
+      setCelebrationData({ winner, rank, prize: '...' });
+      setShowCelebrationModal(true);
 
-      if (userRank > 0) {
-        // Show modal immediately for both winners and non-winners
-        if (isWinner) {
-          // For winners, try to calculate prize if data is available
-          if (crosswordDetails) {
-            const prizePool = Array.isArray(crosswordDetails) ? crosswordDetails[1] : 0n;
-            const winnerPercentages = Array.isArray(crosswordDetails) ? crosswordDetails[2] : [];
-            
-            if (userRank <= winnerPercentages.length) {
-              const percentage = winnerPercentages[userRank - 1];
-              const prizeAmount = (prizePool * percentage) / 10000n;
-              const prizeInCelo = formatEther(prizeAmount);
-              
-              setCelebrationData({ winner: true, rank: userRank, prize: prizeInCelo });
-            } else {
-              // Show without prize if rank is out of range
-              setCelebrationData({ winner: true, rank: userRank, prize: '0' });
-            }
-          } else {
-            // Show modal without prize amount if data not loaded yet
-            setCelebrationData({ winner: true, rank: userRank, prize: '...' });
-          }
-          
-          console.log('[LEADERBOARD DEBUG] Setting showCelebrationModal to true for winner');
-          setShowCelebrationModal(true);
-          
-          // Fire confetti for winners
-          setTimeout(() => {
-            const count = 500;
-            const defaults = { origin: { y: 0.5, x: 0.5 } };
-            
-            function fire(particleRatio: number, opts: any) {
-              confetti({
-                ...defaults,
-                ...opts,
-                particleCount: Math.floor(count * particleRatio)
-              });
-            }
-            
-            fire(0.25, { spread: 26, startVelocity: 55 });
-            fire(0.2, { spread: 60 });
-            fire(0.35, { spread: 100, decay: 0.91, scalar: 0.4 });
-            fire(0.1, { spread: 120, startVelocity: 25, decay: 0.92, scalar: 1.2 });
-            fire(0.1, { spread: 120, startVelocity: 45 });
-          }, 300);
-        } else {
-          // Non-winner celebration
-          console.log('[LEADERBOARD DEBUG] Setting showCelebrationModal to true for non-winner');
-          setCelebrationData({ winner: false, rank: userRank });
-          setShowCelebrationModal(true);
-        }
+      // Trigger confetti
+      const particleCount = winner ? 150 : 80;
+      const spread = winner ? 70 : 50;
+      const origin = { y: winner ? 0.6 : 0.7 };
+      const colors = winner ? ['#27F52A', '#000000', '#FFFFFF'] : ['#27F52A', '#000000'];
 
-        // Clear URL parameters
-        console.log('[LEADERBOARD DEBUG] Clearing URL parameters');
-        if (typeof window !== 'undefined') {
-          window.history.replaceState({}, '', '/leaderboard');
-        }
-      }
+      confetti({
+        particleCount,
+        spread,
+        origin,
+        colors
+      });
+
+      // Clean up URL parameters without refreshing
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete('completed');
+      params.delete('winner');
+      params.delete('rank');
+      const newPath = window.location.pathname + (params.toString() ? `?${params.toString()}` : '');
+      window.history.replaceState({}, '', newPath);
     }
-  }, [searchParams, crosswordDetails, showCelebrationModal]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   // Update prize amount when crosswordDetails loads for winners
   useEffect(() => {
-    if (showCelebrationModal && celebrationData?.winner && celebrationData.prize === '...' && crosswordDetails) {
-      const prizePool = Array.isArray(crosswordDetails) ? crosswordDetails[1] : 0n;
-      const winnerPercentages = Array.isArray(crosswordDetails) ? crosswordDetails[2] : [];
-      
+    if (showCelebrationModal && celebrationData?.winner && celebrationData.prize === '...' && crosswordPrizesDetails) {
+      const prizePool = crosswordPrizesDetails.totalPrizePool || 0n;
+      const winnerPercentages = crosswordPrizesDetails.winnerPercentages || [];
+
       if (celebrationData.rank > 0 && celebrationData.rank <= winnerPercentages.length) {
         const percentage = winnerPercentages[celebrationData.rank - 1];
-        const prizeAmount = (prizePool * percentage) / 10000n;
-        const prizeInCelo = formatEther(prizeAmount);
-        
-        setCelebrationData({ ...celebrationData, prize: prizeInCelo });
+        const prizeAmount = (BigInt(prizePool) * BigInt(percentage)) / 10000n;
+        const prizeFormatted = `${formatEther(prizeAmount)} CELO`;
+
+        setCelebrationData(prev => prev ? { ...prev, prize: prizeFormatted } : null);
+      } else {
+        setCelebrationData(prev => prev ? { ...prev, prize: '0 CELO' } : null);
       }
     }
-  }, [crosswordDetails, celebrationData, showCelebrationModal]);
+  }, [crosswordPrizesDetails, celebrationData, showCelebrationModal]);
 
   const formatDate = (timestamp: bigint) => {
     if (!timestamp) return "Invalid Date";
     
-    // Convert from seconds to milliseconds for Date constructor
     const date = new Date(Number(timestamp) * 1000)
     
-    // Check if date is valid
     if (isNaN(date.getTime())) {
       return "Invalid Date";
     }
     
     try {
-      return new Intl.DateTimeFormat("es-MX", {
+      return new Intl.DateTimeFormat("en-US", {
         month: "short",
         day: "numeric",
         hour: "2-digit",
@@ -346,9 +313,27 @@ export default function LeaderboardPage() {
     if (index === 0) return "bg-yellow-300"
     if (index === 1) return "bg-gray-300"
     if (index === 2) return "bg-amber-300"
-    // For positions 4 through maxWinnersAllowed, use a light purple color
     if (index < maxWinnersAllowed) return "bg-purple-100"
     return "bg-white"
+  }
+
+  if (!selectedCrosswordId && !loading) {
+    return (
+      <main className="flex items-center justify-center min-h-screen p-4 bg-background">
+        <Card className="border-4 border-black bg-card p-8 text-center shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+          <Trophy className="w-12 h-12 mx-auto text-muted-foreground" />
+          <p className="mt-4 font-bold text-muted-foreground">
+            Please select a crossword to view its leaderboard.
+          </p>
+          <Button
+            onClick={() => router.push('/active-crosswords')}
+            className="w-full sm:w-auto mt-4 border-4 border-black bg-accent font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+          >
+            Back to Active Crosswords
+          </Button>
+        </Card>
+      </main>
+    );
   }
 
   if (loading || isCompletionsLoading) {
@@ -387,16 +372,15 @@ export default function LeaderboardPage() {
             </Button>
           </Card>
 
-          <div className="flex justify-center mt-8">
+          <div className="flex justify-center mt-8 w-full px-2">
             <Button
               onClick={() => {
-                // Use window.location to navigate instead of router.push to ensure proper navigation
-                window.location.href = "/";
+                window.location.href = "/active-crosswords";
               }}
-              className="border-4 border-black bg-accent font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-accent hover:shadow-none"
+              className="w-full sm:w-auto border-4 border-black bg-accent font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-accent hover:shadow-none"
             >
               <Home className="w-4 h-4 mr-2" />
-              Return to Home
+              Back To Active Crosswords
             </Button>
           </div>
         </div>
@@ -404,51 +388,26 @@ export default function LeaderboardPage() {
     )
   }
 
-
-
-
-
   // Function to handle prize claiming for user's own completion
   const handleClaimPrize = async () => {
-    // Debug logs removed - handleClaimPrize called
-
-    if (!currentCrossword?.id) {
-      // Debug log removed - No current crossword id
+    if (!selectedCrosswordId) {
       alert("No active crossword to claim prize for.");
       return;
     }
 
     if (!connectedAddress) {
-      // Debug log removed - No connected address
       alert("Please connect your wallet to claim your prize.");
       return;
     }
 
     if (isClaiming) {
-      // Debug log removed - Already claiming
       alert("Already processing a claim transaction. Please wait.");
       return;
     }
 
-    // With the updated contract, users can try to claim again for UX feedback
-    // The contract handles duplicate payment prevention internally
-    // Reset success state to allow new claim attempt
-    // Note: We don't reset the state here as it's handled by the hook's useEffect
-
-    // Since the button appears based on the completions array, allow the claim attempt
-    // Let the contract handle the validation and provide feedback
-    // This improves UX by allowing claim attempts for feedback purposes
-    // Debug log removed - Proceeding with claim attempt
-
-    // Verify if the current crossword is still active for claiming
-    // This is just a pre-check - the actual validation happens in the contract
-    // Debug log removed - Pre-claim validation passed
-
     try {
-      const txPromise = claimPrize([currentCrossword.id as `0x${string}`]);
-      // Debug log removed - Claim prize transaction initiated
+      const txPromise = claimPrize([selectedCrosswordId as `0x${string}`]);
     } catch (error) {
-      // Debug log removed - Error initiating claim transaction
       const errorMessage = (error instanceof Error ? error.message : "Unknown error");
       alert("Error initiating prize claim: " + errorMessage);
     }
@@ -467,16 +426,13 @@ export default function LeaderboardPage() {
         shareText = `✅ I completed the Celo Crossword, finishing #${celebrationData.rank}! Try it yourself! 🧩`;
       }
 
-      // Get the current origin for the frame URL
-      const frameUrl = typeof window !== 'undefined' ? window.location.origin : '';
+      const frameUrl = typeof window !== 'undefined' ? `${window.location.origin}/leaderboard?id=${selectedCrosswordId}` : '';
       
-      // Use Farcaster SDK to compose a cast with the frame embedded
       const composeUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(shareText)}&embeds[]=${encodeURIComponent(frameUrl)}`;
       
       await sdk.actions.openUrl(composeUrl);
     } catch (error) {
       console.error('Error sharing on Farcaster:', error);
-      // Fallback: try without embed
       try {
         let shareText = '';
         if (celebrationData?.winner && celebrationData.prize) {
@@ -493,58 +449,54 @@ export default function LeaderboardPage() {
 
   return (
     <>
-      {/* Celebration Modal */}
-      {(() => {
-        console.log('[LEADERBOARD DEBUG] Modal render check:', { showCelebrationModal, celebrationData });
-        return showCelebrationModal && celebrationData;
-      })() && (
+      {showCelebrationModal && celebrationData && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <Card className="relative w-full max-w-md border-4 border-black bg-card p-6 sm:p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
             <div className="flex flex-col items-center text-center space-y-4">
               {celebrationData.winner ? (
                 <>
                   <Trophy className="w-16 h-16 sm:w-20 sm:h-20 text-yellow-500 mb-2" />
-                  <h2 className="text-2xl sm:text-3xl font-black uppercase text-foreground">
-                    ¡Felicidades! 🎉
+                  <h2 className="text-lg font-black uppercase text-foreground">
+                    Congratulations! 🎉
                   </h2>
                   <p className="text-lg sm:text-xl font-bold text-primary">
-                    Ganaste {celebrationData.prize} CELO
+                    You won {celebrationData.prize} CELO
                   </p>
                   <p className="text-base sm:text-lg font-bold text-muted-foreground">
-                    Terminaste en el puesto #{celebrationData.rank}
+                    You finished in rank #{celebrationData.rank}
                   </p>
                   <p className="text-sm text-muted-foreground px-2">
-                    Tu premio ha sido registrado en la blockchain. ¡Comparte tu logro!
+                    Your prize has been recorded on the blockchain.
                   </p>
                 </>
               ) : (
                 <>
                   <Trophy className="w-16 h-16 sm:w-20 sm:h-20 text-primary mb-2" />
                   <h2 className="text-2xl sm:text-3xl font-black uppercase text-foreground">
-                    ¡Completado! ✅
+                    Completed! ✅
                   </h2>
                   <p className="text-lg sm:text-xl font-bold text-muted-foreground">
-                    Terminaste en el puesto #{celebrationData.rank}
+                    You finished in rank #{celebrationData.rank}
                   </p>
                   <p className="text-sm text-muted-foreground px-2">
-                    ¡Buen trabajo! Tu participación ha sido registrada en la blockchain.
+                    Good job! Your participation has been recorded on the blockchain.
                   </p>
                 </>
               )}
               
               <div className="flex flex-col sm:flex-row gap-3 w-full mt-4">
-                <Button
+                {/* <Button
                   onClick={handleFarcasterShare}
                   className="flex-1 border-4 border-black bg-purple-500 font-black uppercase text-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-purple-600 hover:shadow-none"
                 >
                   <Share2 className="w-4 h-4 mr-2" />
-                  Compartir
-                </Button>
+                  Share
+                </Button> */}
                 <Button
                   onClick={() => setShowCelebrationModal(false)}
-                  className="flex-1 border-4 border-black bg-accent font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-accent hover:shadow-none"
+                  className="w-full sm:flex-1 border-4 border-black bg-accent font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-accent hover:shadow-none"
                 >
-                  Cerrar
+                  Continue
                 </Button>
               </div>
             </div>
@@ -562,18 +514,8 @@ export default function LeaderboardPage() {
               Winners (On-Chain)
             </h1>
             <p className="mt-2 text-sm font-bold text-muted-foreground sm:text-base">
-              The first users to complete the current crossword puzzle (stored on the blockchain).            </p>
-          </div>
-
-          {/* Back Button - Top */}
-          <div className="flex justify-center mb-8">
-            <Button
-              onClick={() => window.location.href = "/"}
-              className="border-4 border-black bg-accent font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-accent hover:shadow-none"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back
-            </Button>
+              The first users to complete this crossword puzzle (stored on the blockchain).
+            </p>
           </div>
 
           {completions.length === 0 ? (
@@ -585,6 +527,33 @@ export default function LeaderboardPage() {
             </Card>
           ) : (
             <div className="space-y-4">
+              <div className="flex justify-center mb-4 w-full px-2">
+                <Button
+                  onClick={() => router.push('/active-crosswords')}
+                  className="w-full sm:w-auto border-4 border-black bg-accent font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-accent hover:shadow-none"
+                >
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back To Crosswords
+                </Button>
+              </div>
+              {crosswordPrizesDetails && crosswordPrizesDetails.totalPrizePool > 0 && (
+                <Card className="border-4 border-black bg-green-100 p-4 sm:p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] text-center">
+                  <h2 className="text-lg font-black uppercase text-green-800 mb-2">Prize Pool</h2>
+                  <p className="text-4xl font-black text-green-900">
+                    {formatEther(crosswordPrizesDetails.totalPrizePool)}
+                    {crosswordPrizesDetails.token === "0x0000000000000000000000000000000000000000" ? " CELO" : " Tokens"}
+                  </p>
+                  {crosswordPrizesDetails.winnerPercentages && crosswordPrizesDetails.winnerPercentages.length > 0 && (
+                    <div className="flex flex-wrap justify-center gap-2 mt-4">
+                      {crosswordPrizesDetails.winnerPercentages.map((pct: any, idx: number) => (
+                        <span key={idx} className="rounded-full bg-green-200 px-3 py-1 text-sm font-bold text-green-900 border-2 border-green-900">
+                          Rank {idx + 1}: {Number(pct) / 100}%
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </Card>
+              )}
               {completions.slice(0, visibleCount).map((completion, index) => {
                 const userAddress = getCompletionUser(completion);
 
@@ -634,7 +603,6 @@ export default function LeaderboardPage() {
             </div>
           )}
 
-          {/* See More Button */}
           {completions.length > visibleCount && (
             <div className="flex justify-center mt-8">
               <Button
@@ -647,58 +615,49 @@ export default function LeaderboardPage() {
             </div>
           )}
 
-          {/* Claim Prize Button - Check against the actual displayed completions to ensure consistency */}
           <div className="flex justify-center mt-4">
             {(() => {
-              // Debug logs removed - Claim button main check
-
-              // Check if user is connected and we have necessary data
-              if (!isConnected || !connectedAddress || !currentCrossword) {
-                // Debug logs removed - Not showing claim button - missing connection/data
+              if (!isConnected || !connectedAddress || !selectedCrosswordId) {
                 return null;
               }
 
-              // Check if user is among the displayed completions (these are the prize winners)
-              // Use the same array that's used to display the leaderboard
               let isPrizeWinner = false;
               let userRankFromDisplayedCompletions = 0;
 
-              if (Array.isArray(completions) && completions.length > 0) {
-                // Normalize addresses for comparison (handle potential case differences)
+              // Check winners array from prizes contract first
+              if (crosswordPrizesDetails && Array.isArray(crosswordPrizesDetails.winners)) {
+                const winners = crosswordPrizesDetails.winners;
                 const normalizedConnectedAddress = connectedAddress.toLowerCase();
 
-                const userCompletionIndex = completions.findIndex(completion => {
-                  const completionUser = getCompletionUser(completion).toLowerCase();
-                  return completionUser === normalizedConnectedAddress;
-                });
+                const userIndex = winners.findIndex((winnerAddress: any) => 
+                  (typeof winnerAddress === 'string' ? winnerAddress : winnerAddress?.toString())?.toLowerCase() === normalizedConnectedAddress
+                );
 
-                if (userCompletionIndex !== -1) {
+                if (userIndex !== -1) {
                   isPrizeWinner = true;
-                  userRankFromDisplayedCompletions = userCompletionIndex + 1; // 1-indexed
+                  userRankFromDisplayedCompletions = userIndex + 1; 
                 }
-
-                // Debug logs removed - Prize winner check against displayed completions
-              } else {
-                // Debug logs removed - No completions array available yet
               }
 
-              // Additionally, check how many winners are allowed for this crossword
-              // maxWinnersAllowed is already calculated above
+              // Fallback: Check if user is in the displayed completions within the winners limit
+              if (!isPrizeWinner && completions && Array.isArray(completions)) {
+                const normalizedConnectedAddress = connectedAddress.toLowerCase();
+                const userIndexInCompletions = completions.findIndex(c => 
+                  getCompletionUser(c).toLowerCase() === normalizedConnectedAddress
+                );
 
-              // Show the button for prize winners who are within the allowed number of winners
+                if (userIndexInCompletions !== -1 && userIndexInCompletions < maxWinnersAllowed) {
+                  isPrizeWinner = true;
+                  userRankFromDisplayedCompletions = userIndexInCompletions + 1;
+                }
+              }
+
               if (isPrizeWinner && userRankFromDisplayedCompletions <= maxWinnersAllowed) {
-                // Use the contract state to determine if the user has already claimed
-                // Prioritize the contract state over the local transaction state
                 const contractHasClaimed = userHasClaimed === true;
                 const checkingClaimStatusFromContract = userHasClaimed === null && checkingClaimStatus;
 
-                // Use contract state as the primary source of truth, fallback to local state if contract check is still pending
-                const userHasAlreadyClaimed = contractHasClaimed || (checkingClaimStatusFromContract ? isClaimSuccess : contractHasClaimed);
-
-                // Show "Claiming..." when processing, "Claimed!" when confirmed from contract,
-                // "Checking..." when verifying contract status, "Claim Prize" when available
                 const buttonLabel = isClaiming ? 'Claiming...' :
-                  contractHasClaimed ? 'Prize Claimed!' :
+                  contractHasClaimed ? 'Claimed' :
                     checkingClaimStatusFromContract ? 'Checking...' :
                       'Claim Prize';
 
@@ -708,28 +667,29 @@ export default function LeaderboardPage() {
                   <Button
                     onClick={handleClaimPrize}
                     disabled={buttonDisabled}
-                    className="border-4 border-black bg-primary font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-300"
+                    className={cn(
+                      "border-4 border-black font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none disabled:opacity-100 disabled:cursor-not-allowed",
+                      contractHasClaimed 
+                        ? "bg-green-500 text-white disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+                        : "bg-primary disabled:opacity-50 disabled:bg-gray-300"
+                    )}
                   >
                     {buttonLabel}
                   </Button>
                 );
               }
 
-              // Debug logs removed - Not showing claim button - user is not in displayed completions
               return null;
             })()}
           </div>
 
           <div className="flex justify-center mt-8">
             <Button
-              onClick={() => {
-                // Use window.location to navigate instead of router.push to ensure proper navigation
-                window.location.href = "/";
-              }}
+              onClick={() => router.push('/')}
               className="border-4 border-black bg-accent font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-accent hover:shadow-none"
             >
               <Home className="w-4 h-4 mr-2" />
-              Return to Home
+              Back to Home
             </Button>
           </div>
         </div>

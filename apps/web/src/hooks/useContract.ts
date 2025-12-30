@@ -4,9 +4,14 @@ import { CONTRACTS } from '../lib/contracts';
 import { celo, celoAlfajores } from 'wagmi/chains';
 import { defineChain } from 'viem';
 import { toast } from 'sonner';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 import { getHistoricalCrosswordData } from '@/lib/historical-crosswords';
 import CrosswordBoardArtifact from '@/lib/abis/CrosswordBoard.json';
+import CrosswordCoreArtifact from '@/lib/abis/CrosswordCore.json';
+import CrosswordPrizesArtifact from '@/lib/abis/CrosswordPrizes.json';
+import PublicCrosswordManagerArtifact from '@/lib/abis/PublicCrosswordManager.json';
+import AdminManagerArtifact from '@/lib/abis/AdminManager.json';
+import { useCallback } from 'react';
 
 // Define Celo Sepolia chain
 const celoSepolia = defineChain({
@@ -23,26 +28,6 @@ const celoSepolia = defineChain({
   },
   testnet: true,
 });
-
-// Load the ABI dynamically from the contract artifact
-const getContractABI = async (contractName: 'CrosswordBoard') => {
-  try {
-    // Dynamically import the ABI based on contract name
-    if (contractName === 'CrosswordBoard') {
-      // In a real scenario, you'd import the ABI from the artifacts
-      // For now, we'll return an empty array and load it dynamically at runtime
-      // This is where the actual ABI would be loaded
-      const response = await fetch(`/api/contract-abi?contract=${contractName}`); // This calls our endpoint that serves the ABI
-      if (response.ok) {
-        return await response.json();
-      }
-    }
-    return [];
-  } catch (error) {
-    console.error("Error loading ABI dynamically", error);
-    return [];
-  }
-};
 
 // Helper function to extract meaningful error messages
 const getErrorMessage = (error: any): string => {
@@ -75,34 +60,55 @@ const getErrorMessage = (error: any): string => {
 };
 
 // Helper function to get contract config based on chain
-const getContractConfig = (contractName: 'CrosswordBoard'): { address: `0x${string}`, abi: any } => {
+const getContractConfig = (contractName: 'CrosswordBoard' | 'CrosswordCore' | 'CrosswordPrizes' | 'PublicCrosswordManager' | 'AdminManager', chainId: number | undefined): { address: `0x${string}`, abi: any } => {
   if (typeof window === 'undefined') {
     // We are on the server, return a dummy config to prevent crash
     return { address: '0x0000000000000000000000000000000000000000', abi: [] };
   }
-  const chainId = useChainId();
 
   // Determine which chain configuration to use based on environment
-  let chainConfig = CONTRACTS[celo.id]; // default to mainnet
+  let chainConfig = (CONTRACTS as any)[celo.id]; // default to mainnet
 
   if (chainId === celo.id) {
-    chainConfig = CONTRACTS[celo.id];
-  } else if (chainId === celoAlfajores.id) {
-    chainConfig = CONTRACTS[celoAlfajores.id];
-  } else if (chainId === 11142220 || chainId === celoSepolia.id) { // Celo Sepolia testnet
-    chainConfig = CONTRACTS[11142220];
-  } else if (chainId === 44787) { // Legacy testnet ID
-    chainConfig = CONTRACTS[celoAlfajores.id];
+    chainConfig = (CONTRACTS as any)[celo.id];
+  } else if (chainId === celoAlfajores.id || chainId === 44787) {
+    chainConfig = (CONTRACTS as any)[celoAlfajores.id];
+  } else if (chainId === 11142220 || chainId === 11142220) { // Celo Sepolia testnet
+    chainConfig = (CONTRACTS as any)[11142220];
+  } else if (chainId === 31337) { // Local hardhat chain ID
+    const localContracts = {
+      CrosswordBoard: { address: '0x5fbdb2315678afecb367f032d93f642f64180aa3' },
+      CrosswordCore: { address: '0x5fbdb2315678afecb367f032d93f642f64180aa3' },
+      CrosswordPrizes: { address: '0x5fbdb2315678afecb367f032d93f642f64180aa3' },
+      PublicCrosswordManager: { address: '0x5fbdb2315678afecb367f032d93f642f64180aa3' },
+      AdminManager: { address: '0x5fbdb2315678afecb367f032d93f642f64180aa3' }
+    };
+    chainConfig = localContracts;
   }
 
-  const contract = chainConfig[contractName];
+  // Fallback: if specific contract name is not in the config (e.g. on Mainnet/Alfajores),
+  // use the CrosswordBoard address as fallback if available.
+  const contract = chainConfig[contractName] || chainConfig['CrosswordBoard'];
 
-  // For this implementation, we'll return a simple ABI that includes the essential functions
-  // The real ABI can be loaded from the artifacts or import
-  const abi = getCrosswordBoardABI();
+  const address = contract?.address || '0x0000000000000000000000000000000000000000';
+
+  let abi;
+  if (contractName === 'CrosswordBoard') {
+    abi = CrosswordBoardArtifact.abi;
+  } else if (contractName === 'CrosswordCore') {
+    abi = CrosswordCoreArtifact.abi;
+  } else if (contractName === 'CrosswordPrizes') {
+    abi = CrosswordPrizesArtifact.abi;
+  } else if (contractName === 'PublicCrosswordManager') {
+    abi = PublicCrosswordManagerArtifact.abi;
+  } else if (contractName === 'AdminManager') {
+    abi = AdminManagerArtifact.abi;
+  } else {
+    abi = CrosswordBoardArtifact.abi; // Fallback
+  }
 
   // Ensure the address is properly typed as a hex string
-  const typedAddress = (contract.address.startsWith('0x') ? contract.address : '0x0000000000000000000000000000000000000000') as `0x${string}`;
+  const typedAddress = (address.startsWith('0x') ? address : '0x0000000000000000000000000000000000000000') as `0x${string}`;
 
   return {
     address: typedAddress,
@@ -116,1620 +122,743 @@ function getCrosswordBoardABI() {
   return CrosswordBoardArtifact.abi;
 }
 
-export const useGetCurrentCrossword = () => {
-  const contractConfig = getContractConfig('CrosswordBoard');
+export const useGetCrosswordCompletions = (crosswordId: `0x${string}`, overrideContractAddress?: `0x${string}`) => {
+  const { address } = useAccount();
+  const chainId = useChainId();
   const queryClient = useQueryClient();
 
-  return useContractRead({
-    address: contractConfig.address,
-    abi: contractConfig.abi,
-    functionName: 'getCurrentCrossword',
-    blockTag: 'latest', // Use latest instead of safe for real-time updates
-    query: {
-      // Minimal caching for real-time updates
-      retry: 1,
-      retryDelay: 3000,
-      staleTime: 0, // Data becomes stale immediately, forcing refetch
-      gcTime: 2000, // Garbage collect quickly
-      refetchOnWindowFocus: true,
-      refetchOnReconnect: true,
-      refetchInterval: 5000, // Regular refresh for real-time updates
-    }
-  });
-};
+  const contractConfig = getContractConfig('CrosswordCore', chainId);
+  const targetAddress = overrideContractAddress || contractConfig.address;
 
-export const useSetCrossword = () => {
-  const { address, isConnected } = useAccount();
-  const contractConfig = getContractConfig('CrosswordBoard');
-  const queryClient = useQueryClient();
-
-  const { data, error: writeError, isPending, writeContract } = useWriteContract();
-
-  const { isLoading: isConfirming, isSuccess, isError: isTxError, error: txError } = useWaitForTransactionReceipt({
-    hash: data,
-  });
-
-  // Track if we've already shown the success/error toasts to prevent duplicates
-  const successShown = useRef(false);
-  const errorShown = useRef(false);
-
-  useEffect(() => {
-    if (isSuccess && !successShown.current) {
-      toast.success('Transaction confirmed', {
-        description: 'Your crossword has been successfully saved on the blockchain.',
-      });
-      // Invalidar directamente la consulta para forzar una actualización inmediata
-      queryClient.invalidateQueries({
-        queryKey: ['readContract', {
-          address: contractConfig.address,
-          functionName: 'getCurrentCrossword'
-        }]
-      });
-      successShown.current = true;
-    }
-    if ((isTxError || writeError) && !errorShown.current) {
-      toast.error('Transaction failed', {
-        description: getErrorMessage(txError || writeError),
-      });
-      errorShown.current = true;
-    }
-  }, [isSuccess, isTxError, txError, writeError, queryClient, contractConfig.address]);
-
-  // Reset the flags when a new transaction is initiated
-  useEffect(() => {
-    if (isPending) {
-      successShown.current = false;
-      errorShown.current = false;
-    }
-  }, [isPending]);
-
-  // Also reset when data changes (new transaction initiated)
-  useEffect(() => {
-    if (data) {
-      successShown.current = false;
-      errorShown.current = false;
-    }
-  }, [data]);
-
-  return {
-    setCrossword: (args: [`0x${string}`, string]) =>
-      writeContract({
-        address: contractConfig.address,
-        abi: contractConfig.abi,
-        functionName: 'setCrossword',
-        args
-      }, {
-        onError: (error) => {
-          toast.error('Error setting crossword', {
-            description: getErrorMessage(error),
-          });
-          // Mark error as shown in case error occurs during writeContract
-          errorShown.current = true;
-        },
-        onSuccess: (hash) => {
-          toast.success('Crossword set successfully', {
-            description: 'The crossword has been saved to the blockchain.',
-          });
-        }
-      }),
-    isLoading: isPending || isConfirming,
-    isSuccess,
-    isError: !!writeError || isTxError,
-    error: writeError || txError,
-    txHash: data,
-    contractAddress: contractConfig.address, // Add contract address for cache invalidation
-  };
-};
-
-
-
-export const useCompleteCrossword = () => {
-  const { address } = useAccount(); // Get connected user address
-  const contractConfig = getContractConfig('CrosswordBoard');
-  const queryClient = useQueryClient();
-  const { data, error: writeError, isPending, writeContract } = useWriteContract();
-
-  const { isLoading: isConfirming, isSuccess, isError: isTxError, error: txError } = useWaitForTransactionReceipt({
-    hash: data,
-  });
-
-  // Track if we've already shown the success/error toasts to prevent duplicates
-  const successShown = useRef(false);
-  const errorShown = useRef(false);
-
-  useEffect(() => {
-    if (isSuccess && !successShown.current) {
-      toast.success('Crossword completed successfully', {
-        description: 'Your crossword completion has been recorded on the blockchain.',
-      });
-      // Invalidar consultas relacionadas para mantener los datos actualizados
-      queryClient.invalidateQueries({
-        queryKey: ['readContract', {
-          address: contractConfig.address,
-          functionName: 'getCurrentCrossword'
-        }]
-      });
-      queryClient.invalidateQueries({
-        queryKey: ['readContract', {
-          address: contractConfig.address,
-          functionName: 'userCompletedCrossword'
-        }]
-      });
-      successShown.current = true;
-    }
-    if ((isTxError || writeError) && !errorShown.current) {
-      toast.error('Transaction failed', {
-        description: getErrorMessage(txError || writeError),
-      });
-      errorShown.current = true;
-    }
-  }, [isSuccess, isTxError, txError, writeError, queryClient, contractConfig.address]);
-
-  // Reset the flags when a new transaction is initiated
-  useEffect(() => {
-    if (isPending) {
-      successShown.current = false;
-      errorShown.current = false;
-    }
-  }, [isPending]);
-
-  // Also reset when data changes (new transaction initiated)
-  useEffect(() => {
-    if (data) {
-      successShown.current = false;
-      errorShown.current = false;
-    }
-  }, [data]);
-
-  return {
-    // Modified to accept crosswordId and handle signing
-    completeCrossword: async (args: [bigint, string, string, string, string]) => {
-      try {
-        const [duration, username, displayName, pfpUrl, crosswordId] = args;
-        
-        if (!address) {
-          toast.error('Wallet not connected');
-          return;
-        }
-
-        // 1. Fetch signature from API
-        const response = await fetch('/api/crossword/sign', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            user: address,
-            crosswordId,
-            durationMs: Number(duration),
-            contractAddress: contractConfig.address
-          })
-        });
-
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || 'Failed to sign request');
-        }
-
-        const { signature } = await response.json();
-
-        // 2. Call Contract with Signature
-        writeContract({
-          address: contractConfig.address,
-          abi: contractConfig.abi,
-          functionName: 'completeCrossword',
-          args: [duration, username, displayName, pfpUrl, signature]
-        }, {
-          onError: (error) => {
-            toast.error('Error completing crossword', {
-              description: getErrorMessage(error),
-            });
-            errorShown.current = true;
-          },
-          onSuccess: (hash) => {
-            toast.success('Transaction submitted', {
-              description: 'Your crossword completion is being processed on the blockchain.',
-            });
-          }
-        });
-
-      } catch (e: any) {
-        console.error('Completion error:', e);
-        toast.error('Failed to complete', { description: e.message });
-        errorShown.current = true;
-        throw e;
-      }
-    },
-    isLoading: isPending || isConfirming,
-    isSuccess,
-    isError: !!writeError || isTxError,
-    error: writeError || txError,
-    txHash: data,
-    contractAddress: contractConfig.address, // Add contract address for cache invalidation
-  };
-};
-
-
-
-export const useGetCrosswordCompletions = (crosswordId: `0x${string}`) => {
-  const contractConfig = getContractConfig('CrosswordBoard');
-
-  // First check if we have hardcoded data for this crossword
-  const historicalData = crosswordId ? getHistoricalCrosswordData(crosswordId) : null;
-  const hasHardcodedCompletions = historicalData && historicalData.completions && historicalData.completions.length > 0;
-
-  const contractQuery = useContractRead({
-    address: contractConfig.address,
+  const { data, isError, isLoading, error } = useContractRead({
+    address: targetAddress,
     abi: contractConfig.abi,
     functionName: 'getCrosswordCompletions',
     args: [crosswordId],
+    chainId: chainId,
     query: {
-      enabled: !!crosswordId && !hasHardcodedCompletions,
-      staleTime: 120000,  // Cache for 2 minutes
-      gcTime: 300000,     // Garbage collect after 5 minutes
-      retry: 1,           // Only retry once
-      retryDelay: 5000,   // Wait 5 seconds between retries
-    },
-  });
-
-  if (hasHardcodedCompletions && historicalData && historicalData.completions) {
-      return {
-          data: historicalData.completions.map(c => ({
-            user: c.user,
-            timestamp: BigInt(c.timestamp),
-            rank: BigInt(c.rank),
-            durationMs: c.durationMs ? BigInt(c.durationMs) : 0n
-          })),
-          isLoading: false,
-          isError: false,
-          error: null,
-          isSuccess: true,
-          refetch: () => Promise.resolve(),
-      };
-  }
-
-  return contractQuery;
-};
-
-// Hook para verificar si un usuario es ganador de un crucigrama específico
-
-export const useUserCompletedCrossword = (crosswordId: `0x${string}`, user: `0x${string}`) => {
-  const contractConfig = getContractConfig('CrosswordBoard');
-
-  return useContractRead({
-    address: contractConfig.address,
-    abi: contractConfig.abi,
-    functionName: 'userCompletedCrossword',
-    args: [crosswordId, user],
-    blockTag: 'safe',
-    query: {
-      enabled: !!crosswordId && !!user,
-      staleTime: 60000,  // Cache for 1 minute
-      gcTime: 120000,    // Garbage collect after 2 minutes
-      retry: 1,          // Only retry once
-      retryDelay: 5000,  // Wait 5 seconds between retries
-    },
-  });
-};
-
-// Hook para verificar si un usuario es ganador de un crucigrama específico
-
-// Check if current account is admin
-export const useIsAdmin = () => {
-  const { address } = useAccount();
-  const boardContractConfig = getContractConfig('CrosswordBoard');
-
-  // Check if user has admin role on CrosswordBoard
-  const ADMIN_ROLE = '0xa49807205ce4d355092ef5a8a18f56e8913cf4a201fbe287825b095693c21775';
-  const boardAdminResult = useContractRead({
-    address: boardContractConfig.address,
-    abi: boardContractConfig.abi,
-    functionName: 'hasRole',
-    args: address ? [ADMIN_ROLE, address as `0x${string}`] : undefined,
-    query: {
-      enabled: !!address,
-      staleTime: 300000,  // Cache for 5 minutes (admin status rarely changes)
-      gcTime: 600000,     // Garbage collect after 10 minutes
-      retry: 1,           // Only retry once
-      retryDelay: 5000,   // Wait 5 seconds between retries
-    },
-  });
-
-  // Check if user has DEFAULT_ADMIN_ROLE
-  const DEFAULT_ADMIN_ROLE = '0x0000000000000000000000000000000000000000000000000000000000000000';
-  const defaultAdminResult = useContractRead({
-    address: boardContractConfig.address,
-    abi: boardContractConfig.abi,
-    functionName: 'hasRole',
-    args: address ? [DEFAULT_ADMIN_ROLE, address as `0x${string}`] : undefined,
-    query: {
-      enabled: !!address,
-      staleTime: 300000,
-      gcTime: 600000,
-      retry: 1,
-      retryDelay: 5000,
-    },
-  });
-
-  // Check if user is the contract owner
-  const ownerResult = useContractRead({
-    address: boardContractConfig.address,
-    abi: boardContractConfig.abi,
-    functionName: 'owner',
-    query: {
-      enabled: !!address,
-      staleTime: 300000,
-      gcTime: 600000,
-      retry: 1,
-      retryDelay: 5000,
-    },
-  });
-
-  // Also check for legacy admin status (isAdmin mapping)
-  const legacyAdminResult = useContractRead({
-    address: boardContractConfig.address,
-    abi: boardContractConfig.abi,
-    functionName: 'isAdminAddress',
-    args: address ? [address as `0x${string}`] : undefined,
-    query: {
-      enabled: !!address,
-      staleTime: 300000,
-      gcTime: 600000,
-      retry: 1,
-      retryDelay: 5000,
-    },
-  });
-
-  // User is admin if they have any of: admin role, default admin role, owner status, or legacy admin status
-  const isAdmin = address && (
-    (boardAdminResult.data === true) ||
-    (defaultAdminResult.data === true) ||
-    (ownerResult.data && (ownerResult.data as string).toLowerCase() === address.toLowerCase()) ||
-    (legacyAdminResult.data === true)
-  );
-
-  // Return a combined result with the same interface as useContractRead
-  return {
-    data: isAdmin,
-    isLoading: boardAdminResult.isLoading || defaultAdminResult.isLoading || ownerResult.isLoading || legacyAdminResult.isLoading,
-    isError: boardAdminResult.isError || defaultAdminResult.isError || ownerResult.isError || legacyAdminResult.isError,
-    error: boardAdminResult.error || defaultAdminResult.error || ownerResult.error || legacyAdminResult.error,
-    isSuccess: boardAdminResult.isSuccess || defaultAdminResult.isSuccess || ownerResult.isSuccess || legacyAdminResult.isSuccess,
-    isFetched: boardAdminResult.isFetched || defaultAdminResult.isFetched || ownerResult.isFetched || legacyAdminResult.isFetched,
-    refetch: () => {
-      boardAdminResult.refetch();
-      defaultAdminResult.refetch();
-      ownerResult.refetch();
-      legacyAdminResult.refetch();
+      enabled: !!crosswordId && !!address && targetAddress !== '0x0000000000000000000000000000000000000000',
+      staleTime: 0, // Always refetch on mount to ensure fresh data
     }
+  });
+
+  const toastId = useRef<string | number | undefined>(undefined);
+
+  useEffect(() => {
+    if (isError) {
+      const msg = getErrorMessage(error);
+      toastId.current = toast.error(`Error fetching crossword completions: ${msg}`, { id: toastId.current });
+    }
+  }, [isError, error]);
+
+  const refetch = useCallback(() => queryClient.invalidateQueries({ queryKey: ['readContract', targetAddress, 'getCrosswordCompletions', crosswordId] }), [queryClient, targetAddress, crosswordId]);
+
+  return {
+    completions: data as { user: `0x${string}`, completionTimestamp: bigint, durationMs: bigint }[],
+    isLoading,
+    isError,
+    error,
+    refetch,
   };
 };
 
-// Additional debugging hook for admin status
-export const useAdminStatus = () => {
-  const { address } = useAccount();
-  const boardContractConfig = getContractConfig('CrosswordBoard');
+export const useCrosswordPrizesDetails = (crosswordId: `0x${string}` | undefined) => {
+  const chainId = useChainId();
+  const queryClient = useQueryClient();
 
-  // Check if user has admin role on CrosswordBoard (for prizes and admin functions)
-  const ADMIN_ROLE = '0xa49807205ce4d355092ef5a8a18f56e8913cf4a201fbe287825b095693c21775'; // ADMIN_ROLE from contract
-  const boardAdminResult = useContractRead({
-    address: boardContractConfig.address,
-    abi: boardContractConfig.abi,
-    functionName: 'hasRole',
-    args: address ? [ADMIN_ROLE, address as `0x${string}`] : undefined,
-    query: {
-      enabled: !!address,
-      staleTime: 300000,  // Cache for 5 minutes (admin status rarely changes)
-      gcTime: 600000,     // Garbage collect after 10 minutes
-      retry: 1,           // Only retry once
-      retryDelay: 5000,   // Wait 5 seconds between retries
-    },
-  });
+  const contractConfig = getContractConfig('CrosswordPrizes', chainId);
 
-  // Check if user has DEFAULT_ADMIN_ROLE (highest level admin)
-  const DEFAULT_ADMIN_ROLE = '0x0000000000000000000000000000000000000000000000000000000000000000';
-  const defaultAdminResult = useContractRead({
-    address: boardContractConfig.address,
-    abi: boardContractConfig.abi,
-    functionName: 'hasRole',
-    args: address ? [DEFAULT_ADMIN_ROLE, address as `0x${string}`] : undefined,
-    query: { enabled: !!address },
-  });
-
-  // Check legacy admin status
-  const legacyAdminResult = useContractRead({
-    address: boardContractConfig.address,
-    abi: boardContractConfig.abi,
-    functionName: 'isAdminAddress',
-    args: address ? [address as `0x${string}`] : undefined,
-    query: { enabled: !!address },
-  });
-
-  return {
-    boardAdmin: boardAdminResult,
-    defaultAdmin: defaultAdminResult,
-    legacyAdmin: legacyAdminResult,
-    isBoardAdmin: boardAdminResult.data === true,
-    isDefaultAdmin: defaultAdminResult.data === true,
-    isLegacyAdmin: legacyAdminResult.data === true,
-    isPrizesAdmin: boardAdminResult.data === true, // ADMIN_ROLE has prizes functionality
-    isLoading: boardAdminResult.isLoading || defaultAdminResult.isLoading || legacyAdminResult.isLoading,
-    allResults: {
-      boardAdmin: boardAdminResult.data,
-      defaultAdmin: defaultAdminResult.data,
-      legacyAdmin: legacyAdminResult.data,
-      prizesAdmin: boardAdminResult.data, // Add prizesAdmin to allResults
-    }
-  };
-};
-
-// CrosswordBoard contract hooks for prize functionality
-export const useGetCrosswordDetails = (crosswordId: `0x${string}`) => {
-  const contractConfig = getContractConfig('CrosswordBoard');
-
-  return useContractRead({
+  const { data, isError, isLoading, error } = useContractRead({
     address: contractConfig.address,
     abi: contractConfig.abi,
     functionName: 'getCrosswordDetails',
-    args: [crosswordId],
+    args: crosswordId ? [crosswordId] : undefined,
+    chainId: chainId,
     query: {
-      enabled: !!crosswordId,
-      staleTime: 120000,  // Cache for 2 minutes
-      gcTime: 300000,     // Garbage collect after 5 minutes
-      retry: 1,           // Only retry once
-      retryDelay: 5000,   // Wait 5 seconds between retries
-    },
+      enabled: !!crosswordId && contractConfig.address !== '0x0000000000000000000000000000000000000000',
+      staleTime: 0, // Always refetch on mount
+    }
   });
+
+  const toastId = useRef<string | number | undefined>(undefined);
+
+  useEffect(() => {
+    if (isError) {
+      const msg = getErrorMessage(error);
+      toastId.current = toast.error(`Error fetching prize details: ${msg}`, { id: toastId.current });
+    }
+  }, [isError, error]);
+
+  const refetch = useCallback(() => queryClient.invalidateQueries({ queryKey: ['readContract', contractConfig.address, 'getCrosswordDetails', crosswordId] }), [queryClient, contractConfig.address, crosswordId]);
+
+  // The contract returns a tuple (token, totalPrizePool, winnerPercentages, winners, activationTime, endTime, state, isFinalized)
+  return {
+    prizeDetails: data as [
+      `0x${string}`, // token
+      bigint,       // totalPrizePool
+      bigint[],     // winnerPercentages
+      `0x${string}`[], // winners
+      bigint,       // activationTime
+      bigint,       // endTime
+      number,       // state (enum CrosswordPrizes.CrosswordState)
+      boolean       // isFinalized
+    ],
+    isLoading,
+    isError,
+    error,
+    refetch,
+  };
 };
 
-// Hook para verificar si un usuario es ganador de un crucigrama específico
+export const useUnifiedCrosswordPrizes = (crosswordId: `0x${string}` | undefined, isPublic: boolean = false) => {
+  const chainId = useChainId();
+  const queryClient = useQueryClient();
 
-export const useIsWinner = (crosswordId: `0x${string}`) => {
-  const { address } = useAccount();
-  const contractConfig = getContractConfig('CrosswordBoard');
+  const prizesConfig = getContractConfig('CrosswordPrizes', chainId);
+  const publicManagerConfig = getContractConfig('PublicCrosswordManager', chainId);
 
-  return useContractRead({
-    address: contractConfig.address,
-    abi: contractConfig.abi,
-    functionName: 'isWinner',
-    args: address && crosswordId ? [crosswordId, address as `0x${string}`] : undefined,
+  // Fetch from CrosswordPrizes (Core)
+  const { data: coreData, isLoading: isCoreLoading, isError: isCoreError, error: coreError } = useContractRead({
+    address: prizesConfig.address,
+    abi: prizesConfig.abi,
+    functionName: 'getCrosswordDetails',
+    args: crosswordId ? [crosswordId] : undefined,
+    chainId: chainId,
     query: {
-      enabled: !!address && !!crosswordId,
-      staleTime: 120000,  // Cache for 2 minutes
-      gcTime: 300000,     // Garbage collect after 5 minutes
-      retry: 1,           // Only retry once
-      retryDelay: 5000,   // Wait 5 seconds between retries
-    },
-  });
-};
-
-// Hook para verificar si un usuario es ganador de un crucigrama específico
-
-export const useClaimPrize = () => {
-  const contractConfig = getContractConfig('CrosswordBoard');
-  const { data, error: writeError, isPending, writeContract } = useWriteContract();
-
-  const { isLoading: isConfirming, isSuccess, isError: isTxError, error: txError } = useWaitForTransactionReceipt({
-    hash: data,
+      enabled: !!crosswordId && !isPublic && prizesConfig.address !== '0x0000000000000000000000000000000000000000' && !!prizesConfig.abi,
+      staleTime: 0,
+    }
   });
 
-  // Track if we've already shown the success/error toasts to prevent duplicates
-  const successShown = useRef(false);
-  const errorShown = useRef(false);
+  // Fetch from PublicCrosswordManager
+  const { data: publicData, isLoading: isPublicLoading, isError: isPublicError, error: publicError } = useContractRead({
+    address: publicManagerConfig.address,
+    abi: publicManagerConfig.abi,
+    functionName: 'getCrosswordDetails',
+    args: crosswordId ? [crosswordId] : undefined,
+    chainId: chainId,
+    query: {
+      enabled: !!crosswordId && isPublic && publicManagerConfig.address !== '0x0000000000000000000000000000000000000000' && !!publicManagerConfig.abi,
+      staleTime: 0,
+    }
+  });
 
-  useEffect(() => {
-    if (isSuccess && !successShown.current) {
-      toast.success('Transaction confirmed', {
-        description: 'Your prize has been successfully claimed.',
-      });
-      successShown.current = true;
+  // CRITICAL: Even for public crosswords, we need to fetch from CrosswordPrizes to get the winners list
+  const { data: winnersData, isLoading: isWinnersLoading } = useContractRead({
+    address: prizesConfig.address,
+    abi: prizesConfig.abi,
+    functionName: 'getCrosswordDetails',
+    args: crosswordId ? [crosswordId] : undefined,
+    chainId: chainId,
+    query: {
+      enabled: !!crosswordId && isPublic && prizesConfig.address !== '0x0000000000000000000000000000000000000000' && !!prizesConfig.abi,
+      staleTime: 0,
     }
-    if ((isTxError || writeError) && !errorShown.current) {
-      toast.error('Transaction failed', {
-        description: getErrorMessage(txError || writeError),
-      });
-      errorShown.current = true;
-    }
-  }, [isSuccess, isTxError, txError, writeError]);
+  });
 
-  // Reset the flags when a new transaction is initiated
-  useEffect(() => {
-    if (isPending) {
-      successShown.current = false;
-      errorShown.current = false;
-    }
-  }, [isPending]);
+  const isLoading = isPublic ? (isPublicLoading || isWinnersLoading) : isCoreLoading;
+  const isError = isPublic ? isPublicError : isCoreError;
+  const error = isPublic ? publicError : coreError;
 
-  // Also reset when data changes (new transaction initiated)
-  useEffect(() => {
-    if (data) {
-      successShown.current = false;
-      errorShown.current = false;
+  const data = isPublic ? publicData : coreData;
+
+  // Transform data to a unified format
+  // CrosswordPrizes return: (token, totalPrizePool, winnerPercentages, winners, activationTime, endTime, state, isFinalized)
+  // PublicCrosswordManager return: (name, sponsoredBy, crosswordData, token, totalPrizePool, maxWinners, winnerPercentages, activationTime, endTime, createdAt, isActive, isCompleted, creator)
+  
+  const prizeDetails = useMemo(() => {
+    if (!data) return null;
+
+    if (isPublic) {
+      const d = data as any;
+      
+      // Extract winners from winnersData if available
+      let winners: `0x${string}`[] = [];
+      let totalPrizePool = d.totalPrizePool ?? d[4];
+      let winnerPercentages = Array.isArray(d.winnerPercentages ?? d[6]) 
+        ? (d.winnerPercentages ?? d[6]).map((p: any) => BigInt(p)) 
+        : [];
+
+      if (winnersData) {
+        const wd = winnersData as any;
+        winners = wd.winners ?? wd[3] ?? [];
+        
+        // CRITICAL: For coordinated crosswords, the actual prize pool and percentages 
+        // are stored in CrosswordPrizes. We should prioritize these if they are non-zero.
+        const coreTotalPrizePool = wd.totalPrizePool ?? wd[1];
+        if (coreTotalPrizePool > 0n) {
+          totalPrizePool = coreTotalPrizePool;
+        }
+
+        const corePercentages = wd.winnerPercentages ?? wd[2];
+        if (Array.isArray(corePercentages) && corePercentages.length > 0) {
+          winnerPercentages = corePercentages.map((p: any) => BigInt(p));
+        }
+      }
+
+      return {
+        token: d.token ?? d[3],
+        totalPrizePool,
+        winnerPercentages,
+        winners: Array.isArray(winners) ? winners : [],
+        activationTime: d.activationTime ?? d[7],
+        endTime: d.endTime ?? d[8],
+        isActive: d.isActive ?? d[10],
+        isCompleted: d.isCompleted ?? d[11],
+        maxWinners: d.maxWinners ?? d[5]
+      };
+    } else {
+       const d = data as any;
+       const token = d.token ?? d[0];
+       const totalPrizePool = d.totalPrizePool ?? d[1];
+       const winnerPercentages = d.winnerPercentages ?? d[2];
+       const winners = d.winners ?? d[3];
+       const activationTime = d.activationTime ?? d[4];
+       const endTime = d.endTime ?? d[5];
+       const state = d.state ?? d[6];
+       const isFinalized = d.isFinalized ?? d[7];
+
+       return {
+         token,
+         totalPrizePool,
+         winnerPercentages: Array.isArray(winnerPercentages) ? winnerPercentages.map((p: any) => BigInt(p)) : [],
+         winners: Array.isArray(winners) ? winners : [],
+         activationTime,
+         endTime,
+         isActive: Number(state) === 1,
+         isCompleted: isFinalized || Number(state) === 2,
+       };
     }
-  }, [data]);
+  }, [data, isPublic, winnersData]);
+
+  const refetch = useCallback(() => {
+    if (isPublic) {
+      return queryClient.invalidateQueries({ queryKey: ['readContract', publicManagerConfig.address, 'getCrosswordDetails', crosswordId] });
+    } else {
+      return queryClient.invalidateQueries({ queryKey: ['readContract', prizesConfig.address, 'getCrosswordDetails', crosswordId] });
+    }
+  }, [queryClient, isPublic, publicManagerConfig.address, prizesConfig.address, crosswordId]);
 
   return {
-    claimPrize: (args: [`0x${string}`]) =>
+    prizeDetails,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  };
+};
+
+export const useClaimPrize = () => {
+  const { writeContract, data: hash, isPending, error: writeError, isError: isWriteError } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess: isConfirmed, isError: isConfirmError, error: confirmError } =
+    useWaitForTransactionReceipt({
+      hash,
+    });
+  const chainId = useChainId();
+  const queryClient = useQueryClient();
+  const toastId = useRef<string | number | undefined>(undefined);
+
+  const contractConfig = getContractConfig('CrosswordPrizes', chainId);
+
+  const claimPrize = async (args: [`0x${string}`]) => {
+    if (contractConfig.address === '0x0000000000000000000000000000000000000000') {
+      toastId.current = toast.error('Contract not deployed on this network.', { id: toastId.current });
+      return;
+    }
+    try {
+      toastId.current = toast.loading('Claiming prize...', { id: toastId.current });
       writeContract({
         address: contractConfig.address,
         abi: contractConfig.abi,
         functionName: 'claimPrize',
-        args
-      }, {
-        onError: (error) => {
-          toast.error('Error claiming prize', {
-            description: getErrorMessage(error),
-          });
-          // Mark error as shown in case error occurs during writeContract
-          errorShown.current = true;
-        },
-        onSuccess: () => {
-          toast.success('Prize claimed successfully', {
-            description: 'Your prize has been claimed.',
-          });
-        }
-      }),
-    isLoading: isPending || isConfirming,
-    isSuccess,
-    isError: !!writeError || isTxError,
-    error: writeError || txError,
-    txHash: data,
+        args: args,
+        chainId: chainId,
+      });
+    } catch (err) {
+      const msg = getErrorMessage(err);
+      toastId.current = toast.error(`Error initiating prize claim: ${msg}`, { id: toastId.current });
+    }
   };
-};
 
-// Hook for creating crossword with prizes
-export const useCreateCrossword = () => {
-  const contractConfig = getContractConfig('CrosswordBoard');
-  const { data, error: writeError, isPending, writeContract } = useWriteContract();
-
-  const { isLoading: isConfirming, isSuccess, isError: isTxError, error: txError } = useWaitForTransactionReceipt({
-    hash: data,
-  });
-
-  // Track if we've already shown the success/error toasts to prevent duplicates
-  const successShown = useRef(false);
-  const errorShown = useRef(false);
-
-  useEffect(() => {
-    if (isSuccess && !successShown.current) {
-      toast.success('Transaction confirmed', {
-        description: 'The crossword has been successfully created on the blockchain.',
-      });
-      successShown.current = true;
-    }
-    if ((isTxError || writeError) && !errorShown.current) {
-      toast.error('Transaction failed', {
-        description: getErrorMessage(txError || writeError),
-      });
-      errorShown.current = true;
-    }
-  }, [isSuccess, isTxError, txError, writeError]);
-
-  // Reset the flags when a new transaction is initiated
   useEffect(() => {
     if (isPending) {
-      successShown.current = false;
-      errorShown.current = false;
+      toastId.current = toast.loading('Waiting for wallet confirmation...', { id: toastId.current });
     }
   }, [isPending]);
 
-  // Also reset when data changes (new transaction initiated)
   useEffect(() => {
-    if (data) {
-      successShown.current = false;
-      errorShown.current = false;
+    if (isConfirming) {
+      toastId.current = toast.loading('Transaction confirming...', { id: toastId.current });
     }
-  }, [data]);
+  }, [isConfirming]);
+
+  useEffect(() => {
+    if (isConfirmed) {
+      toastId.current = toast.success('Prize claimed successfully!', { id: toastId.current });
+      // Invalidate cache for prize details and user's completion status to reflect changes
+      queryClient.invalidateQueries({ queryKey: ['readContract', contractConfig.address, 'getCrosswordDetails'] });
+      // Potentially invalidate user's balance if prize is in CELO or ERC20
+      queryClient.invalidateQueries({ queryKey: ['balance'] });
+    }
+    if (isConfirmError || isWriteError) {
+      const error = confirmError || writeError;
+      const msg = getErrorMessage(error);
+      toastId.current = toast.error(`Prize claim failed: ${msg}`, { id: toastId.current });
+    }
+  }, [isConfirmed, isConfirmError, isWriteError, confirmError, writeError, queryClient, contractConfig.address]);
 
   return {
-    createCrossword: (args: [`0x${string}`, `0x${string}`, bigint, number[], bigint]) =>
-      writeContract({
-        address: contractConfig.address,
-        abi: contractConfig.abi,
-        functionName: 'createCrossword',
-        args
-      }, {
-        onError: (error) => {
-          toast.error('Error creating crossword', {
-            description: getErrorMessage(error),
-          });
-          // Mark error as shown in case error occurs during writeContract
-          errorShown.current = true;
-        },
-        onSuccess: () => {
-          toast.success('Crossword created successfully', {
-            description: 'The crossword with prizes has been created.',
-          });
-        }
-      }),
+    claimPrize,
     isLoading: isPending || isConfirming,
-    isSuccess,
-    isError: !!writeError || isTxError,
-    error: writeError || txError,
-    txHash: data,
+    isSuccess: isConfirmed,
+    isError: isConfirmError || isWriteError,
+    error: confirmError || writeError,
+    txHash: hash,
   };
 };
 
-// Hook to get user profile
-export const useGetUserProfile = (userAddress: `0x${string}`) => {
-  const contractConfig = getContractConfig('CrosswordBoard');
-
-  return useContractRead({
-    address: contractConfig.address,
-    abi: contractConfig.abi,
-    functionName: 'getUserProfile',
-    args: [userAddress],
-    query: {
-      enabled: !!userAddress,
-      staleTime: 60000,   // Cache for 1 minute (reduced from 2 minutes)
-      gcTime: 120000,     // Garbage collect after 2 minutes
-      retry: 1,           // Only retry once
-      retryDelay: 5000,   // Wait 5 seconds between retries
-      refetchOnWindowFocus: false, // Don't refetch automatically on window focus
-      refetchOnReconnect: false,   // Don't refetch automatically on reconnect
-    },
-  });
-};
-
-// Hook para verificar si un usuario es ganador de un crucigrama específico
-
-// Hook for activating crossword
-export const useActivateCrossword = () => {
-  const contractConfig = getContractConfig('CrosswordBoard');
-  const { data, error: writeError, isPending, writeContract } = useWriteContract();
-
-  const { isLoading: isConfirming, isSuccess, isError: isTxError, error: txError } = useWaitForTransactionReceipt({
-    hash: data,
-  });
-
-  // Track if we've already shown the success/error toasts to prevent duplicates
-  const successShown = useRef(false);
-  const errorShown = useRef(false);
-
-  useEffect(() => {
-    if (isSuccess && !successShown.current) {
-      toast.success('Transaction confirmed', {
-        description: 'The crossword has been successfully activated for solving.',
-      });
-      successShown.current = true;
-    }
-    if ((isTxError || writeError) && !errorShown.current) {
-      toast.error('Transaction failed', {
-        description: getErrorMessage(txError || writeError),
-      });
-      errorShown.current = true;
-    }
-  }, [isSuccess, isTxError, txError, writeError]);
-
-  // Reset the flags when a new transaction is initiated
-  useEffect(() => {
-    if (isPending) {
-      successShown.current = false;
-      errorShown.current = false;
-    }
-  }, [isPending]);
-
-  // Also reset when data changes (new transaction initiated)
-  useEffect(() => {
-    if (data) {
-      successShown.current = false;
-      errorShown.current = false;
-    }
-  }, [data]);
-
-  return {
-    activateCrossword: (args: [`0x${string}`]) =>
-      writeContract({
-        address: contractConfig.address,
-        abi: contractConfig.abi,
-        functionName: 'activateCrossword',
-        args
-      }, {
-        onError: (error) => {
-          toast.error('Error activating crossword', {
-            description: getErrorMessage(error),
-          });
-          // Mark error as shown in case error occurs during writeContract
-          errorShown.current = true;
-        },
-        onSuccess: () => {
-          toast.success('Crossword activated successfully', {
-            description: 'The crossword has been activated for users to solve.',
-          });
-        }
-      }),
-    isLoading: isPending || isConfirming,
-    isSuccess,
-    isError: !!writeError || isTxError,
-    error: writeError || txError,
-    txHash: data,
-  };
-};
-
-// Config contract hooks - now using unified CrosswordBoard contract
-export const useGetMaxWinnersConfig = () => {
-  const contractConfig = getContractConfig('CrosswordBoard');
-
-  return useContractRead({
-    address: contractConfig.address,
-    abi: contractConfig.abi,
-    functionName: 'getMaxWinnersConfig',
-    query: {
-      staleTime: 60000,  // Cache for 1 minute
-      gcTime: 120000,    // Garbage collect after 2 minutes
-      retry: 1,          // Only retry once
-      retryDelay: 5000,  // Wait 5 seconds between retries
-    },
-  });
-};
-
-// Hook para verificar si un usuario es ganador de un crucigrama específico
-
-// Hook for setting configuration values
-export const useSetConfig = () => {
-  const contractConfig = getContractConfig('CrosswordBoard');
-  const queryClient = useQueryClient();
-
-  const { data, error: writeError, isPending, writeContract } = useWriteContract();
-
-  const { isLoading: isConfirming, isSuccess, isError: isTxError, error: txError } = useWaitForTransactionReceipt({
-    hash: data,
-  });
-
-  // Track if we've already shown the success/error toasts to prevent duplicates
-  const successShown = useRef(false);
-  const errorShown = useRef(false);
-
-  useEffect(() => {
-    if (isSuccess && !successShown.current) {
-      toast.success('Configuration updated', {
-        description: 'The configuration has been successfully updated on the blockchain.',
-      });
-      successShown.current = true;
-    }
-    if ((isTxError || writeError) && !errorShown.current) {
-      toast.error('Configuration update failed', {
-        description: getErrorMessage(txError || writeError),
-      });
-      errorShown.current = true;
-    }
-  }, [isSuccess, isTxError, txError, writeError]);
-
-  // Reset the flags when a new transaction is initiated
-  useEffect(() => {
-    if (isPending) {
-      successShown.current = false;
-      errorShown.current = false;
-    }
-  }, [isPending]);
-
-  // Also reset when data changes (new transaction initiated)
-  useEffect(() => {
-    if (data) {
-      successShown.current = false;
-      errorShown.current = false;
-    }
-  }, [data]);
-
-  return {
-    setMaxWinnersConfig: (args: [bigint]) =>
-      writeContract({
-        address: contractConfig.address,
-        abi: contractConfig.abi,
-        functionName: 'setMaxWinnersConfig',
-        args
-      }, {
-        onError: (error) => {
-          toast.error('Error updating max winners config', {
-            description: getErrorMessage(error),
-          });
-          // Mark error as shown in case error occurs during writeContract
-          errorShown.current = true;
-        },
-        onSuccess: () => {
-          toast.success('Max winners configuration updated', {
-            description: 'Your max winners configuration change is being processed on the blockchain.',
-          });
-          // Invalidate the max winners config query to refresh data
-          queryClient.invalidateQueries({
-            queryKey: ['readContract', {
-              address: contractConfig.address,
-              functionName: 'getMaxWinnersConfig'
-            }]
-          });
-        }
-      }),
-    isLoading: isPending || isConfirming,
-    isSuccess,
-    isError: !!writeError || isTxError,
-    error: writeError || txError,
-    txHash: data,
-  };
-};
-
-// Hook for setting both crossword and max winners in a single transaction
-export const useSetCrosswordAndMaxWinners = () => {
-  const { address, isConnected } = useAccount();
-  const contractConfig = getContractConfig("CrosswordBoard");
-  const queryClient = useQueryClient();
-
-  const { data, error: writeError, isPending, writeContract } = useWriteContract();
-
-  const { isLoading: isConfirming, isSuccess, isError: isTxError, error: txError } = useWaitForTransactionReceipt({
-    hash: data,
-  });
-
-  // Track if we've already shown the success/error toasts to prevent duplicates
-  const successShown = useRef(false);
-  const errorShown = useRef(false);
-
-  useEffect(() => {
-    if (isSuccess && !successShown.current) {
-      toast.success("Transaction confirmed", {
-        description: "Both crossword and max winners configuration have been successfully saved on the blockchain.",
-      });
-      // Invalidar directamente la consulta para forzar una actualización inmediata
-      queryClient.invalidateQueries({
-        queryKey: ["readContract", {
-          address: contractConfig.address,
-          functionName: "getCurrentCrossword"
-        }]
-      });
-      // Also invalidate the max winners config query
-      queryClient.invalidateQueries({
-        queryKey: ["readContract", {
-          address: contractConfig.address,
-          functionName: "getMaxWinnersConfig"
-        }]
-      });
-      successShown.current = true;
-    }
-    if ((isTxError || writeError) && !errorShown.current) {
-      toast.error("Transaction failed", {
-        description: getErrorMessage(txError || writeError),
-      });
-      errorShown.current = true;
-    }
-  }, [isSuccess, isTxError, txError, writeError, queryClient, contractConfig.address]);
-
-  // Reset the flags when a new transaction is initiated
-  useEffect(() => {
-    if (isPending) {
-      successShown.current = false;
-      errorShown.current = false;
-    }
-  }, [isPending]);
-
-  // Also reset when data changes (new transaction initiated)
-  useEffect(() => {
-    if (data) {
-      successShown.current = false;
-      errorShown.current = false;
-    }
-  }, [data]);
-
-  return {
-    setCrosswordAndMaxWinners: (args: [`0x${string}`, string, bigint]) =>
-      writeContract({
-        address: contractConfig.address,
-        abi: contractConfig.abi,
-        functionName: "setCrosswordAndMaxWinners",
-        args
-      }, {
-        onError: (error) => {
-          toast.error("Error setting crossword and max winners", {
-            description: getErrorMessage(error),
-          });
-          // Mark error as shown in case error occurs during writeContract
-          errorShown.current = true;
-        },
-        onSuccess: (hash) => {
-          toast.success("Crossword and max winners set successfully", {
-            description: "Both crossword and max winners configuration have been saved to the blockchain.",
-          });
-        }
-      }),
-    isLoading: isPending || isConfirming,
-    isSuccess,
-    isError: !!writeError || isTxError,
-    error: writeError || txError,
-    txHash: data,
-    contractAddress: contractConfig.address, // Add contract address for cache invalidation
-  };
-};
-
-// Hook for creating crossword with prize pool
-export const useCreateCrosswordWithPrizePool = () => {
-  const { address, isConnected } = useAccount();
-  const contractConfig = getContractConfig('CrosswordBoard');
-  const queryClient = useQueryClient();
-
-  const { data, error: writeError, isPending, writeContract } = useWriteContract();
-
-  const { isLoading: isConfirming, isSuccess, isError: isTxError, error: txError } = useWaitForTransactionReceipt({
-    hash: data,
-  });
-
-  // Track if we've already shown the success/error toasts to prevent duplicates
-  const successShown = useRef(false);
-  const errorShown = useRef(false);
-
-  useEffect(() => {
-    if (isSuccess && !successShown.current) {
-      toast.success('Transaction confirmed', {
-        description: 'The crossword with prize pool has been successfully created on the blockchain.',
-      });
-      // Invalidate relevant queries to refresh data
-      queryClient.invalidateQueries({
-        queryKey: ['readContract', {
-          address: contractConfig.address,
-          functionName: 'getCurrentCrossword'
-        }]
-      });
-      successShown.current = true;
-    }
-    if ((isTxError || writeError) && !errorShown.current) {
-      toast.error('Transaction failed', {
-        description: getErrorMessage(txError || writeError),
-      });
-      errorShown.current = true;
-    }
-  }, [isSuccess, isTxError, txError, writeError, queryClient, contractConfig.address]);
-
-  // Reset the flags when a new transaction is initiated
-  useEffect(() => {
-    if (isPending) {
-      successShown.current = false;
-      errorShown.current = false;
-    }
-  }, [isPending]);
-
-  // Also reset when data changes (new transaction initiated)
-  useEffect(() => {
-    if (data) {
-      successShown.current = false;
-      errorShown.current = false;
-    }
-  }, [data]);
-
-  return {
-    createCrosswordWithPrizePool: async (args: [`0x${string}`, string, string, string, bigint, `0x${string}`, bigint, bigint[], bigint], value?: bigint) => {
-      try {
-        const txConfig: any = {
-          address: contractConfig.address,
-          abi: contractConfig.abi,
-          functionName: 'createCrosswordWithPrizePool',
-          args,
-          ...(value && value > 0n ? { value } : {}),
-        };
-
-        // Add gas limit for ERC20 operations
-        txConfig.gas = 3000000n; // Higher gas limit for complex operations with token transfers
-
-        return writeContract(txConfig, {
-          onError: (error) => {
-            console.error('Error in createCrosswordWithPrizePool:', error);
-            toast.error('Error creating crossword with prize pool', {
-              description: getErrorMessage(error),
-            });
-            // Mark error as shown in case error occurs during writeContract
-            errorShown.current = true;
-          },
-          onSuccess: (hash) => {
-            toast.success('Crossword with prize pool created successfully', {
-              description: 'The crossword and prize pool have been created.',
-            });
-          }
-        });
-      } catch (error) {
-        console.error('Transaction simulation failed:', error);
-        toast.error('Transaction simulation failed', {
-          description: getErrorMessage(error),
-        });
-        errorShown.current = true;
-        throw error;
-      }
-    },
-    isLoading: isPending || isConfirming,
-    isSuccess,
-    isError: !!writeError || isTxError,
-    error: writeError || txError,
-    txHash: data,
-    contractAddress: contractConfig.address, // Add contract address for cache invalidation
-  };
-};// Hook for creating crossword with native CELO prize pool
-export const useCreateCrosswordWithNativeCELOPrizePool = () => {
-  const { address, isConnected } = useAccount();
-  const contractConfig = getContractConfig('CrosswordBoard');
-  const queryClient = useQueryClient();
-
-  const { data, error: writeError, isPending, writeContract } = useWriteContract();
-
-  const { isLoading: isConfirming, isSuccess, isError: isTxError, error: txError, refetch } = useWaitForTransactionReceipt({
-    hash: data,
-  });
-
-  // Track if we've already shown the success/error toasts to prevent duplicates
-  const successShown = useRef(false);
-  const errorShown = useRef(false);
-
-  useEffect(() => {
-    if (isSuccess && !successShown.current) {
-      toast.success('Transaction confirmed', {
-        description: 'The crossword with native CELO prize pool has been successfully created on the blockchain.',
-      });
-      // Invalidate relevant queries to refresh data
-      queryClient.invalidateQueries({
-        queryKey: ['readContract', {
-          address: contractConfig.address,
-          functionName: 'getCurrentCrossword'
-        }]
-      });
-      successShown.current = true;
-    }
-    if ((isTxError || writeError) && !errorShown.current) {
-      console.error('Transaction failed:', txError || writeError);
-      toast.error('Transaction failed', {
-        description: getErrorMessage(txError || writeError),
-      });
-      errorShown.current = true;
-    }
-  }, [isSuccess, isTxError, txError, writeError, queryClient, contractConfig.address]);
-
-  // Reset the flags when a new transaction is initiated
-  useEffect(() => {
-    if (isPending) {
-      successShown.current = false;
-      errorShown.current = false;
-    }
-  }, [isPending]);
-
-  // Also reset when data changes (new transaction initiated)
-  useEffect(() => {
-    if (data) {
-      successShown.current = false;
-      errorShown.current = false;
-    }
-  }, [data]);
-
-  return {
-    createCrosswordWithNativeCELOPrizePool: async (args: [`0x${string}`, string, string, string, bigint, bigint, bigint[], bigint], value: bigint) => {
-
-      try {
-        // Prepare transaction configuration with proper gas estimation
-        const txConfig: any = {
-          address: contractConfig.address,
-          abi: contractConfig.abi,
-          functionName: 'createCrosswordWithNativeCELOPrizePool',
-          args,
-          value,
-        };
-
-        // Add gas limit to ensure sufficient gas for native CELO transfer
-        txConfig.gas = 3000000n; // Set higher gas limit for complex operations with native token transfer
-
-        return writeContract(txConfig, {
-          onError: (error) => {
-            console.error('Error in createCrosswordWithNativeCELOPrizePool:', error);
-            console.error('Error details:', {
-              name: error.name,
-              message: error.message,
-              shortMessage: (error as any)?.shortMessage || error.message,
-              metaMessages: (error as any)?.metaMessages,
-              cause: (error as any)?.cause,
-              code: (error as any)?.code,
-              reason: (error as any)?.reason
-            });
-
-            toast.error('Error creating crossword with native CELO prize pool', {
-              description: getErrorMessage(error),
-            });
-            // Mark error as shown in case error occurs during writeContract
-            errorShown.current = true;
-          },
-          onSuccess: (hash) => {
-            // Wait for confirmation before showing success
-            toast.success('Transaction submitted', {
-              description: 'Your crossword creation is being processed on the blockchain.',
-            });
-          }
-        });
-      } catch (simulationError) {
-        console.error('Transaction simulation failed:', simulationError);
-        toast.error('Transaction simulation failed', {
-          description: getErrorMessage(simulationError),
-        });
-        errorShown.current = true;
-        throw simulationError;
-      }
-    },
-    isLoading: isPending || isConfirming,
-    isSuccess,
-    isError: !!writeError || isTxError,
-    error: writeError || txError,
-    txHash: data,
-    contractAddress: contractConfig.address, // Add contract address for cache invalidation
-    refetch, // Expose refetch function to manually check transaction status
-  };
-};
-
-// Define the type for crossword details
-type CrosswordDetails = [
-  string,                    // token (index 0)
-  bigint,                    // totalPrizePool (index 1)
-  bigint[],                  // winnerPercentages (index 2)
-  {                          // completions (index 3)
-    user: string;
-    timestamp: bigint;
-    rank: bigint;
-  }[],
-  bigint,                    // activationTime (index 4)
-  bigint,                    // endTime (index 5)
-  number                     // state (index 6)
-] & {
-  token: string;
-  totalPrizePool: bigint;
-  winnerPercentages: bigint[];
-  completions: {
-    user: string;
-    timestamp: bigint;
-    rank: bigint;
-  }[];
-  activationTime: bigint;
-  endTime: bigint;
-  state: number;
-};
-
-// Hook for getting crossword prizes details
-export const useCrosswordPrizesDetails = (crosswordId: `0x${string}` | undefined) => {
-  const contractConfig = getContractConfig('CrosswordBoard');
-
-  return useContractRead({
-    address: contractConfig.address,
-    abi: contractConfig.abi,
-    functionName: 'getCrosswordDetails',
-    args: crosswordId ? [crosswordId] : undefined,
-    query: {
-      enabled: !!crosswordId,
-      staleTime: 120000,  // Cache for 2 minutes
-      gcTime: 300000,     // Garbage collect after 5 minutes
-      retry: 1,           // Only retry once
-      retryDelay: 5000,   // Wait 5 seconds between retries
-    },
-  }) as {
-    data?: CrosswordDetails;
-    isLoading: boolean;
-    isError: boolean;
-    error?: Error;
-    isSuccess: boolean;
-    refetch: () => void;
-  };
-};
-
-// Hook para verificar si un usuario ya completó un crucigrama específico
-export const useHasCompletedCrossword = (crosswordId: `0x${string}` | undefined, userAddress: `0x${string}` | undefined) => {
-  const contractConfig = getContractConfig('CrosswordBoard');
-
-  return useContractRead({
-    address: contractConfig.address,
-    abi: contractConfig.abi,
-    functionName: 'hasCompletedCrossword',
-    args: crosswordId && userAddress ? [crosswordId, userAddress] : undefined,
-    query: {
-      enabled: !!crosswordId && !!userAddress,
-      staleTime: 120000,  // Cache for 2 minutes
-      gcTime: 300000,     // Garbage collect after 5 minutes
-      retry: 1,           // Only retry once
-      retryDelay: 5000,   // Wait 5 seconds between retries
-    },
-  });
-};
-
-// Hook para verificar si un usuario es ganador de un crucigrama específico
-
-// Hook to get crossword details by ID (for history page)
-export const useGetCrosswordDetailsById = (crosswordId: `0x${string}` | undefined) => {
-  const contractConfig = getContractConfig('CrosswordBoard');
-
-  // First check if we have hardcoded data for this crossword
-  const historicalData = crosswordId ? getHistoricalCrosswordData(crosswordId) : null;
-  const hasHardcodedDetails = historicalData && historicalData.prizePool && historicalData.token;
-
-  // We still define the hook but control its execution
-  const contractQuery = useContractRead({
-    address: contractConfig.address,
-    abi: contractConfig.abi,
-    functionName: 'getCrosswordDetails',
-    args: crosswordId ? [crosswordId] : undefined,
-    query: {
-      enabled: !!crosswordId && !hasHardcodedDetails,
-      staleTime: 60000,  // Cache for 1 minute
-      gcTime: 120000,    // Garbage collect after 2 minutes
-      retry: 1,
-      retryDelay: 5000,
-    },
-  });
-
-  if (hasHardcodedDetails && historicalData) {
-      // Mock the contract return data format
-      // Return type is format [token, totalPrizePool, winnerPercentages, completions, activationTime, endTime, state, name, gridData]
-      const mockData = [
-          historicalData.token,
-          BigInt(historicalData.prizePool || 0),
-          [], // winnerPercentages unknown
-          (historicalData.completions || []).map((c: any) => ({
-              user: c.user,
-              timestamp: BigInt(c.timestamp),
-              rank: BigInt(c.rank)
-          })),
-          BigInt(historicalData.timestamp || 0),
-          0n, // endTime
-          1, // state Active
-          historicalData.name || "", // name at position 7
-          "", // gridData at position 8
-          historicalData.sponsoredBy || "" // sponsoredBy at position 9
-      ];
-
-      return {
-          data: mockData,
-          isLoading: false,
-          isError: false,
-          error: null,
-          refetch: () => Promise.resolve(),
-      };
-  }
-
-  return {
-    data: contractQuery.data,
-    isLoading: contractQuery.isLoading,
-    isError: contractQuery.isError,
-    error: contractQuery.error,
-    refetch: contractQuery.refetch,
-  };
-};
-
-// Hook for creating public crossword (no prize pool)
-export const useCreatePublicCrossword = () => {
-  const contractConfig = getContractConfig('CrosswordBoard');
-  const { data, error: writeError, isPending, writeContract } = useWriteContract();
-
-  const { isLoading: isConfirming, isSuccess, isError: isTxError, error: txError } = useWaitForTransactionReceipt({
-    hash: data,
-  });
-
-  // Track if we've already shown the success/error toasts to prevent duplicates
-  const successShown = useRef(false);
-  const errorShown = useRef(false);
-
-  useEffect(() => {
-    if (isSuccess && !successShown.current) {
-      toast.success('Transaction confirmed', {
-        description: 'The public crossword has been successfully created on the blockchain.',
-      });
-      successShown.current = true;
-    }
-    if ((isTxError || writeError) && !errorShown.current) {
-      toast.error('Transaction failed', {
-        description: getErrorMessage(txError || writeError),
-      });
-      errorShown.current = true;
-    }
-  }, [isSuccess, isTxError, txError, writeError]);
-
-  // Reset the flags when a new transaction is initiated
-  useEffect(() => {
-    if (isPending) {
-      successShown.current = false;
-      errorShown.current = false;
-    }
-  }, [isPending]);
-
-  // Also reset when data changes (new transaction initiated)
-  useEffect(() => {
-    if (data) {
-      successShown.current = false;
-      errorShown.current = false;
-    }
-  }, [data]);
-
-  return {
-    createPublicCrossword: (args: [`0x${string}`, string, string, string]) =>
-      writeContract({
-        address: contractConfig.address,
-        abi: contractConfig.abi,
-        functionName: 'createPublicCrossword',
-        args
-      }, {
-        onError: (error) => {
-          toast.error('Error creating public crossword', {
-            description: getErrorMessage(error),
-          });
-          // Mark error as shown in case error occurs during writeContract
-          errorShown.current = true;
-        },
-        onSuccess: () => {
-          toast.success('Public crossword created successfully', {
-            description: 'The public crossword has been created.',
-          });
-        }
-      }),
-    isLoading: isPending || isConfirming,
-    isSuccess,
-    isError: !!writeError || isTxError,
-    error: writeError || txError,
-    txHash: data,
-  };
-};
-
-// Hook for creating public crossword with native CELO prize pool
-export const useCreatePublicCrosswordWithNativeCELOPrizePool = () => {
-  const contractConfig = getContractConfig('CrosswordBoard');
-  const { data, error: writeError, isPending, writeContract } = useWriteContract();
-
-  const { isLoading: isConfirming, isSuccess, isError: isTxError, error: txError } = useWaitForTransactionReceipt({
-    hash: data,
-  });
-
-  // Track if we've already shown the success/error toasts to prevent duplicates
-  const successShown = useRef(false);
-  const errorShown = useRef(false);
-
-  useEffect(() => {
-    if (isSuccess && !successShown.current) {
-      toast.success('Transaction confirmed', {
-        description: 'The public crossword with prize pool has been successfully created on the blockchain.',
-      });
-      successShown.current = true;
-    }
-    if ((isTxError || writeError) && !errorShown.current) {
-      toast.error('Transaction failed', {
-        description: getErrorMessage(txError || writeError),
-      });
-      errorShown.current = true;
-    }
-  }, [isSuccess, isTxError, txError, writeError]);
-
-  // Reset the flags when a new transaction is initiated
-  useEffect(() => {
-    if (isPending) {
-      successShown.current = false;
-      errorShown.current = false;
-    }
-  }, [isPending]);
-
-  // Also reset when data changes (new transaction initiated)
-  useEffect(() => {
-    if (data) {
-      successShown.current = false;
-      errorShown.current = false;
-    }
-  }, [data]);
-
-  return {
-    createPublicCrosswordWithNativeCELOPrizePool: (args: [`0x${string}`, string, string, string, bigint, bigint, bigint[], bigint]) =>
-      writeContract({
-        address: contractConfig.address,
-        abi: contractConfig.abi,
-        functionName: 'createPublicCrosswordWithNativeCELOPrizePool',
-        args,
-        value: args[5] // Send the prize pool amount as transaction value (args[5] is prizePool)
-      }, {
-        onError: (error) => {
-          toast.error('Error creating public crossword with CELO prize pool', {
-            description: getErrorMessage(error),
-          });
-          // Mark error as shown in case error occurs during writeContract
-          errorShown.current = true;
-        },
-        onSuccess: () => {
-          toast.success('Public crossword with CELO prize pool created successfully', {
-            description: 'The public crossword with prize pool has been created.',
-          });
-        }
-      }),
-    isLoading: isPending || isConfirming,
-    isSuccess,
-    isError: !!writeError || isTxError,
-    error: writeError || txError,
-    txHash: data,
-  };
-};
-
-// Hook for creating public crossword with token prize pool
-export const useCreatePublicCrosswordWithPrizePool = () => {
-  const contractConfig = getContractConfig('CrosswordBoard');
-  const { data, error: writeError, isPending, writeContract } = useWriteContract();
-
-  const { isLoading: isConfirming, isSuccess, isError: isTxError, error: txError } = useWaitForTransactionReceipt({
-    hash: data,
-  });
-
-  // Track if we've already shown the success/error toasts to prevent duplicates
-  const successShown = useRef(false);
-  const errorShown = useRef(false);
-
-  useEffect(() => {
-    if (isSuccess && !successShown.current) {
-      toast.success('Transaction confirmed', {
-        description: 'The public crossword with prize pool has been successfully created on the blockchain.',
-      });
-      successShown.current = true;
-    }
-    if ((isTxError || writeError) && !errorShown.current) {
-      toast.error('Transaction failed', {
-        description: getErrorMessage(txError || writeError),
-      });
-      errorShown.current = true;
-    }
-  }, [isSuccess, isTxError, txError, writeError]);
-
-  // Reset the flags when a new transaction is initiated
-  useEffect(() => {
-    if (isPending) {
-      successShown.current = false;
-      errorShown.current = false;
-    }
-  }, [isPending]);
-
-  // Also reset when data changes (new transaction initiated)
-  useEffect(() => {
-    if (data) {
-      successShown.current = false;
-      errorShown.current = false;
-    }
-  }, [data]);
-
-  return {
-    createPublicCrosswordWithPrizePool: (args: [`0x${string}`, string, string, string, bigint, `0x${string}`, bigint, bigint[], bigint]) =>
-      writeContract({
-        address: contractConfig.address,
-        abi: contractConfig.abi,
-        functionName: 'createPublicCrosswordWithPrizePool',
-        args
-      }, {
-        onError: (error) => {
-          toast.error('Error creating public crossword with token prize pool', {
-            description: getErrorMessage(error),
-          });
-          // Mark error as shown in case error occurs during writeContract
-          errorShown.current = true;
-        },
-        onSuccess: () => {
-          toast.success('Public crossword with token prize pool created successfully', {
-            description: 'The public crossword with prize pool has been created.',
-          });
-        }
-      }),
-    isLoading: isPending || isConfirming,
-    isSuccess,
-    isError: !!writeError || isTxError,
-    error: writeError || txError,
-    txHash: data,
-  };
-};
-
-// Hook for activating public crossword
-export const useActivatePublicCrossword = () => {
-  const contractConfig = getContractConfig('CrosswordBoard');
-  const { data, error: writeError, isPending, writeContract } = useWriteContract();
-
-  const { isLoading: isConfirming, isSuccess, isError: isTxError, error: txError } = useWaitForTransactionReceipt({
-    hash: data,
-  });
-
-  // Track if we've already shown the success/error toasts to prevent duplicates
-  const successShown = useRef(false);
-  const errorShown = useRef(false);
-
-  useEffect(() => {
-    if (isSuccess && !successShown.current) {
-      toast.success('Transaction confirmed', {
-        description: 'The public crossword has been successfully activated.',
-      });
-      successShown.current = true;
-    }
-    if ((isTxError || writeError) && !errorShown.current) {
-      toast.error('Transaction failed', {
-        description: getErrorMessage(txError || writeError),
-      });
-      errorShown.current = true;
-    }
-  }, [isSuccess, isTxError, txError, writeError]);
-
-  // Reset the flags when a new transaction is initiated
-  useEffect(() => {
-    if (isPending) {
-      successShown.current = false;
-      errorShown.current = false;
-    }
-  }, [isPending]);
-
-  // Also reset when data changes (new transaction initiated)
-  useEffect(() => {
-    if (data) {
-      successShown.current = false;
-      errorShown.current = false;
-    }
-  }, [data]);
-
-  return {
-    activatePublicCrossword: (args: [`0x${string}`]) =>
-      writeContract({
-        address: contractConfig.address,
-        abi: contractConfig.abi,
-        functionName: 'activatePublicCrossword',
-        args
-      }, {
-        onError: (error) => {
-          toast.error('Error activating public crossword', {
-            description: getErrorMessage(error),
-          });
-          // Mark error as shown in case error occurs during writeContract
-          errorShown.current = true;
-        },
-        onSuccess: () => {
-          toast.success('Public crossword activated successfully', {
-            description: 'The public crossword has been activated.',
-          });
-        }
-      }),
-    isLoading: isPending || isConfirming,
-    isSuccess,
-    isError: !!writeError || isTxError,
-    error: writeError || txError,
-    txHash: data,
-  };
-};
-
-// Hook for getting public crossword details
-export const useGetPublicCrosswordDetails = (crosswordId: `0x${string}`) => {
-  const contractConfig = getContractConfig('CrosswordBoard');
-
-  return useContractRead({
-    address: contractConfig.address,
-    abi: contractConfig.abi,
-    functionName: 'getPublicCrosswordDetails',
-    args: [crosswordId],
-    query: {
-      enabled: !!crosswordId,
-      staleTime: 120000,  // Cache for 2 minutes
-      gcTime: 300000,     // Garbage collect after 5 minutes
-      retry: 1,           // Only retry once
-      retryDelay: 5000,   // Wait 5 seconds between retries
-    },
-  });
-};
-
-// Hook for getting active public crosswords
 export const useGetActivePublicCrosswords = () => {
-  const contractConfig = getContractConfig('CrosswordBoard');
+  const chainId = useChainId();
+  const queryClient = useQueryClient();
 
-  return useContractRead({
+  const contractConfig = getContractConfig('PublicCrosswordManager', chainId);
+
+  const { data, isError, isLoading, isFetching, error, refetch } = useContractRead({
     address: contractConfig.address,
     abi: contractConfig.abi,
-    functionName: 'getActivePublicCrosswords',
+    functionName: 'getActiveCrosswordIds',
+    args: [],
+    chainId: chainId,
     query: {
-      staleTime: 60000,   // Cache for 1 minute
-      gcTime: 300000,     // Garbage collect after 5 minutes
-      retry: 1,           // Only retry once
-      retryDelay: 5000,   // Wait 5 seconds between retries
-      refetchInterval: 30000, // Refetch every 30 seconds
-    },
+      enabled: contractConfig.address !== '0x0000000000000000000000000000000000000000',
+      staleTime: 1000 * 30, // Data considered fresh for 30 seconds
+    }
   });
+
+  const toastId = useRef<string | number | undefined>(undefined);
+
+  useEffect(() => {
+    if (isError) {
+      const msg = getErrorMessage(error);
+      toastId.current = toast.error(`Error fetching active crosswords: ${msg}`, { id: toastId.current });
+    }
+  }, [isError, error]);
+
+  const memoizedRefetch = useCallback(() => refetch(), [refetch]);
+
+  return {
+    data: data as `0x${string}`[] | undefined,
+    isLoading,
+    isFetching,
+    isError,
+    error,
+    refetch: memoizedRefetch,
+  };
 };
 
-// Hook for getting all public crosswords
-export const useGetAllPublicCrosswords = () => {
-  const contractConfig = getContractConfig('CrosswordBoard');
+export const useGetPublicCrosswordDetails = (crosswordId: `0x${string}` | undefined, overrideContractAddress?: `0x${string}`) => {
+    const chainId = useChainId();
 
-  return useContractRead({
-    address: contractConfig.address,
-    abi: contractConfig.abi,
-    functionName: 'getAllPublicCrosswords',
-    query: {
-      staleTime: 60000,   // Cache for 1 minute
-      gcTime: 300000,     // Garbage collect after 5 minutes
-      retry: 1,           // Only retry once
-      retryDelay: 5000,   // Wait 5 seconds between retries
-      refetchInterval: 60000, // Refetch every minute
-    },
-  });
+    const managerConfig = getContractConfig('PublicCrosswordManager', chainId);
+    const prizesConfig = getContractConfig('CrosswordPrizes', chainId);
+    
+    // For heritage contracts, we might need to target the board address directly
+    const targetManagerAddress = overrideContractAddress || managerConfig.address;
+    const targetPrizesAddress = overrideContractAddress || prizesConfig.address;
+
+    // Fetch primary metadata from PublicCrosswordManager
+    const { data: managerData, isError: isManagerError, isLoading: isManagerLoading, error: managerError, refetch: refetchManager } = useContractRead({
+        address: targetManagerAddress,
+        abi: managerConfig.abi,
+        functionName: 'getCrosswordDetails',
+        args: crosswordId ? [crosswordId] : undefined,
+        chainId: chainId,
+        query: {
+            enabled: !!crosswordId && targetManagerAddress !== '0x0000000000000000000000000000000000000000',
+            staleTime: 1000 * 60 * 5,
+        }
+    });
+
+    // Fetch actual prize data from CrosswordPrizes (in case of coordination mismatch)
+    const { data: prizesData, isLoading: isPrizesLoading } = useContractRead({
+        address: targetPrizesAddress,
+        abi: prizesConfig.abi,
+        functionName: 'getCrosswordDetails',
+        args: crosswordId ? [crosswordId] : undefined,
+        chainId: chainId,
+        query: {
+            enabled: !!crosswordId && targetPrizesAddress !== '0x0000000000000000000000000000000000000000',
+            staleTime: 1000 * 60 * 5,
+        }
+    });
+
+    const mergedData = useMemo(() => {
+        if (!managerData) return undefined;
+        
+        const d = [...(managerData as any[])];
+        
+        // If we have prize data and the manager says 0 prize pool, patch it
+        if (prizesData) {
+            const pd = prizesData as any[];
+            const corePrizePool = pd[1]; // Index 1 in CrosswordPrizes is totalPrizePool
+            const corePercentages = pd[2]; // Index 2 in CrosswordPrizes is winnerPercentages
+            const isFinalized = pd[7]; // Index 7 in CrosswordPrizes is isFinalized
+            
+            if (corePrizePool > 0n && (d[4] === 0n || d[4] === 0)) {
+                d[4] = corePrizePool;
+                d[6] = corePercentages;
+            }
+            
+            // Always sync the overall completion status from the prizes contract
+            if (isFinalized === true) {
+                d[11] = true;
+            }
+        }
+        
+        return d;
+    }, [managerData, prizesData]);
+
+    const toastId = useRef<string | number | undefined>(undefined);
+
+    useEffect(() => {
+        if (isManagerError) {
+            const msg = getErrorMessage(managerError);
+            toastId.current = toast.error(`Error fetching crossword details: ${msg}`, { id: toastId.current });
+        }
+    }, [isManagerError, managerError]);
+
+    const memoizedRefetch = useCallback(() => refetchManager(), [refetchManager]);
+
+    return {
+        data: mergedData,
+        isLoading: isManagerLoading || isPrizesLoading,
+        isError: isManagerError,
+        error: managerError,
+        refetch: memoizedRefetch,
+    };
 };
+
+export const useUserCompletedCrossword = (crosswordId: `0x${string}`, userAddress: `0x${string}`) => {
+    const chainId = useChainId();
+    const queryClient = useQueryClient();
+
+    const contractConfig = getContractConfig('CrosswordCore', chainId);
+
+    const { data, isError, isLoading, error, refetch } = useContractRead({
+        address: contractConfig.address,
+        abi: contractConfig.abi,
+        functionName: 'userCompletedCrossword',
+        args: [crosswordId, userAddress],
+        chainId: chainId,
+        query: {
+            enabled: !!crosswordId && !!userAddress && userAddress !== '0x0000000000000000000000000000000000000000' && contractConfig.address !== '0x0000000000000000000000000000000000000000',
+            staleTime: 1000 * 60 * 5, // 5 minutes
+        }
+    });
+
+    const toastId = useRef<string | number | undefined>(undefined);
+
+    useEffect(() => {
+        if (isError) {
+            const msg = getErrorMessage(error);
+            toastId.current = toast.error(`Error checking if user completed crossword: ${msg}`, { id: toastId.current });
+        }
+    }, [isError, error]);
+
+    const memoizedRefetch = useCallback(() => refetch(), [refetch]);
+
+    return {
+        data: data as boolean | undefined,
+        isLoading,
+        isError,
+        error,
+        refetch: memoizedRefetch,
+    };
+};
+
+export const useCompleteCrossword = () => {
+    const { writeContract, data: hash, isPending, error: writeError, isError: isWriteError } = useWriteContract();
+    const { isLoading: isConfirming, isSuccess: isConfirmed, isError: isConfirmError, error: confirmError } =
+        useWaitForTransactionReceipt({
+            hash,
+        });
+    const chainId = useChainId();
+    const queryClient = useQueryClient();
+    const toastId = useRef<string | number | undefined>(undefined);
+
+    const contractConfig = getContractConfig('CrosswordBoard', chainId); // Use CrosswordBoard as coordinator
+
+    const completeCrossword = async (args: [`0x${string}`, bigint, string, string, string, `0x${string}`]) => {
+        if (contractConfig.address === '0x0000000000000000000000000000000000000000') {
+            toastId.current = toast.error('Contract not deployed on this network.', { id: toastId.current });
+            return;
+        }
+        try {
+            toastId.current = toast.loading('Completing crossword...', { id: toastId.current });
+            writeContract({
+                address: contractConfig.address,
+                abi: contractConfig.abi,
+                functionName: 'completeCrossword',
+                args: args,
+                chainId: chainId,
+            });
+        } catch (err) {
+            const msg = getErrorMessage(err);
+            toastId.current = toast.error(`Error completing crossword: ${msg}`, { id: toastId.current });
+        }
+    };
+
+    useEffect(() => {
+        if (isPending) {
+            toastId.current = toast.loading('Waiting for wallet confirmation...', { id: toastId.current });
+        }
+    }, [isPending]);
+
+    useEffect(() => {
+        if (isConfirming) {
+            toastId.current = toast.loading('Transaction confirming...', { id: toastId.current });
+        }
+    }, [isConfirming]);
+
+    useEffect(() => {
+        if (isConfirmed) {
+            toastId.current = toast.success('Crossword completed successfully!', { id: toastId.current });
+            // Invalidate coordinators and downstream contracts
+            queryClient.invalidateQueries({ queryKey: ['readContract', contractConfig.address] });
+            
+            // ALSO invalidate Core contract as it's the actual source of truth for completion status
+            const coreConfig = getContractConfig('CrosswordCore', chainId);
+            queryClient.invalidateQueries({ queryKey: ['readContract', coreConfig.address] });
+            
+            // ALSO invalidate prize details on Prizes contract as it contains the winners array
+            const prizesConfig = getContractConfig('CrosswordPrizes', chainId);
+            queryClient.invalidateQueries({ queryKey: ['readContract', prizesConfig.address] });
+        }
+        if (isConfirmError || isWriteError) {
+            const error = confirmError || writeError;
+            const msg = getErrorMessage(error);
+            toastId.current = toast.error(`Crossword completion failed: ${msg}`, { id: toastId.current });
+        }
+    }, [isConfirmed, isConfirmError, isWriteError, confirmError, writeError, queryClient, contractConfig.address]);
+
+    return {
+        completeCrossword,
+        isLoading: isPending || isConfirming,
+        isSuccess: isConfirmed,
+        isError: isConfirmError || isWriteError,
+        error: confirmError || writeError,
+        txHash: hash,
+    };
+};
+
+export const useGetCurrentCrossword = () => {
+    const chainId = useChainId();
+    const contractConfig = getContractConfig('CrosswordCore', chainId);
+
+    const { data, isError, isLoading, error, refetch } = useContractRead({
+        address: contractConfig.address,
+        abi: contractConfig.abi,
+        functionName: 'getCurrentCrossword',
+        args: [],
+        chainId: chainId,
+        query: {
+            enabled: contractConfig.address !== '0x0000000000000000000000000000000000000000',
+            staleTime: 1000 * 5, // 5 seconds
+        }
+    });
+
+    const toastId = useRef<string | number | undefined>(undefined);
+
+    useEffect(() => {
+        if (isError) {
+            const msg = getErrorMessage(error);
+            toastId.current = toast.error(`Error fetching current crossword: ${msg}`, { id: toastId.current });
+        }
+    }, [isError, error]);
+
+    const memoizedRefetch = useCallback(() => refetch(), [refetch]);
+
+    return {
+        data: data as [`0x${string}`, string, bigint] | undefined,
+        isLoading,
+        isError,
+        error,
+        refetch: memoizedRefetch,
+    };
+};
+
+export const useGetUserProfile = (userAddress: `0x${string}`) => {
+    const chainId = useChainId();
+    const contractConfig = getContractConfig('CrosswordCore', chainId);
+
+    const { data, isError, isLoading, error, refetch } = useContractRead({
+        address: contractConfig.address,
+        abi: contractConfig.abi,
+        functionName: 'getUserProfile',
+        args: [userAddress],
+        chainId: chainId,
+        query: {
+            enabled: !!userAddress && userAddress !== '0x0000000000000000000000000000000000000000' && contractConfig.address !== '0x0000000000000000000000000000000000000000',
+            staleTime: 1000 * 60 * 5, // 5 minutes
+        }
+    });
+
+    const toastId = useRef<string | number | undefined>(undefined);
+
+    useEffect(() => {
+        if (isError) {
+            const msg = getErrorMessage(error);
+            toastId.current = toast.error(`Error fetching user profile: ${msg}`, { id: toastId.current });
+        }
+    }, [isError, error]);
+
+    const memoizedRefetch = useCallback(() => refetch(), [refetch]);
+
+    return {
+        data: data as [string, string, string, bigint] | undefined,
+        isLoading,
+        isError,
+        error,
+        refetch: memoizedRefetch,
+    };
+};
+
+export const useIsAdmin = () => {
+    const { address } = useAccount();
+    const chainId = useChainId();
+
+    const contractConfig = getContractConfig('AdminManager', chainId);
+
+    const { data, isError, isLoading, error, refetch } = useContractRead({
+        address: contractConfig.address,
+        abi: contractConfig.abi,
+        functionName: 'isAdmin',
+        args: address ? [address] : undefined,
+        chainId: chainId,
+        query: {
+            enabled: !!address && contractConfig.address !== '0x0000000000000000000000000000000000000000',
+            staleTime: 1000 * 60 * 5, // 5 minutes
+        }
+    });
+
+    const toastId = useRef<string | number | undefined>(undefined);
+
+    useEffect(() => {
+        if (isError) {
+            const msg = getErrorMessage(error);
+            toastId.current = toast.error(`Error checking admin status: ${msg}`, { id: toastId.current });
+        }
+    }, [isError, error]);
+
+    const memoizedRefetch = useCallback(() => refetch(), [refetch]);
+
+    return {
+        data: data as boolean | undefined,
+        isLoading,
+        isError,
+        error,
+        refetch: memoizedRefetch,
+    };
+};
+
+const useGenericCreateCrossword = (functionName: string) => {
+  const { writeContract, data: hash, isPending, error: writeError, isError: isWriteError } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess: isConfirmed, isError: isConfirmError, error: confirmError } =
+    useWaitForTransactionReceipt({
+      hash,
+    });
+  const chainId = useChainId();
+  const queryClient = useQueryClient();
+  const toastId = useRef<string | number | undefined>(undefined);
+
+  const contractConfig = getContractConfig('CrosswordBoard', chainId); // Use CrosswordBoard as coordinator
+
+
+  const createCrossword = async (args: any[], value: bigint | undefined = undefined) => {
+    if (contractConfig.address === '0x0000000000000000000000000000000000000000') {
+      toastId.current = toast.error('Contract not deployed on this network.', { id: toastId.current });
+      return;
+    }
+    try {
+      toastId.current = toast.loading('Creating crossword...', { id: toastId.current });
+      console.log("useGenericCreateCrossword calling writeContract with:", JSON.stringify({
+        address: contractConfig.address,
+        functionName,
+        args,
+        value: value?.toString(),
+        chainId
+      }, (key, value) => 
+        typeof value === 'bigint' ? value.toString() : value
+      , 2));
+      writeContract({
+        address: contractConfig.address,
+        abi: contractConfig.abi,
+        functionName,
+        args,
+        value,
+        chainId: chainId,
+      });
+    } catch (err) {
+      const msg = getErrorMessage(err);
+      toastId.current = toast.error(`Error creating crossword: ${msg}`, { id: toastId.current });
+    }
+  };
+  
+  useEffect(() => {
+    if (isPending) {
+      toastId.current = toast.loading('Waiting for wallet confirmation...', { id: toastId.current });
+    }
+  }, [isPending]);
+
+  useEffect(() => {
+    if (isConfirming) {
+      toastId.current = toast.loading('Transaction confirming...', { id: toastId.current });
+    }
+  }, [isConfirming]);
+  
+  useEffect(() => {
+    if (isConfirmed) {
+      toastId.current = toast.success('Crossword created successfully!', { id: toastId.current });
+      // Invalidate the coordinator
+      queryClient.invalidateQueries({ queryKey: ['readContract', contractConfig.address] });
+      
+      // ALSO invalidate the PublicCrosswordManager as it holds the actual list of crosswords
+      const managerConfig = getContractConfig('PublicCrosswordManager', chainId);
+      queryClient.invalidateQueries({ queryKey: ['readContract', managerConfig.address] });
+    }
+    if (isConfirmError || isWriteError) {
+      const error = confirmError || writeError;
+      const msg = getErrorMessage(error);
+      toastId.current = toast.error(`Crossword creation failed: ${msg}`, { id: toastId.current });
+    }
+  }, [isConfirmed, isConfirmError, isWriteError, confirmError, writeError, queryClient, contractConfig.address]);
+
+  return {
+    createCrossword,
+    isLoading: isPending || isConfirming,
+    isSuccess: isConfirmed,
+    isError: isConfirmError || isWriteError,
+    error: confirmError || writeError,
+    txHash: hash,
+  };
+};
+
+export const useCreatePublicCrossword = () => {
+    const { createCrossword, ...rest } = useGenericCreateCrossword('createPublicCrossword');
+    return { createPublicCrossword: createCrossword, ...rest };
+};
+
+export const useCreatePublicCrosswordWithPrizePool = () => {
+    const { createCrossword, ...rest } = useGenericCreateCrossword('createPublicCrosswordWithPrizePool');
+    return { createPublicCrosswordWithPrizePool: createCrossword, ...rest };
+};
+
+export const useCreatePublicCrosswordWithNativeCELOPrizePool = () => {
+    const { createCrossword, ...rest } = useGenericCreateCrossword('createPublicCrosswordWithNativeCELOPrizePool');
+    return { createPublicCrosswordWithNativeCELOPrizePool: createCrossword, ...rest };
+};
+
+export const useGetCrosswordDetailsById = (crosswordId: `0x${string}` | undefined, overrideContractAddress?: `0x${string}`) => {
+  return useGetPublicCrosswordDetails(crosswordId, overrideContractAddress);
+};
+

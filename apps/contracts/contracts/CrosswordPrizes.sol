@@ -92,7 +92,11 @@ contract CrosswordPrizes is Ownable, AccessControl, ReentrancyGuard, Pausable {
         require(winnerPercentages.length > 0, "Percentages needed");
         ValidationLib.validateMaxValue(winnerPercentages.length, maxWinners, ErrorMessages.TOO_MANY_WINNERS);
         if (endTime != 0) {
-            ValidationLib.validateMaxValue(endTime, CommonConstants.MAX_END_TIME, ErrorMessages.END_TIME_TOO_FAR);
+            if (endTime > block.timestamp) {
+                ValidationLib.validateMaxValue(endTime - block.timestamp, CommonConstants.MAX_END_TIME, ErrorMessages.END_TIME_TOO_FAR);
+            } else {
+                revert(ErrorMessages.INVALID_END_TIME);
+            }
         }
 
         uint256 totalPercentage = 0;
@@ -121,6 +125,113 @@ contract CrosswordPrizes is Ownable, AccessControl, ReentrancyGuard, Pausable {
         emit CrosswordCreated(crosswordId, token, prizePool, _msgSender());
     }
 
+    function createCrosswordWithoutValue(
+        bytes32 crosswordId,
+        address token,
+        uint256 prizePool,
+        uint256[] calldata winnerPercentages,
+        uint256 endTime
+    ) external onlyRole(AccessControlLib.ADMIN_ROLE) whenNotPaused {
+        require(crosswords[crosswordId].createdAt == 0, ErrorMessages.ALREADY_EXISTS);
+        require(allowedTokens[token], ErrorMessages.TOKEN_NOT_ALLOWED);
+        ValidationLib.validateGreaterThanZero(prizePool, ErrorMessages.PRIZE_POOL_GT_ZERO);
+        require(winnerPercentages.length > 0, "Percentages needed");
+        ValidationLib.validateMaxValue(winnerPercentages.length, maxWinners, ErrorMessages.TOO_MANY_WINNERS);
+        if (endTime != 0) {
+            if (endTime > block.timestamp) {
+                ValidationLib.validateMaxValue(endTime - block.timestamp, CommonConstants.MAX_END_TIME, ErrorMessages.END_TIME_TOO_FAR);
+            } else {
+                revert(ErrorMessages.INVALID_END_TIME);
+            }
+        }
+
+        uint256 totalPercentage = 0;
+        for (uint256 i = 0; i < winnerPercentages.length; i++) {
+            ValidationLib.validateMaxValue(winnerPercentages[i], CommonConstants.MAX_SINGLE_WINNER_PERCENTAGE, ErrorMessages.PERCENTAGE_TOO_HIGH);
+            ValidationLib.validateGreaterThanZero(winnerPercentages[i], "Percentage > 0");
+            totalPercentage += winnerPercentages[i];
+        }
+        ValidationLib.validateMaxValue(totalPercentage, CommonConstants.MAX_PERCENTAGE, ErrorMessages.TOTAL_GT_100);
+
+        // For this function, we don't require value to be sent - the prize pool is expected to be funded separately
+        // If it's native CELO, the balance needs to be set separately
+        if (token == address(0)) {
+            // We'll set the balance to 0 initially, expecting it to be funded later
+            crosswordCeloBalance[crosswordId] = prizePool;
+        }
+
+        Crossword storage newCrossword = crosswords[crosswordId];
+        newCrossword.token = token;
+        newCrossword.totalPrizePool = prizePool;
+        newCrossword.winnerPercentages = winnerPercentages;
+        newCrossword.state = CrosswordState.Inactive;
+        newCrossword.createdAt = block.timestamp;
+        newCrossword.endTime = endTime;
+
+        emit CrosswordCreated(crosswordId, token, prizePool, _msgSender());
+    }
+
+    /**
+     * @dev Grant operator role to a specific contract (like CrosswordBoard)
+     * @param operator The address of the contract to grant operator role to
+     */
+    function grantOperatorRole(address operator) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        grantRole(AccessControlLib.OPERATOR_ROLE, operator);
+    }
+
+    /**
+     * @dev Deposit native CELO for a specific crossword's prize pool
+     * @param crosswordId The ID of the crossword to fund
+     */
+    function depositNativeCELOForCrossword(bytes32 crosswordId) external payable onlyRole(AccessControlLib.ADMIN_ROLE) whenNotPaused {
+        Crossword storage crossword = crosswords[crosswordId];
+        require(crossword.createdAt != 0, ErrorMessages.DOES_NOT_EXIST);
+        require(crossword.token == address(0), "Crossword uses non-native token");
+        require(msg.value > 0, "Must send value");
+
+        crosswordCeloBalance[crosswordId] += msg.value;
+    }
+
+    // Storage to track authorized funding contract (like CrosswordBoard)
+    address public fundingContract;
+
+    /**
+     * @dev Set the authorized funding contract (like CrosswordBoard)
+     * @param _fundingContract The address of the contract authorized to fund crosswords
+     */
+    function setFundingContract(address _fundingContract) external onlyRole(AccessControlLib.ADMIN_ROLE) {
+        fundingContract = _fundingContract;
+    }
+
+    /**
+     * @dev Function to receive native CELO from authorized contract for prize distribution
+     * @param crosswordId The ID of the crossword to fund
+     */
+    function receiveNativeCELOForCrossword(bytes32 crosswordId) external payable whenNotPaused {
+        // Only allow authorized funding contract to call this function
+        require(msg.sender == fundingContract, "Only authorized funding contract can fund");
+
+        Crossword storage crossword = crosswords[crosswordId];
+        require(crossword.createdAt != 0, ErrorMessages.DOES_NOT_EXIST);
+        require(crossword.token == address(0), "Crossword uses non-native token");
+        require(msg.value > 0, "Must send value");
+
+        crosswordCeloBalance[crosswordId] += msg.value;
+    }
+
+    /**
+     * @dev Function to receive native CELO for a specific crossword's prize pool by admin
+     * @param crosswordId The ID of the crossword to fund
+     */
+    function fundNativeCELOForCrossword(bytes32 crosswordId) external payable onlyRole(AccessControlLib.ADMIN_ROLE) whenNotPaused {
+        Crossword storage crossword = crosswords[crosswordId];
+        require(crossword.createdAt != 0, ErrorMessages.DOES_NOT_EXIST);
+        require(crossword.token == address(0), "Crossword uses non-native token");
+        require(msg.value > 0, "Must send value");
+
+        crosswordCeloBalance[crosswordId] += msg.value;
+    }
+
     function activateCrossword(bytes32 crosswordId) external onlyRole(AccessControlLib.ADMIN_ROLE) whenNotPaused {
         Crossword storage crossword = crosswords[crosswordId];
         require(crossword.createdAt != 0, ErrorMessages.DOES_NOT_EXIST);
@@ -134,36 +245,64 @@ contract CrosswordPrizes is Ownable, AccessControl, ReentrancyGuard, Pausable {
 
     function _recordCompletionInternal(bytes32 crosswordId, address user) internal returns (bool awardedPrize) {
         Crossword storage crossword = crosswords[crosswordId];
-        require(crossword.state == CrosswordState.Active, "Not active");
-        require(crossword.hasClaimed[user] == false, "Already claimed");
-        
-        if (crossword.endTime > 0 && block.timestamp >= crossword.endTime + crossword.activationTime) {
-            require(crossword.state != CrosswordState.Complete, "Deadline passed");
+
+        // Check if crossword is active
+        if (crossword.state != CrosswordState.Active) {
+            return false;
         }
 
-        uint256 rank = crossword.completions.length + 1;
-        
-        if (rank <= crossword.winnerPercentages.length) {
-            crossword.completions.push(CompletionRecord({
-                user: user,
-                timestamp: block.timestamp,
-                rank: rank
-            }));
-            
-            userRankInCrossword[crosswordId][user] = rank;
-            
-            if (rank == crossword.winnerPercentages.length) {
-                crossword.state = CrosswordState.Complete;
-            }
-            
-            awardedPrize = true;
-        } else {
-            crossword.completions.push(CompletionRecord({
-                user: user,
-                timestamp: block.timestamp,
-                rank: 0
-            }));
+        if (user == address(0)) {
+            return false;
         }
+
+        // Check if there's an actual prize pool for this crossword
+        if (crossword.totalPrizePool == 0) {
+            return false;
+        }
+
+        // Check if past endTime (if set)
+        if (crossword.endTime > 0 && block.timestamp > crossword.endTime) {
+            return false;
+        }
+
+        // Check if we already have maximum winners
+        if (crossword.completions.length >= crossword.winnerPercentages.length || crossword.completions.length >= maxWinners) {
+            return false; // User was too late, no prize
+        }
+
+        // SECURITY FIX: Check using O(1) mapping instead of loop
+        if (userRankInCrossword[crosswordId][user] > 0) {
+            return false; // User already has a rank (already completed)
+        }
+
+        // SECURITY FIX: Checks-Effects-Interactions pattern
+        // 1. CHECKS - already done above
+
+        // 2. EFFECTS - Update all state BEFORE external calls
+        uint256 rank = crossword.completions.length + 1;
+
+        // Create completion record
+        CompletionRecord memory completion = CompletionRecord({
+            user: user,
+            timestamp: block.timestamp,
+            rank: rank
+        });
+
+        crossword.completions.push(completion);
+
+        // Update O(1) mapping for rank lookup
+        userRankInCrossword[crosswordId][user] = rank;
+
+        // Calculate prize amount to see if they are a winner
+        uint256 prizeAmount = (crossword.totalPrizePool * crossword.winnerPercentages[rank - 1]) / CommonConstants.MAX_PERCENTAGE;
+
+        // If we reached the maximum number of winners, mark as complete
+        if (crossword.completions.length >= crossword.winnerPercentages.length || crossword.completions.length >= maxWinners) {
+            crossword.state = CrosswordState.Complete;
+        }
+
+        // Return true if user was added as a winner (meaning they are eligible to claim)
+        return prizeAmount > 0;
     }
 
     function recordCompletion(bytes32 crosswordId, address user) external onlyRole(AccessControlLib.OPERATOR_ROLE) whenNotPaused returns (bool awardedPrize) {

@@ -5,14 +5,14 @@ import type React from "react"
 import { useState, useEffect, useRef } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { RotateCcw, X, Trophy, Save, Check, Loader2, Home, AlertCircle } from "lucide-react"
+import { RotateCcw, X, Trophy, Save, Check, Loader2, Home, AlertCircle, ArrowLeft } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useRouter } from "next/navigation"
 import { useCrossword } from "@/contexts/crossword-context"
 import { useAccount, useChainId, useBalance } from "wagmi";
 import { celo, celoAlfajores } from "wagmi/chains";
 import { defineChain } from "viem";
-import { useCompleteCrossword, useUserCompletedCrossword, useGetCurrentCrossword, useGetUserProfile, useCrosswordPrizesDetails, useClaimPrize } from "@/hooks/useContract";
+import { useGetCurrentCrossword, useUnifiedCrosswordPrizes, useCompleteCrossword, useClaimPrize, useUserCompletedCrossword, useGetUserProfile, useGetCrosswordCompletions } from "@/hooks/useContract";
 import { useQueryClient } from '@tanstack/react-query';
 import { readContract } from 'wagmi/actions';
 import { config } from '@/contexts/frame-wallet-context';
@@ -121,8 +121,9 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
   const [checkingPrizeStatus, setCheckingPrizeStatus] = useState(false);
 
   // Fetch crossword prizes details
-  const { data: crosswordPrizesDetails, isLoading: isLoadingPrizes } = useCrosswordPrizesDetails(
-    currentCrossword?.id as `0x${string}` || undefined
+  const { prizeDetails: crosswordPrizesDetails, isLoading: isLoadingPrizes } = useUnifiedCrosswordPrizes(
+    currentCrossword?.id as `0x${string}` || undefined,
+    currentCrossword?.isPublic || false
   );
 
   // Verificar si el usuario ya completó este crucigrama específico
@@ -204,7 +205,7 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
       setCheckingPrizeStatus(true);
 
       try {
-        const contractInfo = (CONTRACTS as any)[chainId]?.['CrosswordBoard'];
+        const contractInfo = (CONTRACTS as any)[chainId]?.['CrosswordPrizes'];
         if (!contractInfo) {
           console.error("Contract configuration not found for chain ID:", chainId);
           setIsPrizeWinner(false);
@@ -240,26 +241,9 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
                   "type": "uint256[]"
                 },
                 {
-                  "components": [
-                    {
-                      "internalType": "address",
-                      "name": "user",
-                      "type": "address"
-                    },
-                    {
-                      "internalType": "uint256",
-                      "name": "timestamp",
-                      "type": "uint256"
-                    },
-                    {
-                      "internalType": "uint256",
-                      "name": "rank",
-                      "type": "uint256"
-                    }
-                  ],
-                  "internalType": "struct CrosswordBoard.CompletionRecord[]",
-                  "name": "completions",
-                  "type": "tuple[]"
+                  "internalType": "address[]",
+                  "name": "winners",
+                  "type": "address[]"
                 },
                 {
                   "internalType": "uint256",
@@ -272,9 +256,14 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
                   "type": "uint256"
                 },
                 {
-                  "internalType": "uint8",
+                  "internalType": "enum CrosswordPrizes.CrosswordState",
                   "name": "state",
                   "type": "uint8"
+                },
+                {
+                  "internalType": "bool",
+                  "name": "isFinalized",
+                  "type": "bool"
                 }
               ],
               "stateMutability": "view",
@@ -578,7 +567,7 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
           let userRank = 0; // Declare outside try-catch to ensure it's in scope
           try {
             if (currentCrossword?.id && address && isConnected) {
-              const contractInfo = (CONTRACTS as any)[chainId]?.['CrosswordBoard'];
+              const contractInfo = (CONTRACTS as any)[chainId]?.['CrosswordPrizes'];
               if (contractInfo) {
                 const getCrosswordBoardABI = () => {
                   return [
@@ -608,26 +597,9 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
                           "type": "uint256[]"
                         },
                         {
-                          "components": [
-                            {
-                              "internalType": "address",
-                              "name": "user",
-                              "type": "address"
-                            },
-                            {
-                              "internalType": "uint256",
-                              "name": "timestamp",
-                              "type": "uint256"
-                            },
-                            {
-                              "internalType": "uint256",
-                              "name": "rank",
-                              "type": "uint256"
-                            }
-                          ],
-                          "internalType": "struct CrosswordBoard.CompletionRecord[]",
-                          "name": "completions",
-                          "type": "tuple[]"
+                          "internalType": "address[]",
+                          "name": "winners",
+                          "type": "address[]"
                         },
                         {
                           "internalType": "uint256",
@@ -640,9 +612,14 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
                           "type": "uint256"
                         },
                         {
-                          "internalType": "uint8",
+                          "internalType": "enum CrosswordPrizes.CrosswordState",
                           "name": "state",
                           "type": "uint8"
+                        },
+                        {
+                          "internalType": "bool",
+                          "name": "isFinalized",
+                          "type": "bool"
                         }
                       ],
                       "stateMutability": "view",
@@ -663,13 +640,10 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
                 // Check if user is in the completions array (meaning they are a prize winner)
                 const completionsArray = Array.isArray(crosswordDetails) ? (crosswordDetails[3] as any[]) : []; // completions is at index 3
                 console.log('[DEBUG] Completions array:', completionsArray);
-                updatedIsPrizeWinner = completionsArray.some(completion => {
-                  const completionUser = completion.user || completion[0]; // Handle both object and tuple formats
-                  const rank = completion.rank || completion[2]; // Get rank from completion record
-                  console.log('[DEBUG] Checking completion:', { completionUser, rank, myAddress: address });
-                  if (completionUser.toLowerCase() === address.toLowerCase()) {
-                    userRank = Number(rank);
-                    console.log('[DEBUG] MATCH! User rank:', userRank);
+                updatedIsPrizeWinner = completionsArray.some((winnerAddress, index) => {
+                  if (winnerAddress.toLowerCase() === address.toLowerCase()) {
+                    userRank = index + 1;
+                    console.log('[DEBUG] MATCH! User rank from winners list:', userRank);
                     return true;
                   }
                   return false;
@@ -708,7 +682,7 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
             setTimeout(async () => {
               try {
                 // Fetch all completions to determine rank
-                const contractInfo = (CONTRACTS as any)[chainId]?.['CrosswordBoard'];
+                const contractInfo = (CONTRACTS as any)[chainId]?.['CrosswordCore'];
                 if (contractInfo && currentCrossword?.id) {
                   const getCompletionsABI = () => {
                     return [
@@ -740,7 +714,7 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
                                 "type": "uint256"
                               }
                             ],
-                            "internalType": "struct CrosswordBoard.Completion[]",
+                            "internalType": "struct CrosswordCore.CrosswordCompletion[]",
                             "name": "",
                             "type": "tuple[]"
                           }
@@ -766,13 +740,25 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
                   });
 
                   const nonWinnerRank = userIndex !== -1 ? userIndex + 1 : 0;
-                  router.push(`/leaderboard?completed=true&winner=false&rank=${nonWinnerRank}`);
+                  if (currentCrossword) {
+                    router.push(`/leaderboard?id=${currentCrossword.id}&completed=true&winner=false&rank=${nonWinnerRank}&isPublic=${currentCrossword.isPublic || false}`);
+                  } else {
+                    router.push(`/leaderboard?completed=true&winner=false&rank=${nonWinnerRank}`);
+                  }
                 } else {
-                  router.push("/leaderboard?completed=true&winner=false");
+                  if (currentCrossword) {
+                    router.push(`/leaderboard?id=${currentCrossword.id}&completed=true&winner=false&isPublic=${currentCrossword.isPublic || false}`);
+                  } else {
+                    router.push(`/leaderboard?completed=true&winner=false`);
+                  }
                 }
               } catch (error) {
                 console.error("Error fetching rank:", error);
-                router.push("/leaderboard?completed=true&winner=false");
+                if (currentCrossword) {
+                  router.push(`/leaderboard?id=${currentCrossword.id}&completed=true&winner=false&isPublic=${currentCrossword.isPublic || false}`);
+                } else {
+                  router.push(`/leaderboard?completed=true&winner=false`);
+                }
               }
             }, 1000); // 1 second delay to allow cache to refresh and blockchain propagation
           }
@@ -791,7 +777,9 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
             if (onCrosswordCompleted) {
               onCrosswordCompleted();
             }
-            router.push("/leaderboard?completed=true&winner=false");
+            const crosswordId = currentCrossword?.id || '';
+            const isPublic = currentCrossword?.isPublic || false;
+            router.push(`/leaderboard?id=${crosswordId}&completed=true&winner=false&isPublic=${isPublic}`);
           }
         });
       }, 2000); // 2 second delay to allow blockchain transaction to be confirmed before cache invalidation
@@ -816,8 +804,14 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
       } else {
         alert("Error claiming prize: " + errorMessage);
       }
+    } else if (waitingForTransaction && isClaimSuccess) {
+      setWaitingForTransaction(false);
+      if (showCongratulations) {
+        // We'll let the user click "Continue" or handle it automatically
+        // For now, let's just reset the state so the button updates
+      }
     }
-  }, [waitingForTransaction, isCompleteSuccess, isCompleteError, isClaimSuccess, isClaimError, txHash, address, farcasterProfile, queryClient, chainId])
+  }, [waitingForTransaction, isCompleteSuccess, isCompleteError, isClaimSuccess, isClaimError, txHash, address, farcasterProfile, queryClient, chainId, showCongratulations])
 
   const handleCellClick = (row: number, col: number) => {
     if (alreadyCompleted) {
@@ -1044,7 +1038,10 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
   }
 
   const handleSaveCompletion = async () => {
-    if (!crosswordData) return;
+    if (!crosswordData || !currentCrossword?.id) {
+      alert("No crossword loaded to complete.");
+      return;
+    }
 
     if (isCompleting || waitingForTransaction || isSubmitting) {
       return;
@@ -1106,40 +1103,18 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
       return;
     }
 
-    // Refetch the current crossword to make sure it hasn't been updated since we loaded it
-    const currentCrosswordFromContract = await getCurrentCrosswordHook.refetch();
-
-    // Check if we have a valid crossword from the contract
-    let contractCrosswordId = null;
-    if (currentCrosswordFromContract.data && Array.isArray(currentCrosswordFromContract.data) && currentCrosswordFromContract.data.length >= 3) {
-      const [id, data, updatedAt] = currentCrosswordFromContract.data as [string, string, bigint];
-      contractCrosswordId = id;
-
-      // IMPORTANT: Check if the crossword has been updated since we started solving it
-      if (currentCrossword?.id && currentCrossword.id !== contractCrosswordId) {
-        alert("The crossword has been updated by an administrator. You cannot complete an outdated crossword.");
-        setIsSubmitting(false);
-        setAlreadyCompleted(false);
-        setIsComplete(false);
-        return;
-      }
-    } else {
-      alert("No current crossword found on the blockchain. Please try again.");
-      setIsSubmitting(false);
-      return;
-    }
+    // Use the ID of the crossword being viewed.
+    const crosswordToCompleteId = currentCrossword.id as `0x${string}`;
 
     try {
-
-      if (contractCrosswordId && address) {
+      if (crosswordToCompleteId && address) {
         // Use the same approach as the hooks to get the contract config with proper ABI
-        const contractInfo = (CONTRACTS as any)[chainId]?.['CrosswordBoard'];
+        const contractInfo = (CONTRACTS as any)[chainId]?.['CrosswordCore'];
 
         if (!contractInfo) {
           throw new Error(`Contract configuration not found for chain ID: ${chainId}`);
         }
 
-        // Import the ABI from the same function used by the hooks
         // We need the minimal ABI with only the function we're calling
         const getCrosswordBoardABI = () => {
           return [
@@ -1176,7 +1151,7 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
           address: contractInfo.address as `0x${string}`,
           abi: abi,
           functionName: 'userCompletedCrossword',
-          args: [contractCrosswordId as `0x${string}`, address as `0x${string}`],
+          args: [crosswordToCompleteId, address as `0x${string}`],
         });
 
 
@@ -1191,7 +1166,6 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
         // No currentCrossword.id found, skipping completion check.
       }
     } catch (error) {
-
       setIsSubmitting(false);
       alert("There was an unexpected error checking if you have completed this crossword. Please try again.");
       return;
@@ -1200,10 +1174,9 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
     setAlreadyCompleted(true);
     setIsComplete(true);
 
-    if (contractCrosswordId && address) {
+    if (crosswordToCompleteId && address) {
       // Calculate duration using the ref that was initialized when the crossword started
       const durationMs = Date.now() - startTimeRef.current;
-      const crosswordId = contractCrosswordId as `0x${string}`;
       const durationBigInt = BigInt(durationMs);
 
       // Use Farcaster profile data if available, otherwise use fallback values
@@ -1216,8 +1189,6 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
         : "Unknown User";
       const pfpUrl = farcasterProfile?.pfpUrl || "";
 
-      // Debug logs to check what values are being sent
-
       // Validate that we have at least a username before sending to contract
       if (!username || username.trim() === "") {
         alert("Unable to submit crossword completion: no valid username available.");
@@ -1229,12 +1200,38 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
       // Call completeCrossword and log the result
       setWaitingForTransaction(true);
       try {
-        // Send 5 parameters: duration, username, displayName, pfpUrl, crosswordId (for signature)
-        await completeCrossword([durationBigInt, username, displayName, pfpUrl, crosswordId]);
+        const contractInfo = (CONTRACTS as any)[chainId]?.['CrosswordBoard'];
+        if (!contractInfo) {
+          throw new Error(`Contract configuration not found for chain ID: ${chainId}`);
+        }
+        
+        const signResponse = await fetch('/api/crossword/sign', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user: address,
+            crosswordId: crosswordToCompleteId,
+            durationMs: durationMs.toString(),
+            contractAddress: contractInfo.address
+          }),
+        });
+
+        if (!signResponse.ok) {
+          const errorData = await signResponse.json();
+          throw new Error(errorData.error || 'Failed to get signature from server.');
+        }
+
+        const { signature } = await signResponse.json();
+
+        // Call completeCrossword with the signature
+        await completeCrossword([crosswordToCompleteId, durationBigInt, username, displayName, pfpUrl, signature]);
       } catch (error) {
         console.error("Crossword completion failed:", error);
+        alert("Crossword completion failed: " + (error as Error).message);
         setWaitingForTransaction(false);
         setIsSubmitting(false);
+        setAlreadyCompleted(false);
+        setIsComplete(false);
       }
     } else {
       setIsSubmitting(false);
@@ -1260,7 +1257,7 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
       // Use the same approach as in leaderboard to check if user is a prize winner
       if (currentCrossword?.id && address) {
         // Get the full crossword details to check if user is in the prize winners
-        const contractInfo = (CONTRACTS as any)[chainId]?.['CrosswordBoard'];
+        const contractInfo = (CONTRACTS as any)[chainId]?.['CrosswordPrizes'];
         if (!contractInfo) {
           throw new Error(`Contract configuration not found for chain ID: ${chainId}`);
         }
@@ -1294,26 +1291,9 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
                   "type": "uint256[]"
                 },
                 {
-                  "components": [
-                    {
-                      "internalType": "address",
-                      "name": "user",
-                      "type": "address"
-                    },
-                    {
-                      "internalType": "uint256",
-                      "name": "timestamp",
-                      "type": "uint256"
-                    },
-                    {
-                      "internalType": "uint256",
-                      "name": "rank",
-                      "type": "uint256"
-                    }
-                  ],
-                  "internalType": "struct CrosswordBoard.CompletionRecord[]",
-                  "name": "completions",
-                  "type": "tuple[]"
+                  "internalType": "address[]",
+                  "name": "winners",
+                  "type": "address[]"
                 },
                 {
                   "internalType": "uint256",
@@ -1326,9 +1306,14 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
                   "type": "uint256"
                 },
                 {
-                  "internalType": "uint8",
+                  "internalType": "enum CrosswordPrizes.CrosswordState",
                   "name": "state",
                   "type": "uint8"
+                },
+                {
+                  "internalType": "bool",
+                  "name": "isFinalized",
+                  "type": "bool"
                 }
               ],
               "stateMutability": "view",
@@ -1545,25 +1530,49 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
  return (
     <>
       <div className="flex flex-col gap-4 sm:gap-6 md:gap-8">
+        <div className="flex justify-center mt-2 mb-4 w-full px-2">
+          <Button
+            onClick={() => router.push('/active-crosswords')}
+            className="w-full sm:w-auto border-4 border-black bg-accent font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-accent hover:shadow-none"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+             Back To Crosswords
+          </Button>
+        </div>
+
         {/* Prize Pool Information */}
         {crosswordPrizesDetails && (
           <div className="px-2">
             <Card className="border-4 border-black bg-card p-3 sm:p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
               <div className="flex flex-col items-center">
+                {/* Sponsor Information */}
+                {currentCrossword?.sponsoredBy && currentCrossword.sponsoredBy.trim() !== "" && (
+                  <div className="mb-4 sm:mb-6 text-center transform -rotate-1">
+                    <div className="inline-block px-4 py-2 bg-yellow-400 border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                      <p className="text-xs sm:text-sm font-black uppercase tracking-tighter text-black">
+                        Sponsored by{" "}
+                        <span className="text-primary underline decoration-black underline-offset-2">
+                          {currentCrossword.sponsoredBy}
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-2 text-foreground">
                   <Trophy className="w-5 h-5 flex-shrink-0" />
                   <span className="font-black text-lg sm:text-base">Prize Pool: </span>
                   <span className="font-black text-white text-lg sm:text-base bg-primary px-2 py-1 rounded-full">
-                    {Number(crosswordPrizesDetails[1]) / 1e18}
-                    {crosswordPrizesDetails[0] === "0x0000000000000000000000000000000000000000" ? " CELO" : " Tokens"}
+                    {Number(crosswordPrizesDetails.totalPrizePool) / 1e18}
+                    {crosswordPrizesDetails.token === "0x0000000000000000000000000000000000000000" ? " CELO" : " Tokens"}
                   </span>
                 </div>
 
-                {crosswordPrizesDetails[2] && crosswordPrizesDetails[2].length > 0 && (
+                {crosswordPrizesDetails.winnerPercentages && crosswordPrizesDetails.winnerPercentages.length > 0 && (
                   <div className="mt-4 sm:mt-6 text-center w-full">
-                    <p className="text-xs sm:text-sm font-bold text-muted-foreground mb-3">Top {crosswordPrizesDetails[2].length} winners share the prize:</p>
+                    <p className="text-xs sm:text-sm font-bold text-muted-foreground mb-3">Top {crosswordPrizesDetails.winnerPercentages.length} winners share the prize:</p>
                     <div className="flex flex-wrap justify-center gap-2 sm:gap-3">
-                      {crosswordPrizesDetails[2].map((pct: any, idx: number) => (
+                      {crosswordPrizesDetails.winnerPercentages.map((pct: any, idx: number) => (
                         <span key={idx} className="px-2 sm:px-3 py-1 text-xs font-bold rounded-full bg-secondary whitespace-nowrap">
                           {idx + 1}{idx === 0 ? 'st' : idx === 1 ? 'nd' : idx === 2 ? 'rd' : 'th'} place: {Number(pct) / 100}%
                         </span>
@@ -1822,18 +1831,34 @@ export default function CrosswordGame({ ignoreSavedData = false, onCrosswordComp
               <p className="mb-4 sm:mb-6 text-xs sm:text-sm font-medium text-muted-foreground px-2">
                 Your completion has been recorded on the blockchain.
               </p>
-              <Button
-                onClick={() => {
-                  console.log('[DEBUG] Redirecting to leaderboard with winnerRank:', winnerRank);
-                  setShowCongratulations(false);
-                  const redirectUrl = `/leaderboard?completed=true&winner=true&rank=${winnerRank}`;
-                  console.log('[DEBUG] Redirect URL:', redirectUrl);
-                  router.push(redirectUrl);
-                }}
-                className="w-full max-w-[200px] border-4 border-black bg-primary font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-primary hover:shadow-none"
-              >
-                Continue
-              </Button>
+              <div className="flex flex-col gap-3 w-full max-w-[200px]">
+                {isClaimSuccess ? (
+                  <Button
+                    onClick={() => {
+                      setShowCongratulations(false);
+                      const crosswordId = currentCrossword?.id || '';
+                      router.push(`/leaderboard?id=${crosswordId}&completed=true&winner=true&rank=${winnerRank}&isPublic=${currentCrossword?.isPublic || false}`);
+                    }}
+                    className="w-full border-4 border-black bg-green-500 font-black uppercase text-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-green-600 hover:shadow-none"
+                  >
+                    View Leaderboard
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setShowCongratulations(false);
+                        const crosswordId = currentCrossword?.id || '';
+                        router.push(`/leaderboard?id=${crosswordId}&completed=true&winner=true&rank=${winnerRank}&isPublic=${currentCrossword?.isPublic || false}`);
+                      }}
+                      className="w-full border-4 border-black bg-background font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none"
+                    >
+                      Continue 
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
           </Card>
         </div>

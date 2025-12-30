@@ -7,7 +7,7 @@ import { useAccount } from "wagmi";
 import { useSearchParams } from "next/navigation";
 import CrosswordGame from "@/components/crossword-game"
 import { Button } from "@/components/ui/button"
-import { AlertCircle, Wallet, Play, History, BarChart3, Trophy, ArrowRight, Plus, Loader2 } from "lucide-react"
+import { AlertCircle, Wallet, Play, History, BarChart3, Trophy, ArrowRight, Plus, Loader2, ArrowLeft } from "lucide-react"
 import { useCrossword } from "@/contexts/crossword-context";
 import { useCeloNetworkValidation } from "@/hooks/useCeloNetworkValidation";
 import { CeloNetworkButton } from "@/components/celo-network-button";
@@ -80,7 +80,7 @@ function PageContent() {
   }, [currentCrossword, searchParams]);
 
   // Check completions for the current crossword to see if user has completed it
-  const { data: onChainCompletions, isLoading: isCompletionsLoading } = useGetCrosswordCompletions(
+  const { completions: onChainCompletions, isLoading: isCompletionsLoading } = useGetCrosswordCompletions(
     currentCrossword?.id as `0x${string}` || `0x0000000000000000000000000000000000000000000000000000000000000000`
   );
 
@@ -163,7 +163,7 @@ function PageContent() {
     <>
       {isRedirecting && (
         <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-background/60 backdrop-blur-md">
-          <div className="border-4 border-black bg-white p-12 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] text-center space-y-4">
+          <div className=" ml-2 mr-2 border-4 border-black bg-white p-12 text-center space-y-4">
             <Loader2 className="w-16 h-16 animate-spin mx-auto text-primary" />
             <h2 className="text-2xl font-black uppercase">Loading Crossword</h2>
             <p className="text-muted-foreground font-bold">Bringing the board to life...</p>

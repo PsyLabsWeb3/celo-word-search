@@ -1,122 +1,104 @@
-// Deployment script for Celo Sepolia - Unified Contract Version
-const hre = require("hardhat");
+// scripts/deploy-sepolia.js
+const { ethers } = require("hardhat");
 
 async function main() {
-  console.log("Starting deployment to Celo Sepolia...");
+  console.log("🚀 Deploying library-based crossword contracts to Sepolia...");
 
-  // Get the viem public client and wallet client
-  const publicClient = await hre.viem.getPublicClient();
-  const [deployer] = await hre.viem.getWalletClients();
+  const [deployer] = await ethers.getSigners();
+  console.log(`\nDeployer address: ${await deployer.getAddress()}`);
 
-  if (!deployer) {
-    console.error("No deployer account available. Make sure you have set your PRIVATE_KEY in the .env file.");
-    process.exit(1);
-  }
+  // Deploy individual contracts
+  console.log("\n1. Deploying CrosswordCore...");
+  const CrosswordCore = await ethers.getContractFactory("CrosswordCore");
+  const crosswordCore = await CrosswordCore.deploy(await deployer.getAddress());
+  await crosswordCore.waitForDeployment();
+  console.log(`✅ CrosswordCore deployed at: ${await crosswordCore.target || await crosswordCore.getAddress()}`);
 
-  console.log("Deploying unified contract with the account:", deployer.account.address);
+  console.log("\n2. Deploying CrosswordPrizes...");
+  const CrosswordPrizes = await ethers.getContractFactory("CrosswordPrizes");
+  const crosswordPrizes = await CrosswordPrizes.deploy(await deployer.getAddress());
+  await crosswordPrizes.waitForDeployment();
+  console.log(`✅ CrosswordPrizes deployed at: ${await crosswordPrizes.target || await crosswordPrizes.getAddress()}`);
 
-  // Deploy unified CrosswordBoard contract (now includes all functionality)
-  console.log("\nDeploying unified CrosswordBoard...");
-  const crosswordBoard = await hre.viem.deployContract("CrosswordBoard", [deployer.account.address]);
-  console.log("Unified CrosswordBoard deployed to:", crosswordBoard.address);
+  console.log("\n3. Deploying UserProfiles...");
+  const UserProfiles = await ethers.getContractFactory("UserProfiles");
+  const userProfiles = await UserProfiles.deploy(await deployer.getAddress());
+  await userProfiles.waitForDeployment();
+  console.log(`✅ UserProfiles deployed at: ${await userProfiles.target || await userProfiles.getAddress()}`);
 
-  // Get contract instance to interact with it
-  const crosswordBoardContract = await hre.viem.getContractAt("CrosswordBoard", crosswordBoard.address);
+  console.log("\n4. Deploying ConfigManager...");
+  const ConfigManager = await ethers.getContractFactory("ConfigManager");
+  const configManager = await ConfigManager.deploy(await deployer.getAddress());
+  await configManager.waitForDeployment();
+  console.log(`✅ ConfigManager deployed at: ${await configManager.target || await configManager.getAddress()}`);
 
-  // Add additional admin address
-  const additionalAdmin = "0xA35Dc36B55D9A67c8433De7e790074ACC939f39e";
+  console.log("\n5. Deploying AdminManager...");
+  const AdminManager = await ethers.getContractFactory("AdminManager");
+  const adminManager = await AdminManager.deploy(await deployer.getAddress());
+  await adminManager.waitForDeployment();
+  console.log(`✅ AdminManager deployed at: ${await adminManager.target || await adminManager.getAddress()}`);
 
-  // Check if additional admin is the same as deployer (which it is in this case)
-  console.log("\nChecking if additional admin is deployer...");
-  if (deployer.account.address.toLowerCase() === additionalAdmin.toLowerCase()) {
-    console.log("Additional admin is the same as deployer - they already have admin rights");
-  } else {
-    // Add admin to CrosswordBoard using viem contract
-    console.log("Adding admin to CrosswordBoard:", additionalAdmin);
-    try {
-      const addAdminTx = await crosswordBoardContract.write.addAdmin([additionalAdmin], { account: deployer.account });
-      console.log("✅ Additional admin added to CrosswordBoard");
-    } catch (error) {
-      if (error.message.includes("admin already exists")) {
-        console.log("⚠️  Admin already exists on CrosswordBoard");
-      } else {
-        throw error;
-      }
+  // Deploy CrosswordBoard to coordinate all contracts
+  console.log("\n6. Deploying CrosswordBoard (coordinator)...");
+  const CrosswordBoard = await ethers.getContractFactory("CrosswordBoard");
+  const crosswordBoard = await CrosswordBoard.deploy(
+    await crosswordCore.target || await crosswordCore.getAddress(),
+    await crosswordPrizes.target || await crosswordPrizes.getAddress(),
+    await userProfiles.target || await userProfiles.getAddress(),
+    await configManager.target || await configManager.getAddress(),
+    await adminManager.target || await adminManager.getAddress()
+  );
+  await crosswordBoard.waitForDeployment();
+  console.log(`✅ CrosswordBoard deployed at: ${await crosswordBoard.target || await crosswordBoard.getAddress()}`);
+
+  // Log deployment addresses
+  const coreAddress = await crosswordCore.target || await crosswordCore.getAddress();
+  const prizesAddress = await crosswordPrizes.target || await crosswordPrizes.getAddress();
+  const profilesAddress = await userProfiles.target || await userProfiles.getAddress();
+  const configAddress = await configManager.target || await configManager.getAddress();
+  const adminAddress = await adminManager.target || await adminManager.getAddress();
+  const boardAddress = await crosswordBoard.target || await crosswordBoard.getAddress();
+
+  console.log("\n📋 Deployment Summary:");
+  console.log(`CrosswordCore:      ${coreAddress}`);
+  console.log(`CrosswordPrizes:    ${prizesAddress}`);
+  console.log(`UserProfiles:       ${profilesAddress}`);
+  console.log(`ConfigManager:      ${configAddress}`);
+  console.log(`AdminManager:       ${adminAddress}`);
+  console.log(`CrosswordBoard:     ${boardAddress}`);
+
+  // Optionally configure max winners
+  console.log("\n🔧 Configuring max winners...");
+  try {
+    const currentMaxWinners = await crosswordPrizes.getMaxWinners();
+    console.log(`📊 Current max winners: ${currentMaxWinners}`);
+    
+    // Set default to 5 winners if it's less than 5
+    if (currentMaxWinners < 5) {
+      console.log(`📈 Updating max winners from ${currentMaxWinners} to 5...`);
+      await crosswordPrizes.connect(deployer).setMaxWinners(5);
+      console.log("✅ Max winners updated to 5");
     }
-  }
 
-  // Grant admin role on the unified contract
-  console.log("Granting admin role on unified CrosswordBoard:", additionalAdmin);
-  const { keccak256, toBytes } = require("viem");
-  const adminRole = keccak256(toBytes("ADMIN_ROLE"));
-  try {
-    const grantRoleTx = await crosswordBoardContract.write.grantRole([adminRole, additionalAdmin], { account: deployer.account });
-    console.log("✅ Admin role granted on unified CrosswordBoard");
+    const finalMaxWinners = await crosswordPrizes.getMaxWinners();
+    console.log(`🏆 Final max winners configured: ${finalMaxWinners}`);
   } catch (error) {
-    if (error.message.includes("already granted")) {
-      console.log("⚠️  Admin role already granted on unified CrosswordBoard");
-    } else {
-      throw error;
-    }
+    console.log("⚠️ Could not configure max winners:", error.message);
   }
 
-  console.log("✅ Admin setup completed for unified contract");
-
-  // Get contract ABI from artifact
-  const crosswordBoardArtifact = await hre.artifacts.readArtifact("CrosswordBoard");
-  const crosswordBoardAbi = JSON.stringify(crosswordBoardArtifact.abi);
-
-  // For Sepolia, we'll log the addresses and ABI for manual saving
-  console.log("\n" + "=".repeat(50));
-  console.log("UNIFIED CONTRACT DEPLOYMENT COMPLETED");
-  console.log("=".repeat(50));
-  console.log("Unified CrosswordBoard Address:", crosswordBoard.address);
-  console.log("\nCrosswordBoard ABI:");
-  console.log(JSON.stringify(JSON.parse(crosswordBoardAbi), null, 2));
-
-  // This would be saved to frontend in a real scenario
-  console.log("\n" + "=".repeat(50));
-  console.log("Next steps:");
-  console.log("1. Save this address and ABI to your frontend");
-  console.log("2. Update your frontend contract configuration");
-  console.log("3. Test on Sepolia network");
-  console.log("=".repeat(50));
-
-  // Verify contract (optional, may need API key)
-  try {
-    console.log("\nAttempting to verify contract...");
-    await hre.run("verify:verify", {
-      address: crosswordBoard.address,
-      constructorArguments: [deployer.account.address],
-    });
-    console.log("Unified CrosswordBoard verified successfully");
-  } catch (error) {
-    console.log("Contract verification pending or failed (this is normal for new deployments):", error.message);
-  }
-
-  // Get contract ABI for saving to frontend
-  const abiArtifacts = await hre.artifacts.readArtifact("CrosswordBoard");
-
-  // Save contract address and ABI to frontend
-  console.log("\nSaving contract information to frontend...");
-  try {
-    // Dynamically require the save script
-    const { saveSepoliaDeployment } = require('./save-sepolia-contracts.js');
-    saveSepoliaDeployment(
-      crosswordBoard.address,
-      abiArtifacts.abi
-    );
-    console.log("✅ Contract address and ABI saved to frontend successfully!");
-  } catch (saveError) {
-    console.error("⚠️  Error saving to frontend:", saveError.message);
-    console.log("Please run the save script manually after deployment:");
-    console.log(`node scripts/save-sepolia-contracts.js ${crosswordBoard.address} [ABI_FILE_PATH]`);
-  }
+  console.log("\n🎉 All contracts deployed successfully on Sepolia!");
+  console.log("\n📋 To verify contracts on Etherscan, run these commands:");
+  console.log(`npx hardhat verify --network sepolia ${coreAddress} "${await deployer.getAddress()}"`);
+  console.log(`npx hardhat verify --network sepolia ${prizesAddress} "${await deployer.getAddress()}"`);
+  console.log(`npx hardhat verify --network sepolia ${profilesAddress} "${await deployer.getAddress()}"`);
+  console.log(`npx hardhat verify --network sepolia ${configAddress} "${await deployer.getAddress()}"`);
+  console.log(`npx hardhat verify --network sepolia ${adminAddress} "${await deployer.getAddress()}"`);
+  console.log(`npx hardhat verify --network sepolia ${boardAddress} "${coreAddress}" "${prizesAddress}" "${profilesAddress}" "${configAddress}" "${adminAddress}"`);
 }
 
 main()
   .then(() => process.exit(0))
   .catch((error) => {
-    console.error("Error during deployment:", error);
+    console.error("❌ Deployment failed:", error);
     process.exit(1);
   });

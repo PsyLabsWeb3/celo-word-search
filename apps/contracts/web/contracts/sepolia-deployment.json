@@ -1,8 +1,9 @@
 {
-  "network": "sepolia",
+  "network": "celo-sepolia",
+  "chainId": 11142220,
   "contracts": {
     "CrosswordBoard": {
-      "address": "0x62ADF6a2E788Fbbd66B5da641cAD08Fd96115B8B",
+      "address": "0x1d0742305f4873cea2f9daa36c3f05f572b494a4",
       "abi": [
         {
           "inputs": [
@@ -2159,6 +2160,30 @@
           "type": "receive"
         }
       ]
+    },
+    "CrosswordCore": {
+      "address": "0x822035eee3ad4193b9bd63345b0c8781c4890046",
+      "abi": []
+    },
+    "CrosswordPrizes": {
+      "address": "0xd9110b8eedc6a3a66e951de728fe5be6736a5fee",
+      "abi": []
+    },
+    "UserProfiles": {
+      "address": "0xf3e8054549fd1417dee98431765ac5d2f561afae",
+      "abi": []
+    },
+    "ConfigManager": {
+      "address": "0xe66816a1a31eb735834a97b8c081a04cf0904b97",
+      "abi": []
+    },
+    "AdminManager": {
+      "address": "0x12ad671b61cd76fcb9108cfce5d206ebe7aeea6b",
+      "abi": []
+    },
+    "PublicCrosswordManager": {
+      "address": "0x725f407188619451a969413f02427b63fa0ace1a",
+      "abi": []
     }
   }
 }

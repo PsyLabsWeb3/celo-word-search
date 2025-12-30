@@ -19,6 +19,7 @@ interface HistoricalCrosswordData {
     pfpUrl?: string;
   }[];
   winnerCount?: number;
+  contractAddress?: `0x${string}`; // Added contractAddress to hardcoded data
 }
 
 
@@ -172,6 +173,83 @@ export const HISTORICAL_CROSSWORDS: Record<string, HistoricalCrosswordData> = {
       { user: "0xdd5c9Dd401901975FB96Be84374D5Edc6cBC0f4D", timestamp: 1765122864, durationMs: "1920690", rank: 31, username: "btcethsoll", displayName: "0xsol's profile", pfpUrl: "" },
       { user: "0xB6Bb848A8E00b77698CAb1626C893dc8ddE4927c", timestamp: 1765197085, durationMs: "791221", rank: 32, username: "denissquad", displayName: "Denis squad's profile", pfpUrl: "" },
       { user: "0x89cB36F8B29084E883738A0708f1abc6e4C25c07", timestamp: 1765228779, durationMs: "446325", rank: 33, username: "animelover", displayName: "animelover 🎩🍕's profile", pfpUrl: "" }
+    ]
+  },
+  '0xab63f48abba3c4237ac9994896f334cc08740c0509487f0029ec888d6c98a853': {
+    name: "demo",
+    sponsoredBy: "demo",
+    gridSize: { rows: 8, cols: 10 },
+    timestamp: 1764426543,
+    contractAddress: "0x9057D09e0C9cBb863C002FC0E1Af1098df5B7648",
+    prizePool: "500000000000000000",
+    clues: [{ number: 1, clue: "demo", answer: "DEMO", row: 0, col: 2, direction: "across" }],
+    completions: [
+      { user: "0xA35Dc36B55D9A67c8433De7e790074ACC939f39e", timestamp: 1765334342, durationMs: "1", rank: 1 },
+      { user: "0x110B625990ed8b72AEa7E67f25C79cC8A6BC0CB0", timestamp: 1765334485, durationMs: "2", rank: 2 }
+    ]
+  },
+  // Mainnet - Dec 2025 - "Celo Misc"
+  '0x57a2555794ccf8ea8cd40252998343416dcdb980914df96172c48431b53bc2bc': {
+    name: "Celo Misc",
+    sponsoredBy: "Celo",
+    gridSize: { rows: 10, cols: 10 },
+    timestamp: 1764426544,
+    contractAddress: "0x9057D09e0C9cBb863C002FC0E1Af1098df5B7648",
+    prizePool: "500000000000000000",
+    clues: [
+      { number: 1, clue: "Restaking protocol that extends security to Celo after the chain’s migration to an Ethereum L2.", answer: "EIGENLAYER", row: 0, col: 4, direction: "down" },
+      { number: 2, clue: "Philosophy and movement in the Celo ecosystem focused on regenerative finance (ReFi).", answer: "REGEN", row: 8, col: 3, direction: "across" },
+      { number: 3, clue: "Lightweight client protocol used to sync with the Celo network using minimal data.", answer: "ULTRALIGHT", row: 6, col: 0, direction: "across" }
+    ],
+    completions: [
+      { user: "0x0c9Adb5b5483130F88F10DB4978772986B1E953B", timestamp: 1765435582, durationMs: "1", rank: 1 },
+      { user: "0x3b760888600d71Fac7B87873e21334D89c05a78a", timestamp: 1765482743, durationMs: "2", rank: 2 }
+    ]
+  },
+  // Mainnet - Dec 2025 - "Celo Tech Stack"
+  '0x892812555a65712208a69bd9302e3639d163fed40b9b3fd6d91d137a461a7196': {
+    name: "Celo Tech Stack",
+    sponsoredBy: "CELO",
+    gridSize: { rows: 9, cols: 10 },
+    timestamp: 1764426545,
+    contractAddress: "0x9057D09e0C9cBb863C002FC0E1Af1098df5B7648",
+    prizePool: "150000000000000000000",
+    clues: [
+      { number: 1, clue: "Lightweight app that runs inside Celo-compatible wallets like MiniPay.\n", answer: "MINIAPP", row: 5, col: 0, direction: "across" },
+      { number: 3, clue: "CLI tool that generates starter kits and scaffolds for Celo projects.\n", answer: "COMPOSER", row: 1, col: 0, direction: "across" },
+      { number: 4, clue: "Smart-contract programming language used on Celo smart contracts.", answer: "SOLIDITY", row: 8, col: 1, direction: "across" },
+      { number: 5, clue: "Grant program that funds builders and projects in the Celo ecosystem.", answer: "PREZENTI", row: 0, col: 9, direction: "down" },
+      { number: 6, clue: "Server that provides comprehensive access to the Celo blockchain.", answer: "CELOMCP", row: 1, col: 0, direction: "down" }
+    ],
+    completions: [
+      { user: "0x4F6a8245A9909aa97220581901f285A6f772026A", timestamp: 1765494398, durationMs: "1", rank: 1 },
+      { user: "0xf6C91A0f9102Bf0f5782bf56100c4055b8431aCa", timestamp: 1765504232, durationMs: "2", rank: 2 },
+      { user: "0x2922fe10cCEBDC125bBF86373877049e558D64b7", timestamp: 1765508921, durationMs: "3", rank: 3 },
+      { user: "0x89cB36F8B29084E883738A0708f1abc6e4C25c07", timestamp: 1765509047, durationMs: "4", rank: 4 },
+      { user: "0x359e0a635787c481F3A36B0410B12EAe635a70c0", timestamp: 1765509552, durationMs: "5", rank: 5 },
+      { user: "0x3b760888600d71Fac7B87873e21334D89c05a78a", timestamp: 1765522843, durationMs: "6", rank: 6 },
+      { user: "0x70fdd6Af0376fF7eb84F5117A7C59C6B65cc46ac", timestamp: 1765553482, durationMs: "7", rank: 7 },
+      { user: "0x110B625990ed8b72AEa7E67f25C79cC8A6BC0CB0", timestamp: 1765554582, durationMs: "8", rank: 8 },
+      { user: "0x0c9Adb5b5483130F88F10DB4978772986B1E953B", timestamp: 1765555143, durationMs: "9", rank: 9 },
+      { user: "0x96d821b36768A4e8dBc1b66B721221Fd91F7f936", timestamp: 1765557091, durationMs: "10", rank: 10 }
+    ]
+  },
+  // Mainnet - Dec 2025 - "Web3"
+  '0xe98cfd2fa40f04c0fc64e2052df9abbef667ed402bd7248ce856aaca06a1dcd6': {
+    name: "Web3",
+    sponsoredBy: "Psylabs",
+    gridSize: { rows: 8, cols: 10 },
+    timestamp: 1765867491, // Fixed timestamp from completions
+    contractAddress: "0x9057D09e0C9cBb863C002FC0E1Af1098df5B7648",
+    prizePool: "500000000000000000",
+    clues: [
+      { number: 1, clue: "Tool used to manage keys and sign on-chain transactions.", answer: "WALLET", row: 1, col: 1, direction: "across" },
+      { number: 2, clue: "Digital asset issued on a blockchain.", answer: "TOKEN", row: 1, col: 6, direction: "down" },
+      { number: 3, clue: "Scaling solution that reduces fees on the base layer.", answer: "LAYER2", row: 4, col: 3, direction: "across" }
+    ],
+    completions: [
+      { user: "0xa563Ca4E0ff2236332E2FDfD91fFD96e594749FF", timestamp: 1765867491, durationMs: "1", rank: 1 },
+      { user: "0x527d5F43576b11a3Ccf057D27F4aF20B3496cB4F", timestamp: 1765879256, durationMs: "2", rank: 2 }
     ]
   }
 };

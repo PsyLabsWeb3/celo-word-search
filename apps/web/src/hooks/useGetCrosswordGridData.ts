@@ -59,21 +59,22 @@ export function useGetCrosswordGridData(crosswordId: `0x${string}` | undefined) 
                 { "internalType": "uint256[]", "name": "winnerPercentages", "type": "uint256[]" },
                 { "internalType": "tuple[]", "name": "completions", "type": "tuple[]", "components": [
                   { "internalType": "address", "name": "user", "type": "address" },
-                  { "internalType": "uint256", "name": "timestamp", "type": "uint256" },
-                  { "internalType": "uint256", "name": "rank", "type": "uint256" }
+                  { "internalType": "uint256", "name": "completionTimestamp", "type": "uint256" },
+                  { "internalType": "uint256", "name": "durationMs", "type": "uint256" }
                 ]},
                 { "internalType": "uint256", "name": "activationTime", "type": "uint256" },
                 { "internalType": "uint256", "name": "endTime", "type": "uint256" },
-                { "internalType": "enum CrosswordBoard.CrosswordState", "name": "state", "type": "uint8" },
+                { "internalType": "uint8", "name": "state", "type": "uint8" },
                 { "internalType": "string", "name": "name", "type": "string" },
-                { "internalType": "string", "name": "gridData", "type": "string" }
+                { "internalType": "string", "name": "gridData", "type": "string" },
+                { "internalType": "string", "name": "sponsoredBy", "type": "string" }
               ],
               "stateMutability": "view",
               "type": "function"
             }],
             functionName: 'getCrosswordDetails',
             args: [crosswordId]
-          }) as [string, bigint, bigint[], any[], bigint, bigint, number, string, string];
+          }) as [string, bigint, bigint[], any[], bigint, bigint, number, string, string, string];
 
           const gridDataStr = details[8];
 

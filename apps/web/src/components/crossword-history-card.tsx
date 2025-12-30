@@ -19,6 +19,8 @@ export function CrosswordHistoryCard({
   token,
   prizePool,
   timestamp,
+  contractAddress,
+  coreAddress,
   initialCompletions,
   initialGridData,
   initialName,
@@ -30,6 +32,8 @@ export function CrosswordHistoryCard({
   token: string
   prizePool: bigint
   timestamp?: number
+  contractAddress?: `0x${string}`
+  coreAddress?: `0x${string}`
   initialCompletions?: any[]
   initialGridData?: { clues: any[]; gridSize: { rows: number; cols: number }; name?: string; sponsoredBy?: string }
   initialName?: string
@@ -43,10 +47,10 @@ export function CrosswordHistoryCard({
   // Always fetch completions if not provided (needed to check if user completed for grid display)
   const shouldFetch = !initialCompletions
   
-  const { data: details, isLoading: isDetailsLoading } = useGetCrosswordDetailsById(isExpanded && shouldFetch ? crosswordId : undefined)
-  // Type assertion for details structure: [token, totalPrizePool, winnerPercentages, completions, activationTime, endTime, state, name, gridData, sponsoredBy]
-  type DetailsType = [string, bigint, bigint[], any[], bigint, bigint, number, string, string, string] | undefined;
-  const { data: completionsData, isLoading: isCompletionsLoading } = useGetCrosswordCompletions(shouldFetch ? crosswordId : `0x0000000000000000000000000000000000000000000000000000000000000000`)
+  const { data: details, isLoading: isDetailsLoading } = useGetCrosswordDetailsById(isExpanded && shouldFetch ? crosswordId : undefined, contractAddress)
+  // Type assertion for details structure: [name, sponsoredBy, crosswordData, token, totalPrizePool, maxWinners, winnerPercentages, activationTime, endTime, createdAt, isActive, isCompleted, creator]
+  type DetailsType = [string, string, string, `0x${string}`, bigint, bigint, bigint[], bigint, bigint, bigint, boolean, boolean, `0x${string}`] | undefined;
+  const { completions: completionsData, isLoading: isCompletionsLoading } = useGetCrosswordCompletions(shouldFetch ? crosswordId : `0x0000000000000000000000000000000000000000000000000000000000000000`, coreAddress || contractAddress)
   // Always load grid data for preview (unless provided)
   const { gridData, isLoading: isGridLoading } = useGetCrosswordGridData(!initialGridData ? crosswordId : undefined)
   const { currentCrossword } = useCrossword()
@@ -55,7 +59,7 @@ export function CrosswordHistoryCard({
   const [customLimit, setCustomLimit] = useState<number | null>(null)
 
   // Determine number of winners based on winnerPercentages length or initial count
-  const winnerCount = initialWinnerCount ?? (details && Array.isArray(details) && details[2] ? (details[2] as any[]).length : 3)
+  const winnerCount = initialWinnerCount ?? (details && Array.isArray(details) && details[6] ? (details[6] as any[]).length : 3)
 
   // Calculate effective limit: use custom limit if set, otherwise default to winner count
   const visibleCompletions = customLimit ?? winnerCount
@@ -80,9 +84,9 @@ export function CrosswordHistoryCard({
 
   const effectiveGridData = initialGridData || gridData || contextGridData
   // Extract name from all possible sources (added initialName prop as priority)
-  const crosswordName = initialName || initialGridData?.name || (effectiveGridData && (effectiveGridData as any).name) || (details && (details as any)[7])
-  // Extract sponsoredBy from all possible sources (position 9 in details array) (added initialSponsoredBy prop as priority)
-  const crosswordSponsoredBy = initialSponsoredBy || initialGridData?.sponsoredBy || (effectiveGridData && (effectiveGridData as any).sponsoredBy) || (details && (details as any)[9])
+  const crosswordName = initialName || initialGridData?.name || (effectiveGridData && (effectiveGridData as any).name) || (details ? (details as DetailsType)?.[0] : undefined)
+  // Extract sponsoredBy from all possible sources (position 1 in details array) (added initialSponsoredBy prop as priority)
+  const crosswordSponsoredBy = initialSponsoredBy || initialGridData?.sponsoredBy || (effectiveGridData && (effectiveGridData as any).sponsoredBy) || (details ? (details as DetailsType)?.[1] : undefined)
 
   const formatDate = (ts: number) => {
     const date = new Date(ts * 1000)
@@ -96,7 +100,7 @@ export function CrosswordHistoryCard({
   }
 
   // Use prize pool from details if available, otherwise use prop
-  const effectivePrizePool = details && Array.isArray(details) && (details as any)[1] ? (details as any)[1] : prizePool
+  const effectivePrizePool = details && Array.isArray(details) && (details as any)[4] ? (details as any)[4] : prizePool
 
   const formatPrizePool = (amount: bigint) => {
     const formatted = Number(amount) / 1e18
@@ -154,8 +158,12 @@ export function CrosswordHistoryCard({
     return userAddress.toLowerCase() === address?.toLowerCase()
   })
 
-  // Only hide grid for current crossword if user hasn't completed it
-  const shouldShowGrid = !isCurrentCrossword || userHasCompleted
+  // Extract isGlobalCompleted from details
+  const isGlobalCompleted = details ? (details as any)[11] : false;
+
+  // Only hide grid for active crossword if user hasn't completed it
+  // If it's globally completed (all winners found) or it's a legacy/historical crossword, show it to everyone in history
+  const shouldShowGrid = isLegacy || !isCurrentCrossword || userHasCompleted || isGlobalCompleted;
 
   return (
     <Card className="border-4 border-black bg-card shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none">

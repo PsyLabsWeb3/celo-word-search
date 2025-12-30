@@ -77,6 +77,7 @@ contract CrosswordCore is Ownable, AccessControl, ReentrancyGuard, Pausable {
     }
 
     function completeCrossword(
+        bytes32 crosswordId,
         uint256 durationMs,
         string calldata username,
         string calldata displayName,
@@ -84,7 +85,6 @@ contract CrosswordCore is Ownable, AccessControl, ReentrancyGuard, Pausable {
         bytes calldata signature
     ) external nonReentrant whenNotPaused {
         ValidationLib.validateNonZeroAddress(msg.sender, ErrorMessages.INVALID_SENDER);
-        bytes32 crosswordId = currentCrosswordId;
         require(!hasCompletedCrossword[crosswordId][msg.sender], ErrorMessages.ALREADY_COMPLETED);
         require(crosswordId != bytes32(0), ErrorMessages.NO_CROSSWORD);
         ValidationLib.validateGreaterThanZero(durationMs, ErrorMessages.DURATION_GT_ZERO);
@@ -122,6 +122,56 @@ contract CrosswordCore is Ownable, AccessControl, ReentrancyGuard, Pausable {
         });
 
         emit CrosswordCompleted(crosswordId, msg.sender, block.timestamp, durationMs);
+    }
+
+    function completeCrosswordForUser(
+        address user,
+        bytes32 crosswordId,
+        uint256 durationMs,
+        string calldata username,
+        string calldata displayName,
+        string calldata pfpUrl,
+        bytes calldata signature
+    ) external nonReentrant whenNotPaused {
+        ValidationLib.validateNonZeroAddress(user, ErrorMessages.INVALID_SENDER);
+        require(!hasCompletedCrossword[crosswordId][user], ErrorMessages.ALREADY_COMPLETED);
+        require(crosswordId != bytes32(0), ErrorMessages.NO_CROSSWORD);
+        ValidationLib.validateGreaterThanZero(durationMs, ErrorMessages.DURATION_GT_ZERO);
+
+        ValidationLib.validateStringLengthMin(username, 1, ErrorMessages.INVALID_USERNAME);
+        ValidationLib.validateStringLengthMax(username, CommonConstants.MAX_USERNAME_LENGTH, ErrorMessages.INVALID_USERNAME);
+
+        ValidationLib.validateStringLengthMin(displayName, 1, ErrorMessages.INVALID_DISPLAY_NAME);
+        ValidationLib.validateStringLengthMax(displayName, CommonConstants.MAX_DISPLAYNAME_LENGTH, ErrorMessages.INVALID_DISPLAY_NAME);
+
+        ValidationLib.validateStringLengthMax(pfpUrl, CommonConstants.MAX_PFPURL_LENGTH, ErrorMessages.PFPURL_TOO_LONG);
+
+        address _signer = signer;
+        ValidationLib.validateNonZeroAddress(_signer, ErrorMessages.SIGNER_NOT_SET);
+
+        // Hashing the user, specific crossword, duration, and this contract's address
+        bytes32 messageHash = keccak256(abi.encodePacked(user, crosswordId, durationMs, address(this)));
+
+        CryptoLib.recoverSigner(messageHash, signature, _signer, ErrorMessages.INVALID_SIGNATURE);
+
+        require(crosswordCompletions[crosswordId].length < CommonConstants.MAX_COMPLETIONS_PER_CROSSWORD, ErrorMessages.MAX_COMPLETIONS);
+
+        crosswordCompletions[crosswordId].push(CrosswordCompletion({
+            user: user,
+            completionTimestamp: block.timestamp,
+            durationMs: durationMs
+        }));
+
+        hasCompletedCrossword[crosswordId][user] = true;
+
+        userProfiles[user] = UserProfile({
+            username: username,
+            displayName: displayName,
+            pfpUrl: pfpUrl,
+            timestamp: block.timestamp
+        });
+
+        emit CrosswordCompleted(crosswordId, user, block.timestamp, durationMs);
     }
 
     function getCrosswordCompletions(bytes32 crosswordId) external view returns (CrosswordCompletion[] memory) {
