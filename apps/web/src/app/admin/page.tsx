@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Plus, Trash2, Save, AlertCircle, Upload, RefreshCw, Settings, Banknote, Copy, Check } from "lucide-react"
 import { useAccount } from "wagmi"
 import { toast } from "sonner"
-import { useIsAdmin, useSetCrossword, useGetMaxWinnersConfig, useSetConfig, useCreateCrosswordWithPrizePool, useCreateCrosswordWithNativeCELOPrizePool, useActivateCrossword, useGetCrosswordDetails, useCrosswordPrizesDetails } from "@/hooks/useContract"
+import { useIsAdmin, useCreatePublicCrossword, useCreatePublicCrosswordWithPrizePool, useCreatePublicCrosswordWithNativeCELOPrizePool, useActivateCrossword, useCrosswordPrizesDetails } from "@/hooks/useContract"
 import { useCrossword } from "@/contexts/crossword-context"
 import { useQueryClient } from "@tanstack/react-query"
 import { CeloNetworkButton } from "@/components/celo-network-button"
@@ -32,11 +32,13 @@ interface CrosswordData {
 export default function AdminPage() {
   const { address, isConnected } = useAccount();
   const { data: isAdminData, isLoading: isAdminLoading } = useIsAdmin();
-  const { setCrossword, isLoading: isSetCrosswordLoading, isSuccess, isError, error, txHash, contractAddress } = useSetCrossword();
-  const { data: maxWinnersConfigData, isLoading: isMaxWinnersConfigLoading, refetch: refetchMaxWinnersConfig } = useGetMaxWinnersConfig();
-  const { setMaxWinnersConfig, isLoading: isConfigUpdateLoading } = useSetConfig();
-  const { createCrosswordWithPrizePool, isLoading: isCreatingWithPrizePool } = useCreateCrosswordWithPrizePool();
-  const { createCrosswordWithNativeCELOPrizePool, isLoading: isCreatingWithNativeCELOPrizePool } = useCreateCrosswordWithNativeCELOPrizePool();
+  const { createPublicCrossword, isLoading: isSetCrosswordLoading, isSuccess, isError, error, txHash, contractAddress } = useCreatePublicCrossword();
+  // Config hooks removed as they are no longer available/needed
+  // const { data: maxWinnersConfigData... } = useGetMaxWinnersConfig();
+  // const { setMaxWinnersConfig... } = useSetConfig();
+  
+  const { createPublicCrosswordWithPrizePool, isLoading: isCreatingWithPrizePool } = useCreatePublicCrosswordWithPrizePool();
+  const { createPublicCrosswordWithNativeCELOPrizePool, isLoading: isCreatingWithNativeCELOPrizePool } = useCreatePublicCrosswordWithNativeCELOPrizePool();
   const { activateCrossword, isLoading: isActivatingCrossword } = useActivateCrossword();
   const { currentCrossword, refetchCrossword } = useCrossword(); // Added to refetch after saving
   const queryClient = useQueryClient();
@@ -99,24 +101,9 @@ export default function AdminPage() {
     }
   }, [currentCrossword]);
 
-  // Load configuration values when available and refetch on mount
-  useEffect(() => {
-    if (maxWinnersConfigData !== undefined) {
-      const newMaxWinners = Number(maxWinnersConfigData);
-      setMaxWinners(newMaxWinners);
-    }
-  }, [maxWinnersConfigData]);
-
-  // Refetch configuration on component mount to ensure fresh data
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (refetchMaxWinnersConfig) {
-        refetchMaxWinnersConfig();
-      }
-    }, 1000); // Small delay to ensure contract is ready
-
-    return () => clearTimeout(timer);
-  }, [refetchMaxWinnersConfig]);
+  // Configuration effects removed
+  
+  // Initialize with empty state - no saved data from localStorage anymore
 
   // Adjust winner percentages when max winners changes
   useEffect(() => {
@@ -372,7 +359,7 @@ export default function AdminPage() {
         // Call the blockchain function to create crossword with prize pool
         if (tokenAddress === "0x0000000000000000000000000000000000000000") {
           // Use native CELO function
-          createCrosswordWithNativeCELOPrizePool([
+          createPublicCrosswordWithNativeCELOPrizePool([
             crosswordId as `0x${string}`,
             crosswordName || "Daily Crossword",
             dataString,
@@ -384,7 +371,7 @@ export default function AdminPage() {
           ], amountInWei);
         } else {
           // Use ERC-20 token function
-          createCrosswordWithPrizePool([
+          createPublicCrosswordWithPrizePool([
             crosswordId as `0x${string}`,
             crosswordName || "Daily Crossword",
             dataString,
@@ -423,13 +410,13 @@ export default function AdminPage() {
           crosswordId = `0x${Date.now().toString(16)}${Math.random().toString(16).substr(2)}`;
         }
 
-        // First set the crossword
-        setCrossword([crosswordId as `0x${string}`, dataString]);
-
-        // Then set the max winners configuration if the function is available
-        if (setMaxWinnersConfig) {
-          setMaxWinnersConfig([BigInt(maxWinners)]);
-        }
+        // Create the public crossword
+        createPublicCrossword([
+            crosswordId as `0x${string}`,
+            crosswordName || "Daily Crossword",
+            dataString,
+            sponsoredBy || ""
+        ]);
 
       } catch (error) {
         alert("Error saving crossword to blockchain: " + (error instanceof Error ? error.message : "Unknown error"));

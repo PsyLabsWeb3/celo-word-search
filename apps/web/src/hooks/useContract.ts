@@ -841,23 +841,29 @@ const useGenericCreateCrossword = (functionName: string) => {
     isSuccess: isConfirmed,
     isError: isConfirmError || isWriteError,
     error: confirmError || writeError,
+    contractAddress: contractConfig.address,
     txHash: hash,
   };
 };
 
 export const useCreatePublicCrossword = () => {
-    const { createCrossword, ...rest } = useGenericCreateCrossword('createPublicCrossword');
+    const { createCrossword, ...rest } = useGenericCreateCrossword('createCrossword');
     return { createPublicCrossword: createCrossword, ...rest };
 };
 
 export const useCreatePublicCrosswordWithPrizePool = () => {
-    const { createCrossword, ...rest } = useGenericCreateCrossword('createPublicCrosswordWithPrizePool');
+    const { createCrossword, ...rest } = useGenericCreateCrossword('createCrosswordWithPrizePool');
     return { createPublicCrosswordWithPrizePool: createCrossword, ...rest };
 };
 
 export const useCreatePublicCrosswordWithNativeCELOPrizePool = () => {
-    const { createCrossword, ...rest } = useGenericCreateCrossword('createPublicCrosswordWithNativeCELOPrizePool');
+    const { createCrossword, ...rest } = useGenericCreateCrossword('createCrosswordWithNativeCELOPrizePool');
     return { createPublicCrosswordWithNativeCELOPrizePool: createCrossword, ...rest };
+};
+
+export const useActivateCrossword = () => {
+    const { createCrossword, ...rest } = useGenericCreateCrossword('activateCrossword');
+    return { activateCrossword: createCrossword, ...rest };
 };
 
 export const useGetCrosswordDetailsById = (crosswordId: `0x${string}` | undefined, overrideContractAddress?: `0x${string}`) => {
