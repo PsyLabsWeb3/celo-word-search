@@ -563,7 +563,7 @@ export default function AdminPage() {
   // State to track the current crossword ID and details
   const [currentCrosswordId, setCurrentCrosswordId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState(false);
-  const { data: crosswordDetails, isLoading: isCrosswordDetailsLoading, refetch: refetchCrosswordDetails } = useCrosswordPrizesDetails(currentCrosswordId ? currentCrosswordId as `0x${string}` : undefined);
+  const { prizeDetails: crosswordDetails, isLoading: isCrosswordDetailsLoading, refetch: refetchCrosswordDetails } = useCrosswordPrizesDetails(currentCrosswordId ? currentCrosswordId as `0x${string}` : undefined);
 
   // Function to copy crossword ID to clipboard
   const copyCrosswordIdToClipboard = async () => {
