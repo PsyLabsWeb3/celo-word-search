@@ -14,6 +14,7 @@ A decentralized crossword game built on the Celo blockchain for educational purp
 - [Usage](#usage)
 - [Development](#development)
 - [Deployment](#deployment)
+- [Deployed Contracts](#deployed-contracts)
 - [Contributing](#contributing)
 - [Security](#security)
 - [License](#license)
@@ -37,6 +38,7 @@ Celo Crossword is a decentralized application (DApp) that enables users to solve
 - **Leaderboard**: Supabase-backed rankings
 - **Admin Panel**: Control over crossword content
 - **Farcaster Integration**: Ready for Farcaster frames
+- **Modular Architecture**: Separated contracts for better maintainability and security
 
 ## Architecture
 
@@ -57,9 +59,15 @@ Crossword Board is a DApp built on the Celo blockchain that enables users to com
 ┌─────────────────────────────────────┐
 │           Blockchain Layer          │
 ├─────────────────────────────────────┤
-│ • Celo Sepolia Testnet              │
-│ • Contract: CrosswordBoard          │
-│ • ABI dynamic (imported in hooks)   │
+│ • Celo Mainnet & Sepolia Testnet    │
+│ • Modularized Contracts             │
+│ • CrosswordBoard (Coordinator)      │
+│ • CrosswordCore (Game Logic)        │
+│ • CrosswordPrizes (Prize Logic)     │
+│ • UserProfiles (User Data)          │
+│ • ConfigManager (Configuration)     │
+│ • AdminManager (Admin Functions)    │
+│ • PublicCrosswordManager            │
 └─────────────────────────────────────┘
                    │
                    ▼
@@ -69,18 +77,28 @@ Crossword Board is a DApp built on the Celo blockchain that enables users to com
 │ • Hardhat (development)              │
 │ • Viem (contract interaction)        │
 │ • Wagmi (wallet integration)         │
+│ • Supabase (leaderboard)            │
 └─────────────────────────────────────┘
 ```
 
 ### Technology Stack:
 - **Frontend**: Next.js 14+, React 18+, TypeScript
-- **Blockchain**: Celo Sepolia, Solidity 0.8.28
+- **Blockchain**: Celo Mainnet & Sepolia, Solidity 0.8.28
 - **Web3**: Wagmi, Viem 2.x, Hardhat
 - **Styling**: Tailwind CSS, shadcn/ui
 - **Infrastructure**: Celo Forum Nodes
 - **Database**: Supabase for leaderboard
 
-### Smart Contract: `CrosswordBoard.sol`
+### Modular Smart Contracts Architecture:
+
+#### Main Contracts:
+- **CrosswordBoard**: Main coordinator contract that connects all modules
+- **CrosswordCore**: Handles crossword game logic and completions
+- **CrosswordPrizes**: Manages prize distribution and token handling
+- **UserProfiles**: Stores user profile information (username, display name, etc.)
+- **ConfigManager**: Manages configuration parameters
+- **AdminManager**: Handles admin role management
+- **PublicCrosswordManager**: Manages public crossword creation
 
 #### Main Data Structures:
 
@@ -260,12 +278,30 @@ cd apps/web
 2. **Set up environment variables** with your private key
 3. **Deploy contracts**
 ```bash
-npx hardhat run scripts/deploy-sepolia.js --network sepolia
+pnpm deploy:sepolia
 ```
 
-4. **Automatic frontend update**: The deployment script will automatically save the deployed addresses and ABIs to the frontend configuration files.
+### Deploying Contracts to Celo Mainnet
 
-5. **Manual verification**: Check the saved files in `apps/web/contracts/` to confirm all addresses and ABIs are properly configured
+1. **Configure Mainnet in hardhat.config.ts**
+2. **Set up environment variables** with your private key
+3. **Deploy contracts**
+```bash
+pnpm deploy:mainnet
+```
+
+### Available Deployment Scripts
+
+- `pnpm deploy:sepolia` - Deploy to Celo Sepolia testnet with automatic verification
+- `pnpm deploy:mainnet` - Deploy to Celo Mainnet with automatic verification
+
+Both scripts will:
+- Compile contracts
+- Deploy all modularized contracts
+- Configure contracts with proper roles
+- Update frontend configuration files
+- Verify contracts on Sourcify
+- Show contract addresses with explorer links
 
 ### Deploying Frontend
 
@@ -273,6 +309,28 @@ The frontend can be deployed to:
 - Vercel (recommended for Next.js)
 - Netlify
 - Any static hosting service
+
+## Deployed Contracts
+
+### Celo Mainnet
+- **CrosswordBoard**: `0x7b841c609d95cbafe0771d4a05d2c0415922737b` ([View on CeloScan](https://celoscan.io/address/0x7b841c609d95cbafe0771d4a05d2c0415922737b))
+- **CrosswordCore**: `0x7b79e1cb9a344cf8856b4db1131bf65fb6a6fba2` ([View on CeloScan](https://celoscan.io/address/0x7b79e1cb9a344cf8856b4db1131bf65fb6a6fba2))
+- **CrosswordPrizes**: `0x754b33d8aded1c6bf4821ea68158c42b434d781f` ([View on CeloScan](https://celoscan.io/address/0x754b33d8aded1c6bf4821ea68158c42b434d781f))
+- **UserProfiles**: `0x4019cd85790a2706b0fc3bd9845c2c16742af0e5` ([View on CeloScan](https://celoscan.io/address/0x4019cd85790a2706b0fc3bd9845c2c16742af0e5))
+- **ConfigManager**: `0x321dcef35e3da483304226ac679b8898c4ee0807` ([View on CeloScan](https://celoscan.io/address/0x321dcef35e3da483304226ac679b8898c4ee0807))
+- **AdminManager**: `0x8944ffc503388174aff351cb1c6f87958d6e5bb3` ([View on CeloScan](https://celoscan.io/address/0x8944ffc503388174aff351cb1c6f87958d6e5bb3))
+- **PublicCrosswordManager**: `0xdc2b0c154f48c7e235872208a6f3093647a236a7` ([View on CeloScan](https://celoscan.io/address/0xdc2b0c154f48c7e235872208a6f3093647a236a7))
+
+### Celo Sepolia Testnet
+- **CrosswordBoard**: `0xdf57dbd62dbbc4187536ebdd4555df07ae3b68b0` ([View on SepoliaScan](https://sepolia.celoscan.io/address/0xdf57dbd62dbbc4187536ebdd4555df07ae3b68b0))
+- **CrosswordCore**: `0x26a749edcf8d44a4322e964b3bed619236425af7` ([View on SepoliaScan](https://sepolia.celoscan.io/address/0x26a749edcf8d44a4322e964b3bed619236425af7))
+- **CrosswordPrizes**: `0xa17fe3bcb6e126e55ce7d1573191dba62b9c408e` ([View on SepoliaScan](https://sepolia.celoscan.io/address/0xa17fe3bcb6e126e55ce7d1573191dba62b9c408e))
+- **UserProfiles**: `0x2712396e8c09f0a0a506773523f31b354322e650` ([View on SepoliaScan](https://sepolia.celoscan.io/address/0x2712396e8c09f0a0a506773523f31b354322e650))
+- **ConfigManager**: `0x0cee101c98be2e855232e2cafc7c8f97108fa52e` ([View on SepoliaScan](https://sepolia.celoscan.io/address/0x0cee101c98be2e855232e2cafc7c8f97108fa52e))
+- **AdminManager**: `0x86c634260bdc44a0357b674c6ce6d9e42af2b93c` ([View on SepoliaScan](https://sepolia.celoscan.io/address/0x86c634260bdc44a0357b674c6ce6d9e42af2b93c))
+- **PublicCrosswordManager**: `0x67d0f17bff5286e408871f7a61ba616715036166` ([View on SepoliaScan](https://sepolia.celoscan.io/address/0x67d0f17bff5286e408871f7a61ba616715036166))
+
+All contracts are verified on Sourcify for transparency and auditability.
 
 ## Contributing
 
@@ -310,6 +368,8 @@ Please follow our Code of Conduct to ensure a welcoming environment for all cont
 - Access control is implemented using OpenZeppelin's AccessControl
 - Reentrancy protection is implemented where necessary
 - Proper validation of inputs and state changes
+- Modular architecture for better security isolation
+- All contracts are verified on Sourcify for transparency
 
 ### Best Practices
 

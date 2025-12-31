@@ -53,28 +53,28 @@ const CONTRACTS = {
   [celoSepolia.id]: {
     // Modularized contract addresses for the new architecture
     CrosswordBoard: {
-      address: "0xd262287e7b90f9cee16cd214713edce62796b437",
+      address: "0xdf57dbd62dbbc4187536ebdd4555df07ae3b68b0",
     },
     CrosswordCore: {
-      address: "0x05fa0ac5588385bdbf1c4e50f1dc0ce979a90519",
+      address: "0x26a749edcf8d44a4322e964b3bed619236425af7",
     },
     CrosswordPrizes: {
-      address: "0xf2f327f2eef8b379ce897748bce2af37db63f6b1",
+      address: "0xa17fe3bcb6e126e55ce7d1573191dba62b9c408e",
     },
     UserProfiles: {
-      address: "0x513adc639d82d4f7c5ef007d156c39de59f05f7b",
+      address: "0x2712396e8c09f0a0a506773523f31b354322e650",
     },
     ConfigManager: {
-      address: "0xdf8994682c97e7add22cb026773a6874f8d78369",
+      address: "0x0cee101c98be2e855232e2cafc7c8f97108fa52e",
     },
     AdminManager: {
-      address: "0x8744d55f757600872a07e63abdf87c7b4ab223f8",
+      address: "0x86c634260bdc44a0357b674c6ce6d9e42af2b93c",
     },
     PublicCrosswordManager: {
-      address: "0xfdd128cb3857bd0f204c998023ee9646fa1bd803",
+      address: "0x67d0f17bff5286e408871f7a61ba616715036166",
     },
     BoardHistory: [
-      "0xd262287e7b90f9cee16cd214713edce62796b437" // Current Sepolia contract
+      "0xdf57dbd62dbbc4187536ebdd4555df07ae3b68b0" // Current Sepolia contract
     ]
   },
   [sepolia.id]: {

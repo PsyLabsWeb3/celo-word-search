@@ -1,0 +1,34 @@
+{
+  "network": "mainnet",
+  "chainId": 42220,
+  "contracts": {
+    "CrosswordBoard": {
+      "address": "0x7b841c609d95cbafe0771d4a05d2c0415922737b",
+      "abi": []
+    },
+    "CrosswordCore": {
+      "address": "0x7b79e1cb9a344cf8856b4db1131bf65fb6a6fba2",
+      "abi": []
+    },
+    "CrosswordPrizes": {
+      "address": "0x754b33d8aded1c6bf4821ea68158c42b434d781f",
+      "abi": []
+    },
+    "UserProfiles": {
+      "address": "0x4019cd85790a2706b0fc3bd9845c2c16742af0e5",
+      "abi": []
+    },
+    "ConfigManager": {
+      "address": "0x321dcef35e3da483304226ac679b8898c4ee0807",
+      "abi": []
+    },
+    "AdminManager": {
+      "address": "0x8944ffc503388174aff351cb1c6f87958d6e5bb3",
+      "abi": []
+    },
+    "PublicCrosswordManager": {
+      "address": "0xdc2b0c154f48c7e235872208a6f3093647a236a7",
+      "abi": []
+    }
+  }
+}
