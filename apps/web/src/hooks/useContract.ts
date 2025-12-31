@@ -13,6 +13,8 @@ import PublicCrosswordManagerArtifact from '@/lib/abis/PublicCrosswordManager.js
 import AdminManagerArtifact from '@/lib/abis/AdminManager.json';
 import { useCallback } from 'react';
 
+const ZERO_BYTES32 = '0x0000000000000000000000000000000000000000000000000000000000000000';
+
 // Define Celo Sepolia chain
 const celoSepolia = defineChain({
   id: 11142220,
@@ -137,7 +139,7 @@ export const useGetCrosswordCompletions = (crosswordId: `0x${string}`, overrideC
     args: [crosswordId],
     chainId: chainId,
     query: {
-      enabled: !!crosswordId && !!address && targetAddress !== '0x0000000000000000000000000000000000000000',
+      enabled: !!crosswordId && crosswordId !== ZERO_BYTES32 && !!address && targetAddress !== '0x0000000000000000000000000000000000000000',
       staleTime: 0, // Always refetch on mount to ensure fresh data
     }
   });
@@ -175,7 +177,7 @@ export const useCrosswordPrizesDetails = (crosswordId: `0x${string}` | undefined
     args: crosswordId ? [crosswordId] : undefined,
     chainId: chainId,
     query: {
-      enabled: !!crosswordId && contractConfig.address !== '0x0000000000000000000000000000000000000000',
+      enabled: !!crosswordId && crosswordId !== ZERO_BYTES32 && contractConfig.address !== '0x0000000000000000000000000000000000000000',
       staleTime: 0, // Always refetch on mount
     }
   });
@@ -225,7 +227,7 @@ export const useUnifiedCrosswordPrizes = (crosswordId: `0x${string}` | undefined
     args: crosswordId ? [crosswordId] : undefined,
     chainId: chainId,
     query: {
-      enabled: !!crosswordId && !isPublic && prizesConfig.address !== '0x0000000000000000000000000000000000000000' && !!prizesConfig.abi,
+      enabled: !!crosswordId && crosswordId !== ZERO_BYTES32 && !isPublic && prizesConfig.address !== '0x0000000000000000000000000000000000000000' && !!prizesConfig.abi,
       staleTime: 0,
     }
   });
@@ -238,7 +240,7 @@ export const useUnifiedCrosswordPrizes = (crosswordId: `0x${string}` | undefined
     args: crosswordId ? [crosswordId] : undefined,
     chainId: chainId,
     query: {
-      enabled: !!crosswordId && isPublic && publicManagerConfig.address !== '0x0000000000000000000000000000000000000000' && !!publicManagerConfig.abi,
+      enabled: !!crosswordId && crosswordId !== ZERO_BYTES32 && isPublic && publicManagerConfig.address !== '0x0000000000000000000000000000000000000000' && !!publicManagerConfig.abi,
       staleTime: 0,
     }
   });
@@ -251,7 +253,7 @@ export const useUnifiedCrosswordPrizes = (crosswordId: `0x${string}` | undefined
     args: crosswordId ? [crosswordId] : undefined,
     chainId: chainId,
     query: {
-      enabled: !!crosswordId && isPublic && prizesConfig.address !== '0x0000000000000000000000000000000000000000' && !!prizesConfig.abi,
+      enabled: !!crosswordId && crosswordId !== ZERO_BYTES32 && isPublic && prizesConfig.address !== '0x0000000000000000000000000000000000000000' && !!prizesConfig.abi,
       staleTime: 0,
     }
   });
@@ -474,7 +476,7 @@ export const useGetPublicCrosswordDetails = (crosswordId: `0x${string}` | undefi
         args: crosswordId ? [crosswordId] : undefined,
         chainId: chainId,
         query: {
-            enabled: !!crosswordId && targetManagerAddress !== '0x0000000000000000000000000000000000000000',
+            enabled: !!crosswordId && crosswordId !== ZERO_BYTES32 && targetManagerAddress !== '0x0000000000000000000000000000000000000000',
             staleTime: 1000 * 60 * 5,
         }
     });
@@ -487,7 +489,7 @@ export const useGetPublicCrosswordDetails = (crosswordId: `0x${string}` | undefi
         args: crosswordId ? [crosswordId] : undefined,
         chainId: chainId,
         query: {
-            enabled: !!crosswordId && targetPrizesAddress !== '0x0000000000000000000000000000000000000000',
+            enabled: !!crosswordId && crosswordId !== ZERO_BYTES32 && targetPrizesAddress !== '0x0000000000000000000000000000000000000000',
             staleTime: 1000 * 60 * 5,
         }
     });
@@ -551,7 +553,7 @@ export const useUserCompletedCrossword = (crosswordId: `0x${string}`, userAddres
         args: [crosswordId, userAddress],
         chainId: chainId,
         query: {
-            enabled: !!crosswordId && !!userAddress && userAddress !== '0x0000000000000000000000000000000000000000' && contractConfig.address !== '0x0000000000000000000000000000000000000000',
+            enabled: !!crosswordId && crosswordId !== ZERO_BYTES32 && !!userAddress && userAddress !== '0x0000000000000000000000000000000000000000' && contractConfig.address !== '0x0000000000000000000000000000000000000000',
             staleTime: 1000 * 60 * 5, // 5 minutes
         }
     });
