@@ -3,7 +3,7 @@
   "chainId": 11142220,
   "contracts": {
     "CrosswordBoard": {
-      "address": "0x1d0742305f4873cea2f9daa36c3f05f572b494a4",
+      "address": "0x99a4cf0af02474e0a57c01183995b4a16a2418cf",
       "abi": [
         {
           "inputs": [
@@ -2162,27 +2162,27 @@
       ]
     },
     "CrosswordCore": {
-      "address": "0x822035eee3ad4193b9bd63345b0c8781c4890046",
+      "address": "0x9d91213d9aff0ea8155eb81fb605ec38266454f8",
       "abi": []
     },
     "CrosswordPrizes": {
-      "address": "0xd9110b8eedc6a3a66e951de728fe5be6736a5fee",
+      "address": "0x2ab3e51cbac0a1da7e3788219e391933eaed4d6a",
       "abi": []
     },
     "UserProfiles": {
-      "address": "0xf3e8054549fd1417dee98431765ac5d2f561afae",
+      "address": "0x72131f7d0a6a45febfdde5230d9465abb0a2b495",
       "abi": []
     },
     "ConfigManager": {
-      "address": "0xe66816a1a31eb735834a97b8c081a04cf0904b97",
+      "address": "0xbc9f5d6422fc49fca5e4ef3c01070c6deeb87e24",
       "abi": []
     },
     "AdminManager": {
-      "address": "0x12ad671b61cd76fcb9108cfce5d206ebe7aeea6b",
+      "address": "0x48898cf786b0936e1270bf0e652dc4a9187be306",
       "abi": []
     },
     "PublicCrosswordManager": {
-      "address": "0x725f407188619451a969413f02427b63fa0ace1a",
+      "address": "0x44541bab1c6c5cab0d9780b6047a5f2042fa9818",
       "abi": []
     }
   }

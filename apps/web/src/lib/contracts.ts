@@ -17,6 +17,22 @@ const celoSepolia = defineChain({
   testnet: true,
 });
 
+// Define Ethereum Sepolia chain
+const sepolia = defineChain({
+  id: 11155111, // Ethereum Sepolia testnet chain ID
+  name: 'Sepolia',
+  nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
+  rpcUrls: {
+    default: {
+      http: ['https://ethereum-sepolia-rpc.publicnode.com'],
+    },
+  },
+  blockExplorers: {
+    default: { name: 'Etherscan', url: 'https://sepolia.etherscan.io' },
+  },
+  testnet: true,
+});
+
 // Contract configuration - addresses from the latest successful deployment
 const CONTRACTS = {
   [celo.id]: {
@@ -37,29 +53,54 @@ const CONTRACTS = {
   [celoSepolia.id]: {
     // Modularized contract addresses for the new architecture
     CrosswordBoard: {
-      address: "0x1d0742305f4873cea2f9daa36c3f05f572b494a4",
+      address: "0xd262287e7b90f9cee16cd214713edce62796b437",
     },
     CrosswordCore: {
-      address: "0x822035eee3ad4193b9bd63345b0c8781c4890046",
+      address: "0x05fa0ac5588385bdbf1c4e50f1dc0ce979a90519",
     },
     CrosswordPrizes: {
-      address: "0xd9110b8eedc6a3a66e951de728fe5be6736a5fee",
+      address: "0xf2f327f2eef8b379ce897748bce2af37db63f6b1",
     },
     UserProfiles: {
-      address: "0xf3e8054549fd1417dee98431765ac5d2f561afae",
+      address: "0x513adc639d82d4f7c5ef007d156c39de59f05f7b",
     },
     ConfigManager: {
-      address: "0xe66816a1a31eb735834a97b8c081a04cf0904b97",
+      address: "0xdf8994682c97e7add22cb026773a6874f8d78369",
     },
     AdminManager: {
-      address: "0x12ad671b61cd76fcb9108cfce5d206ebe7aeea6b",
+      address: "0x8744d55f757600872a07e63abdf87c7b4ab223f8",
     },
     PublicCrosswordManager: {
-      address: "0x725f407188619451a969413f02427b63fa0ace1a",
+      address: "0xfdd128cb3857bd0f204c998023ee9646fa1bd803",
     },
     BoardHistory: [
-      "0x1d0742305f4873cea2f9daa36c3f05f572b494a4" // Current Sepolia contract
+      "0xd262287e7b90f9cee16cd214713edce62796b437" // Current Sepolia contract
     ]
+  },
+  [sepolia.id]: {
+    // Ethereum Sepolia - Modularized contract addresses
+    CrosswordBoard: {
+      address: "0x0000000000000000000000000000000000000000", // To be updated by deployment script
+    },
+    CrosswordCore: {
+      address: "0x0000000000000000000000000000000000000000",
+    },
+    CrosswordPrizes: {
+      address: "0x0000000000000000000000000000000000000000",
+    },
+    UserProfiles: {
+      address: "0x0000000000000000000000000000000000000000",
+    },
+    ConfigManager: {
+      address: "0x0000000000000000000000000000000000000000",
+    },
+    AdminManager: {
+      address: "0x0000000000000000000000000000000000000000",
+    },
+    PublicCrosswordManager: {
+      address: "0x0000000000000000000000000000000000000000",
+    },
+    BoardHistory: []
   }
 };
 
@@ -70,4 +111,4 @@ const LOCAL_CONTRACTS = {
   }
 };
 
-export { CONTRACTS, LOCAL_CONTRACTS };
+export { CONTRACTS, LOCAL_CONTRACTS, sepolia, celoSepolia };

@@ -5,7 +5,7 @@ import { CrosswordPrizesABI } from './abis/CrosswordPrizes';
 // Mainnet configuration
 const MAINNET_CONTRACTS = {
   CrosswordBoard: {
-      address: "0x1d0742305f4873cea2f9daa36c3f05f572b494a4",
+      address: "0xd262287e7b90f9cee16cd214713edce62796b437",
     abi: [
       {
         "inputs": [
@@ -409,7 +409,7 @@ const MAINNET_CONTRACTS = {
     ],
   },
   CrosswordPrizes: {
-      address: "0xd9110b8eedc6a3a66e951de728fe5be6736a5fee",
+      address: "0xf2f327f2eef8b379ce897748bce2af37db63f6b1",
     abi: [
       {
         "inputs": [

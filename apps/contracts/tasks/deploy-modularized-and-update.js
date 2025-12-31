@@ -111,40 +111,46 @@ task("deploy-modularized-and-update", "Deploys all modularized crossword contrac
     const frontendConfigPath = path.join(__dirname, '..', 'web', 'src', 'lib', 'contracts.ts');
     let configContent = fs.readFileSync(frontendConfigPath, 'utf8');
 
-    // Replace the addresses in the frontend config
+    // More robust regex patterns to handle different formatting in contracts.ts
     configContent = configContent.replace(
-      /CrosswordBoard: \{\s*address: ["']0x[a-fA-F0-9]+["']/g,
-      `CrosswordBoard: {\n      address: "${CrosswordBoard.address}"`
+      /(\[celoSepolia\.id\]:\s*\{[\s\S]*?CrosswordBoard:\s*\{[\s\S]*?address:\s*["'])0x[a-fA-F0-9]+(["'][\s\S]*?\})/g,
+      `$1${CrosswordBoard.address}$2`
     );
 
     configContent = configContent.replace(
-      /CrosswordCore: \{\s*address: ["']0x[a-fA-F0-9]+["']/g,
-      `CrosswordCore: {\n      address: "${CrosswordCore.address}"`
+      /(\[celoSepolia\.id\]:\s*\{[\s\S]*?CrosswordCore:\s*\{[\s\S]*?address:\s*["'])0x[a-fA-F0-9]+(["'][\s\S]*?\})/g,
+      `$1${CrosswordCore.address}$2`
     );
 
     configContent = configContent.replace(
-      /CrosswordPrizes: \{\s*address: ["']0x[a-fA-F0-9]+["']/g,
-      `CrosswordPrizes: {\n      address: "${CrosswordPrizes.address}"`
+      /(\[celoSepolia\.id\]:\s*\{[\s\S]*?CrosswordPrizes:\s*\{[\s\S]*?address:\s*["'])0x[a-fA-F0-9]+(["'][\s\S]*?\})/g,
+      `$1${CrosswordPrizes.address}$2`
     );
 
     configContent = configContent.replace(
-      /UserProfiles: \{\s*address: ["']0x[a-fA-F0-9]+["']/g,
-      `UserProfiles: {\n      address: "${UserProfiles.address}"`
+      /(\[celoSepolia\.id\]:\s*\{[\s\S]*?UserProfiles:\s*\{[\s\S]*?address:\s*["'])0x[a-fA-F0-9]+(["'][\s\S]*?\})/g,
+      `$1${UserProfiles.address}$2`
     );
 
     configContent = configContent.replace(
-      /ConfigManager: \{\s*address: ["']0x[a-fA-F0-9]+["']/g,
-      `ConfigManager: {\n      address: "${ConfigManager.address}"`
+      /(\[celoSepolia\.id\]:\s*\{[\s\S]*?ConfigManager:\s*\{[\s\S]*?address:\s*["'])0x[a-fA-F0-9]+(["'][\s\S]*?\})/g,
+      `$1${ConfigManager.address}$2`
     );
 
     configContent = configContent.replace(
-      /AdminManager: \{\s*address: ["']0x[a-fA-F0-9]+["']/g,
-      `AdminManager: {\n      address: "${AdminManager.address}"`
+      /(\[celoSepolia\.id\]:\s*\{[\s\S]*?AdminManager:\s*\{[\s\S]*?address:\s*["'])0x[a-fA-F0-9]+(["'][\s\S]*?\})/g,
+      `$1${AdminManager.address}$2`
     );
 
     configContent = configContent.replace(
-      /PublicCrosswordManager: \{\s*address: ["']0x[a-fA-F0-9]+["']/g,
-      `PublicCrosswordManager: {\n      address: "${PublicCrosswordManager.address}"`
+      /(\[celoSepolia\.id\]:\s*\{[\s\S]*?PublicCrosswordManager:\s*\{[\s\S]*?address:\s*["'])0x[a-fA-F0-9]+(["'][\s\S]*?\})/g,
+      `$1${PublicCrosswordManager.address}$2`
+    );
+
+    // Update BoardHistory as well to point to the new contract
+    configContent = configContent.replace(
+      /(\[celoSepolia\.id\]:\s*\{[\s\S]*?BoardHistory:\s*\[\s*["'])0x[a-fA-F0-9]+(["'][\s\S]*?\])/g,
+      `$1${CrosswordBoard.address}$2`
     );
 
     fs.writeFileSync(frontendConfigPath, configContent);
@@ -155,7 +161,7 @@ task("deploy-modularized-and-update", "Deploys all modularized crossword contrac
     const webDeploymentPath = path.join(__dirname, '..', 'web', 'contracts', 'sepolia-deployment.json');
     if (fs.existsSync(webDeploymentPath)) {
       const webDeployment = JSON.parse(fs.readFileSync(webDeploymentPath, 'utf8'));
-      
+
       // Update addresses while preserving ABI
       if (webDeployment.contracts.CrosswordBoard) {
         webDeployment.contracts.CrosswordBoard.address = CrosswordBoard.address;
@@ -165,7 +171,7 @@ task("deploy-modularized-and-update", "Deploys all modularized crossword contrac
           abi: [] // Will be populated with actual ABI if needed
         };
       }
-      
+
       if (webDeployment.contracts.CrosswordCore) {
         webDeployment.contracts.CrosswordCore.address = CrosswordCore.address;
       } else {
@@ -174,7 +180,7 @@ task("deploy-modularized-and-update", "Deploys all modularized crossword contrac
           abi: [] // Will be populated with actual ABI if needed
         };
       }
-      
+
       if (webDeployment.contracts.CrosswordPrizes) {
         webDeployment.contracts.CrosswordPrizes.address = CrosswordPrizes.address;
       } else {
@@ -183,7 +189,7 @@ task("deploy-modularized-and-update", "Deploys all modularized crossword contrac
           abi: [] // Will be populated with actual ABI if needed
         };
       }
-      
+
       if (webDeployment.contracts.UserProfiles) {
         webDeployment.contracts.UserProfiles.address = UserProfiles.address;
       } else {
@@ -192,7 +198,7 @@ task("deploy-modularized-and-update", "Deploys all modularized crossword contrac
           abi: [] // Will be populated with actual ABI if needed
         };
       }
-      
+
       if (webDeployment.contracts.ConfigManager) {
         webDeployment.contracts.ConfigManager.address = ConfigManager.address;
       } else {
@@ -201,7 +207,7 @@ task("deploy-modularized-and-update", "Deploys all modularized crossword contrac
           abi: [] // Will be populated with actual ABI if needed
         };
       }
-      
+
       if (webDeployment.contracts.AdminManager) {
         webDeployment.contracts.AdminManager.address = AdminManager.address;
       } else {
@@ -210,7 +216,7 @@ task("deploy-modularized-and-update", "Deploys all modularized crossword contrac
           abi: [] // Will be populated with actual ABI if needed
         };
       }
-      
+
       if (webDeployment.contracts.PublicCrosswordManager) {
         webDeployment.contracts.PublicCrosswordManager.address = PublicCrosswordManager.address;
       } else {
@@ -219,9 +225,82 @@ task("deploy-modularized-and-update", "Deploys all modularized crossword contrac
           abi: [] // Will be populated with actual ABI if needed
         };
       }
-      
+
       fs.writeFileSync(webDeploymentPath, JSON.stringify(webDeployment, null, 2));
       console.log("✅ Web deployment file updated successfully!\n");
+    }
+
+    // Update modularized deployment file as well
+    const modularizedDeploymentPath = path.join(__dirname, '..', 'web', 'contracts', 'modularized-sepolia-deployment.json');
+    if (fs.existsSync(modularizedDeploymentPath)) {
+      const modularizedDeployment = JSON.parse(fs.readFileSync(modularizedDeploymentPath, 'utf8'));
+
+      // Update addresses while preserving ABI
+      if (modularizedDeployment.contracts.CrosswordBoard) {
+        modularizedDeployment.contracts.CrosswordBoard.address = CrosswordBoard.address;
+      } else {
+        modularizedDeployment.contracts.CrosswordBoard = {
+          address: CrosswordBoard.address,
+          abi: [] // Will be populated with actual ABI if needed
+        };
+      }
+
+      if (modularizedDeployment.contracts.CrosswordCore) {
+        modularizedDeployment.contracts.CrosswordCore.address = CrosswordCore.address;
+      } else {
+        modularizedDeployment.contracts.CrosswordCore = {
+          address: CrosswordCore.address,
+          abi: [] // Will be populated with actual ABI if needed
+        };
+      }
+
+      if (modularizedDeployment.contracts.CrosswordPrizes) {
+        modularizedDeployment.contracts.CrosswordPrizes.address = CrosswordPrizes.address;
+      } else {
+        modularizedDeployment.contracts.CrosswordPrizes = {
+          address: CrosswordPrizes.address,
+          abi: [] // Will be populated with actual ABI if needed
+        };
+      }
+
+      if (modularizedDeployment.contracts.UserProfiles) {
+        modularizedDeployment.contracts.UserProfiles.address = UserProfiles.address;
+      } else {
+        modularizedDeployment.contracts.UserProfiles = {
+          address: UserProfiles.address,
+          abi: [] // Will be populated with actual ABI if needed
+        };
+      }
+
+      if (modularizedDeployment.contracts.ConfigManager) {
+        modularizedDeployment.contracts.ConfigManager.address = ConfigManager.address;
+      } else {
+        modularizedDeployment.contracts.ConfigManager = {
+          address: ConfigManager.address,
+          abi: [] // Will be populated with actual ABI if needed
+        };
+      }
+
+      if (modularizedDeployment.contracts.AdminManager) {
+        modularizedDeployment.contracts.AdminManager.address = AdminManager.address;
+      } else {
+        modularizedDeployment.contracts.AdminManager = {
+          address: AdminManager.address,
+          abi: [] // Will be populated with actual ABI if needed
+        };
+      }
+
+      if (modularizedDeployment.contracts.PublicCrosswordManager) {
+        modularizedDeployment.contracts.PublicCrosswordManager.address = PublicCrosswordManager.address;
+      } else {
+        modularizedDeployment.contracts.PublicCrosswordManager = {
+          address: PublicCrosswordManager.address,
+          abi: [] // Will be populated with actual ABI if needed
+        };
+      }
+
+      fs.writeFileSync(modularizedDeploymentPath, JSON.stringify(modularizedDeployment, null, 2));
+      console.log("✅ Modularized deployment file updated successfully!\n");
     }
 
     console.log("\n🎉 All contracts deployed, configured, and frontend updated successfully on Celo Sepolia!");
