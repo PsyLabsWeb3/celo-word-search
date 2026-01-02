@@ -870,3 +870,56 @@ export const useGetCrosswordDetailsById = (crosswordId: `0x${string}` | undefine
   return useGetPublicCrosswordDetails(crosswordId, overrideContractAddress);
 };
 
+// Compatibility hooks for older versions
+export const useSetCrossword = () => {
+    const { createCrossword, ...rest } = useGenericCreateCrossword('createCrossword');
+    return { setCrossword: createCrossword, ...rest };
+};
+
+export const useGetCrosswordDetails = useGetCrosswordDetailsById;
+
+export const useGetMaxWinnersConfig = () => {
+    const chainId = useChainId();
+    const contractConfig = getContractConfig('PublicCrosswordManager', chainId);
+
+    const { data, isError, isLoading, error, refetch } = useContractRead({
+        address: contractConfig.address,
+        abi: contractConfig.abi,
+        functionName: 'MAX_WINNERS',
+        args: [],
+        chainId: chainId,
+        query: {
+            enabled: contractConfig.address !== '0x0000000000000000000000000000000000000000',
+            staleTime: 1000 * 60 * 60, // 1 hour, it's a constant
+        }
+    });
+
+    return {
+        data: data as bigint | undefined,
+        isLoading,
+        isError,
+        error,
+        refetch,
+    };
+};
+
+export const useSetConfig = () => {
+    const toastId = useRef<string | number | undefined>(undefined);
+
+    const setConfig = async (args: any) => {
+        toastId.current = toast.warning(
+            'Setting global config is deprecated. Max winners are now set per crossword.',
+            { id: toastId.current }
+        );
+    };
+
+    return {
+        setConfig,
+        isLoading: false,
+        isSuccess: true,
+        isError: false,
+        error: null,
+        txHash: null,
+    };
+};
+

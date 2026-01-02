@@ -6,12 +6,7 @@ const nextConfig = {
     config.externals.push('pino-pretty', 'lokijs', 'encoding')
     return config
   },
-  // Disable Turbopack and use Webpack instead
-  experimental: {
-    turbo: {
-      enabled: false
-    }
-  }
+  turbopack: {},
 };
 
 module.exports = nextConfig;

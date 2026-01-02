@@ -20,7 +20,7 @@ interface TransactionStats {
         hash: string
         type: string
         user: string
-        timestamp: number  // Unix timestamp in milliseconds
+        timestamp: Date  // Unix timestamp in milliseconds
         amount?: string
         contractAddress: string
     }>

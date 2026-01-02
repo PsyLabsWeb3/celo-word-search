@@ -109,7 +109,9 @@ export default function FarcasterUserDisplay({
       if (Array.isArray(blockchainProfile)) {
         // Standard wagmi return format - contract returns [username, displayName, pfpUrl, timestamp]
         // The array will have 4 elements, we only need the first 3
-        [username, displayName, pfpUrl] = blockchainProfile.slice(0, 3);
+                username = blockchainProfile[0];
+        displayName = blockchainProfile[1];
+        pfpUrl = blockchainProfile[2];
       } else if (typeof blockchainProfile === 'object' && blockchainProfile !== null) {
         // Named return format - type assertion to access properties safely
         const profileObj = blockchainProfile as {

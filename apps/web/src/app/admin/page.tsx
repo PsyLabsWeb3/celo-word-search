@@ -1039,9 +1039,9 @@ export default function AdminPage() {
                       alert("No current crossword to activate. Please create a crossword first.");
                     }
                   }}
-                  disabled={isActivatingCrossword || (crosswordDetails && crosswordDetails.state !== 0)}
+                  disabled={isActivatingCrossword || (crosswordDetails && crosswordDetails[6] !== 0)}
                   className={
-                    isActivatingCrossword || (crosswordDetails && crosswordDetails.state !== 0)
+                    isActivatingCrossword || (crosswordDetails && crosswordDetails[6] !== 0)
                       ? "border-4 border-black bg-green-500 font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none"
                       : "border-4 border-black bg-primary font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-primary hover:shadow-none disabled:opacity-50 disabled:cursor-not-allowed"
                   }
@@ -1051,7 +1051,7 @@ export default function AdminPage() {
                       <div className="w-4 h-4 mr-2 border-t-2 border-r-2 border-white rounded-full animate-spin" />
                       Activating...
                     </>
-                  ) : crosswordDetails && crosswordDetails.state !== 0 ? (
+                  ) : crosswordDetails && crosswordDetails[6] !== 0 ? (
                     <>
                       <Settings className="w-4 h-4 mr-2" />
                       Activated

@@ -682,7 +682,7 @@ export default function CreateCrosswordPage() {
                                 <span
                                   className={`absolute left-0.5 top-0.5 text-primary ${numberSize}`}
                                   style={{
-                                    fontSize: cellNumber.length > 1 ? '6px' : '',
+                                    fontSize: cellNumber.toString().length > 1 ? '6px' : '',
                                     lineHeight: '1',
                                     minWidth: '10px',
                                     textAlign: 'center'
