@@ -69,13 +69,14 @@ const getContractConfig = (contractName: 'CrosswordBoard' | 'CrosswordCore' | 'C
   }
 
   // Determine which chain configuration to use based on environment
-  let chainConfig = (CONTRACTS as any)[celo.id]; // default to mainnet
+  // DEFAULT TO CELO SEPOLIA (11142220) to prevent dangerous fallbacks to old mainnet contracts
+  let chainConfig = (CONTRACTS as any)[11142220]; 
 
   if (chainId === celo.id) {
     chainConfig = (CONTRACTS as any)[celo.id];
   } else if (chainId === celoAlfajores.id || chainId === 44787) {
     chainConfig = (CONTRACTS as any)[celoAlfajores.id];
-  } else if (chainId === 11142220 || chainId === 11142220) { // Celo Sepolia testnet
+  } else if (chainId === 11142220) { // Celo Sepolia testnet
     chainConfig = (CONTRACTS as any)[11142220];
   } else if (chainId === 31337) { // Local hardhat chain ID
     const localContracts = {
@@ -88,9 +89,9 @@ const getContractConfig = (contractName: 'CrosswordBoard' | 'CrosswordCore' | 'C
     chainConfig = localContracts;
   }
 
-  // Fallback: if specific contract name is not in the config (e.g. on Mainnet/Alfajores),
-  // use the CrosswordBoard address as fallback if available.
-  const contract = chainConfig[contractName] || chainConfig['CrosswordBoard'];
+  // Remove the dangerous fallback to CrosswordBoard when the specific contract name is missing.
+  // If a contract is not in the config for the current chain, it should return a null address.
+  const contract = chainConfig[contractName];
 
   const address = contract?.address || '0x0000000000000000000000000000000000000000';
 
@@ -432,7 +433,7 @@ export const useGetActivePublicCrosswords = () => {
     args: [],
     chainId: chainId,
     query: {
-      enabled: contractConfig.address !== '0x0000000000000000000000000000000000000000',
+      enabled: !!contractConfig.address && contractConfig.address !== '0x0000000000000000000000000000000000000000',
       staleTime: 1000 * 30, // Data considered fresh for 30 seconds
     }
   });

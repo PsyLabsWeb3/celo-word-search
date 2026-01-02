@@ -37,11 +37,29 @@ const sepolia = defineChain({
 const CONTRACTS = {
   [celo.id]: {
     CrosswordBoard: {
-      address: "0x9057D09e0C9cBb863C002FC0E1Af1098df5B7648", // Mainnet deployment - Dec 2025
+      address: "0x7b841c609d95cbafe0771d4a05d2c0415922737b",
+    },
+    CrosswordCore: {
+      address: "0x7b79e1cb9a344cf8856b4db1131bf65fb6a6fba2",
+    },
+    CrosswordPrizes: {
+      address: "0x754b33d8aded1c6bf4821ea68158c42b434d781f",
+    },
+    UserProfiles: {
+      address: "0x4019cd85790a2706b0fc3bd9845c2c16742af0e5",
+    },
+    ConfigManager: {
+      address: "0x321dcef35e3da483304226ac679b8898c4ee0807",
+    },
+    AdminManager: {
+      address: "0x8944ffc503388174aff351cb1c6f87958d6e5bb3",
+    },
+    PublicCrosswordManager: {
+      address: "0xdc2b0c154f48c7e235872208a6f3093647a236a7",
     },
     BoardHistory: [
       "0xdC2a624dFFC1f6343F62A02001906252e3cA8fD2", // Old Legacy Mainnet contract
-      "0x9057D09e0C9cBb863C002FC0E1Af1098df5B7648"  // Current Mainnet contract (will move to history on next deploy)
+      "0x9057D09e0C9cBb863C002FC0E1Af1098df5B7648"  // Previous Legacy Mainnet contract
     ]
   },
   [celoAlfajores.id]: {
@@ -53,28 +71,28 @@ const CONTRACTS = {
   [celoSepolia.id]: {
     // Modularized contract addresses for the new architecture
     CrosswordBoard: {
-      address: "0xdf57dbd62dbbc4187536ebdd4555df07ae3b68b0",
+      address: "0x7b841c609d95cbafe0771d4a05d2c0415922737b",
     },
     CrosswordCore: {
-      address: "0x26a749edcf8d44a4322e964b3bed619236425af7",
+      address: "0x7b79e1cb9a344cf8856b4db1131bf65fb6a6fba2",
     },
     CrosswordPrizes: {
-      address: "0xa17fe3bcb6e126e55ce7d1573191dba62b9c408e",
+      address: "0x754b33d8aded1c6bf4821ea68158c42b434d781f",
     },
     UserProfiles: {
-      address: "0x2712396e8c09f0a0a506773523f31b354322e650",
+      address: "0x4019cd85790a2706b0fc3bd9845c2c16742af0e5",
     },
     ConfigManager: {
-      address: "0x0cee101c98be2e855232e2cafc7c8f97108fa52e",
+      address: "0x321dcef35e3da483304226ac679b8898c4ee0807",
     },
     AdminManager: {
-      address: "0x86c634260bdc44a0357b674c6ce6d9e42af2b93c",
+      address: "0x8944ffc503388174aff351cb1c6f87958d6e5bb3",
     },
     PublicCrosswordManager: {
-      address: "0x67d0f17bff5286e408871f7a61ba616715036166",
+      address: "0xdc2b0c154f48c7e235872208a6f3093647a236a7",
     },
     BoardHistory: [
-      "0xdf57dbd62dbbc4187536ebdd4555df07ae3b68b0" // Current Sepolia contract
+      "0x7b841c609d95cbafe0771d4a05d2c0415922737b" // Previous Sepolia contract
     ]
   },
   [sepolia.id]: {
