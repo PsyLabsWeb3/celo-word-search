@@ -102,13 +102,6 @@ export default function StatsPage() {
                     <p className="text-sm sm:text-lg text-muted-foreground font-medium px-2">
                         Combined blockchain data from Celo Mainnet
                     </p>
-                    {!isFetchingRealData && (
-                        <div className="flex items-center justify-center gap-2 mt-2">
-                            <p className="text-xs sm:text-sm text-muted-foreground font-mono break-all">
-                                Data updated recently
-                            </p>
-                        </div>
-                    )}
                 </div>
                 
                 {/* Header Buttons - Synced with Active Crosswords */}

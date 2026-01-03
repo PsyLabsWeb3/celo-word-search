@@ -169,10 +169,14 @@ export async function GET() {
     supabase
       .from('app_stats')
       .upsert({ id: 1, data: statsData, updated_at: new Date().toISOString() })
-      .then(({ error }) => {
-          if (error) console.error("API: Background Supabase update failed", error.message);
+      .then(response => {
+        if (response.error) {
+          console.error("API: Background Supabase update failed", response.error.message);
+        }
       })
-      .catch(err => console.error("API: Background Supabase update crash", err));
+      .catch(err => {
+        console.error("API: Background Supabase update crash", err)
+      });
 
     return NextResponse.json(statsData);
   } catch (error) {
