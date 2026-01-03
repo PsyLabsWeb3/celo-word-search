@@ -3,9 +3,8 @@
 import { useEffect, useState } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, ExternalLink, Users, Award, Coins, Activity, TrendingUp, Clock } from "lucide-react"
-import Link from "next/link"
-import { mockStats } from "@/lib/mock-stats"
+import { ArrowLeft, ExternalLink, Users, Award, Coins, Activity, TrendingUp, Clock, Loader2, RefreshCw } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 interface TransactionStats {
     totalCompletions: number
@@ -20,7 +19,7 @@ interface TransactionStats {
         hash: string
         type: string
         user: string
-        timestamp: Date  // Unix timestamp in milliseconds
+        timestamp: Date
         amount?: string
         contractAddress: string
     }>
@@ -29,54 +28,61 @@ interface TransactionStats {
 }
 
 export default function StatsPage() {
-    const [stats, setStats] = useState<TransactionStats>(() => {
-        // Initialize with mock data for immediate display
-        return {
-            ...mockStats,
-            recentTransactions: mockStats.recentTransactions.map(tx => ({
-                ...tx,
-                timestamp: new Date(tx.timestamp)
-            }))
-        };
+    const [stats, setStats] = useState<TransactionStats>({
+        totalCompletions: 0,
+        totalPrizeDistributions: 0,
+        totalCrosswordsCreated: 0,
+        totalCeloDistributed: 0,
+        crossword1Completions: 0,
+        crossword2Completions: 0,
+        testCompletions: 0,
+        uniqueUsers: 0,
+        recentTransactions: [],
+        isLoading: true,
+        error: null
     });
 
+    const router = useRouter();
     const [isFetchingRealData, setIsFetchingRealData] = useState(true);
+    const [isRefreshing, setIsRefreshing] = useState(false);
+
+    // Fetch real data function
+    const fetchRealStats = async (showLoadingState = true) => {
+        if (showLoadingState) setIsFetchingRealData(true);
+        else setIsRefreshing(true);
+        
+        try {
+            const response = await fetch('/api/stats');
+            if (!response.ok) {
+                throw new Error('Failed to fetch stats');
+            }
+            const data = await response.json();
+
+            // Convert timestamp numbers back to Date objects for display
+            const processedData = {
+                ...data,
+                isLoading: false, 
+                recentTransactions: data.recentTransactions.map((tx: any) => ({
+                    ...tx,
+                    timestamp: new Date(tx.timestamp)
+                }))
+            };
+
+            setStats(processedData);
+        } catch (error) {
+            console.error("Error fetching stats:", error);
+            setStats(prev => ({
+                ...prev,
+                isLoading: false,
+                error: "Error loading blockchain data"
+            }));
+        } finally {
+            setIsFetchingRealData(false);
+            setIsRefreshing(false);
+        }
+    };
 
     useEffect(() => {
-        // Fetch real data in the background
-        async function fetchRealStats() {
-            try {
-                const response = await fetch('/api/stats');
-                if (!response.ok) {
-                    throw new Error('Failed to fetch stats');
-                }
-                const data = await response.json();
-
-                // Convert timestamp numbers back to Date objects for display
-                const processedData = {
-                    ...data,
-                    isLoading: false, // Set loading to false after real data loads
-                    recentTransactions: data.recentTransactions.map((tx: any) => ({
-                        ...tx,
-                        timestamp: new Date(tx.timestamp)
-                    }))
-                };
-
-                setStats(processedData);
-                setIsFetchingRealData(false);
-            } catch (error) {
-                console.error("Error fetching stats:", error);
-                // Keep showing mock data but update the error state
-                setStats(prev => ({
-                    ...prev,
-                    isLoading: false,
-                    error: "Error loading blockchain data"
-                }));
-                setIsFetchingRealData(false);
-            }
-        }
-
-        // Start fetching real data after showing mock data
         fetchRealStats();
     }, []);
 
@@ -88,42 +94,6 @@ export default function StatsPage() {
     return (
         <main className="min-h-screen bg-background p-3 sm:p-6 md:p-8">
             <div className="mx-auto max-w-6xl">
-                {/* Header - Stacked on mobile */}
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-6 sm:mb-8">
-                    <Link href="/" className="w-full sm:w-auto">
-                        <Button variant="outline" className="w-full sm:w-auto border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-white hover:bg-gray-100 text-foreground">
-                            <ArrowLeft className="w-4 h-4 mr-2" />
-                            Back
-                        </Button>
-                    </Link>
-                    <div className="flex flex-wrap gap-2">
-                        <a
-                            href={`https://celoscan.io/address/${process.env.NEXT_PUBLIC_LEGACY_CONTRACT_ADDRESS || "0xdC2a624dFFC1f6343F62A02001906252e3cA8fD2"}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="w-full sm:w-auto"
-                        >
-                            <Button variant="outline" className="w-full sm:w-auto border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs sm:text-sm">
-                                <span className="hidden sm:inline">Legacy Contract</span>
-                                <span className="sm:hidden">Legacy</span>
-                                <ExternalLink className="w-4 h-4 ml-2" />
-                            </Button>
-                        </a>
-                        <a
-                            href={`https://celoscan.io/address/${process.env.NEXT_PUBLIC_NEW_CONTRACT_ADDRESS || ""}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="w-full sm:w-auto"
-                        >
-                            <Button variant="outline" className="w-full sm:w-auto border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-purple-500 hover:bg-purple-600 text-white font-bold text-xs sm:text-sm">
-                                <span className="hidden sm:inline">New Contract</span>
-                                <span className="sm:hidden">New</span>
-                                <ExternalLink className="w-4 h-4 ml-2" />
-                            </Button>
-                        </a>
-                    </div>
-                </div>
-
                 {/* Title - Responsive sizing */}
                 <div className="text-center mb-6 sm:mb-10">
                     <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight uppercase text-foreground mb-2">
@@ -132,18 +102,45 @@ export default function StatsPage() {
                     <p className="text-sm sm:text-lg text-muted-foreground font-medium px-2">
                         Combined blockchain data from Celo Mainnet
                     </p>
-                    <div className="flex items-center justify-center gap-2 mt-2">
-                        {isFetchingRealData && (
-                            <div className="flex items-center gap-2">
-                                <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse"></div>
-                                <span className="text-xs sm:text-sm text-green-600 font-medium">Updating data...</span>
-                            </div>
-                        )}
-                        <p className="text-xs sm:text-sm text-muted-foreground font-mono break-all">
-                            {isFetchingRealData ? "Showing cached data (fetching latest...)" : "Data updated recently"}
+                    {!isFetchingRealData && (
+                        <div className="flex items-center justify-center gap-2 mt-2">
+                            <p className="text-xs sm:text-sm text-muted-foreground font-mono break-all">
+                                Data updated recently
+                            </p>
+                        </div>
+                    )}
+                </div>
+                
+                {/* Header Buttons - Synced with Active Crosswords */}
+                <div className="flex justify-center flex-wrap gap-4 mb-8">
+                    <Button
+                        onClick={() => router.push("/")}
+                        className="border-4 border-black bg-accent font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-accent hover:shadow-none whitespace-normal h-auto min-h-[44px]"
+                    >
+                        <ArrowLeft className="w-4 h-4 mr-2 shrink-0" />
+                        Back
+                    </Button>
+
+                    <Button
+                        onClick={() => fetchRealStats(false)}
+                        disabled={isFetchingRealData || isRefreshing}
+                        className="border-4 border-black bg-yellow-400 font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-yellow-500 hover:shadow-none whitespace-normal h-auto min-h-[44px]"
+                    >
+                        <RefreshCw className={`w-4 h-4 mr-2 shrink-0 ${isRefreshing ? 'animate-spin' : ''}`} />
+                        {isRefreshing ? 'Refreshing...' : 'Refresh Stats'}
+                    </Button>
+                </div>
+
+                {isFetchingRealData ? (
+                    <div className="flex flex-col items-center justify-center py-20 bg-white border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] rounded-xl">
+                        <Loader2 className="w-16 h-16 animate-spin text-purple-600 mb-4" />
+                        <h2 className="text-xl text-center font-black uppercase tracking-tight">Fetching Blockchain Data...</h2>
+                        <p className="text-muted-foreground font-medium mt-2 text-center px-4">
+                            Aggregating legacy and modular contract events from Celo Mainnet.
                         </p>
                     </div>
-                </div>
+                ) : (
+                    <>
 
                 {/* Main Stats Grid - 2 columns on mobile, 3 on desktop */}
                 <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-10">
@@ -225,7 +222,7 @@ export default function StatsPage() {
                 </div>
 
                 {/* Crossword Breakdown */}
-                <Card className="border-4 border-black bg-white p-4 sm:p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] sm:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] mb-6 sm:mb-10">
+                {/* <Card className="border-4 border-black bg-white p-4 sm:p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] sm:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] mb-6 sm:mb-10">
                     <h2 className="text-lg sm:text-2xl font-black uppercase mb-4 sm:mb-6 text-foreground">📝 Crossword Breakdown</h2>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                         <div className="bg-gradient-to-r from-indigo-100 to-indigo-200 p-4 sm:p-5 rounded-lg border-4 border-black">
@@ -246,7 +243,7 @@ export default function StatsPage() {
                             </div>
                         )}
                     </div>
-                </Card>
+                </Card> */}
 
                 {/* Recent Transactions - Cards on mobile, table on desktop */}
                 <Card className="border-4 border-black bg-white p-4 sm:p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] sm:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
@@ -334,16 +331,54 @@ export default function StatsPage() {
                     </div>
                 </Card>
 
+                <div className="flex flex-wrap gap-2 mt-4">
+                        <a
+                            href={`https://celoscan.io/address/${process.env.NEXT_PUBLIC_LEGACY_CONTRACT_ADDRESS || "0xdC2a624dFFC1f6343F62A02001906252e3cA8fD2"}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-full sm:w-auto"
+                        >
+                            <Button variant="outline" className="w-full sm:w-auto border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs sm:text-sm">
+                                <span className="hidden sm:inline">Contract v1</span>
+                                <span className="sm:hidden">Contract v1</span>
+                                <ExternalLink className="w-4 h-4 ml-2" />
+                            </Button>
+                        </a>
+                        <a
+                            href={`https://celoscan.io/address/${process.env.NEXT_PUBLIC_NEW_CONTRACT_ADDRESS || ""}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-full sm:w-auto"
+                        >
+                            <Button variant="outline" className="w-full sm:w-auto border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-purple-500 hover:bg-purple-600 text-white font-bold text-xs sm:text-sm">
+                                <span className="hidden sm:inline">Contract v1.1</span>
+                                <span className="sm:hidden">Contract v1.1</span>
+                                <ExternalLink className="w-4 h-4 ml-2" />
+                            </Button>
+                        </a>
+                        <a
+                            href={`https://celoscan.io/address/${process.env.NEXT_PUBLIC_LATEST_CONTRACT_ADDRESS || ""}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-full sm:w-auto"
+                        >
+                            <Button variant="outline" className="w-full sm:w-auto border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-purple-500 hover:bg-purple-600 text-white font-bold text-xs sm:text-sm">
+                                <span className="hidden sm:inline">Contract v2.0 (Latest)</span>
+                                <span className="sm:hidden">Contract v2.0 (Latest)</span>
+                                <ExternalLink className="w-4 h-4 ml-2" />
+                            </Button>
+                        </a>
+                    </div>
+
                 {/* Footer */}
-                <div className="text-center mt-6 sm:mt-10 text-muted-foreground px-4">
-                    <p className="text-xs sm:text-sm font-medium">Data fetched directly from Celo Mainnet blockchain</p>
-                    <p className="text-[10px] sm:text-xs mt-1">All transactions are verifiable on-chain</p>
-                    <p className="text-[10px] sm:text-xs mt-1">
-                        {isFetchingRealData
-                            ? "Showing cached data, updating with latest..."
-                            : "Stats updated every 3 minutes for combined, 5-10 min for individual contracts"}
-                    </p>
-                </div>
+                {!isFetchingRealData && (
+                    <div className="text-center mt-6 sm:mt-10 text-muted-foreground px-4">
+                        <p className="text-xs sm:text-sm font-medium">Data fetched directly from Celo Mainnet blockchain</p>
+                        <p className="text-[10px] sm:text-xs mt-1">All transactions are verifiable on-chain</p>
+                    </div>
+                )}
+                    </>
+                )}
             </div>
         </main>
     )

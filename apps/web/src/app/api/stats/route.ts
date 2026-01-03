@@ -79,18 +79,21 @@ export async function GET() {
     
     // 1. Check Supabase Cache with Strict Timeout (5s)
     try {
-      const cachedRowData = await withTimeout(
-        supabase.from('app_stats').select('*').eq('id', 1).single(),
+      const cachedResponse = await withTimeout(
+        (async () => {
+          const res = await supabase.from('app_stats').select('*').eq('id', 1).single();
+          return res;
+        })(),
         5000,
         "Supabase Timeout"
       );
 
-      if (cachedRowData.data?.data) {
-        const lastUpdate = new Date(cachedRowData.data.updated_at).getTime();
+      if (cachedResponse.data?.data) {
+        const lastUpdate = new Date(cachedResponse.data.updated_at).getTime();
         const isFresh = (now - lastUpdate) < 5 * 60 * 1000; // 5 mins fresh
 
         if (isFresh) {
-          return NextResponse.json(cachedRowData.data.data);
+          return NextResponse.json(cachedResponse.data.data);
         }
       }
     } catch (err) {
@@ -110,9 +113,9 @@ export async function GET() {
     const client = createPublicClient({
       chain: celo,
       transport: http("https://forno.celo.org", {
-          timeout: 10000 // 10s per RPC call
-      }),
-      retryCount: 1
+          timeout: 10000, // 10s per RPC call
+          retryCount: 1
+      })
     });
 
     const allContractData = await Promise.all(modularContracts.map(async (address) => {
