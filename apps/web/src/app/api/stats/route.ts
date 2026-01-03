@@ -1,13 +1,12 @@
-// /app/api/stats/route.ts - API route for fetching cached stats
-import { NextRequest } from 'next/server'
+// /app/api/stats/route.ts - API route for fetching aggregated stats from blockchain and Supabase cache
+import { NextRequest, NextResponse } from 'next/server'
 import { createPublicClient, http, parseAbiItem, formatEther } from 'viem'
 import { celo } from 'viem/chains'
-import { CONTRACTS } from '@/lib/contracts'
+import { supabase } from '@/lib/supabase-client'
+import LEGACY_STATS from '@/lib/data/legacy-stats.json'
 
 // Separate caches for legacy and new contracts with TTL
-const legacyCache = new Map<string, { data: any; timestamp: number }>();
 const newContractCache = new Map<string, { data: any; timestamp: number }>();
-const combinedCache = new Map<string, { data: any; timestamp: number }>();
 
 interface TransactionStats {
   totalCompletions: number
@@ -26,34 +25,42 @@ interface TransactionStats {
     amount?: string
     contractAddress: string
   }>
-  error?: string
 }
 
-// Function to fetch data from a single contract with optimized parameters
-async function fetchContractData(client: any, address: string, isLegacy: boolean = false) {
+// Timeout wrapper for promises
+const withTimeout = <T>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> => {
+    return Promise.race([
+        promise,
+        new Promise<T>((_, reject) => setTimeout(() => reject(new Error(errorMessage)), timeoutMs))
+    ]);
+};
+
+async function fetchContractData(client: any, address: string) {
   try {
-    const fromBlock = isLegacy ? 52500000n : 15000000n; 
+    // Modular contracts were deployed around block 55.4M. 
+    // Optimization: Skip history before this block.
+    const fromBlock = 55300000n; 
 
-    const completedEvents = await client.getLogs({
-      address: address as `0x${string}`,
-      event: parseAbiItem("event CrosswordCompleted(bytes32 indexed crosswordId, address indexed user, uint256 timestamp, uint256 durationMs)"),
-      fromBlock: fromBlock,
-      toBlock: "latest",
-    });
-
-    const prizeEvents = await client.getLogs({
-      address: address as `0x${string}`,
-      event: parseAbiItem("event PrizeDistributed(bytes32 indexed crosswordId, address indexed winner, uint256 amount, uint256 rank)"),
-      fromBlock: fromBlock,
-      toBlock: "latest",
-    });
-
-    const createdEvents = await client.getLogs({
-      address: address as `0x${string}`,
-      event: parseAbiItem("event CrosswordCreated(bytes32 indexed crosswordId, address indexed token, uint256 prizePool, address creator)"),
-      fromBlock: fromBlock,
-      toBlock: "latest",
-    });
+    const [completedEvents, prizeEvents, createdEvents] = await Promise.all([
+      client.getLogs({
+        address: address as `0x${string}`,
+        event: parseAbiItem("event CrosswordCompleted(bytes32 indexed crosswordId, address indexed user, uint256 timestamp, uint256 durationMs)"),
+        fromBlock,
+        toBlock: "latest",
+      }),
+      client.getLogs({
+        address: address as `0x${string}`,
+        event: parseAbiItem("event PrizeDistributed(bytes32 indexed crosswordId, address indexed winner, uint256 amount, uint256 rank)"),
+        fromBlock,
+        toBlock: "latest",
+      }),
+      client.getLogs({
+        address: address as `0x${string}`,
+        event: parseAbiItem("event CrosswordCreated(bytes32 indexed crosswordId, address indexed token, uint256 prizePool, address creator)"),
+        fromBlock,
+        toBlock: "latest",
+      })
+    ]);
 
     return {
       completedEvents: completedEvents.map((event: any) => ({ ...event, contractAddress: address })),
@@ -61,127 +68,112 @@ async function fetchContractData(client: any, address: string, isLegacy: boolean
       createdEvents: createdEvents.map((event: any) => ({ ...event, contractAddress: address }))
     };
   } catch (error) {
-    console.error(`API: Error fetching data from ${isLegacy ? 'legacy' : 'new'} contract ${address}:`, error);
-    return {
-      completedEvents: [],
-      prizeEvents: [],
-      createdEvents: []
-    };
+    console.error(`API: Error fetching modular data from ${address}:`, error);
+    return { completedEvents: [], prizeEvents: [], createdEvents: [] };
   }
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    // Get board history from contracts config
-    const chainId = celo.id; // Mainnet stats
-    const boardHistory = (CONTRACTS as any)[chainId]?.['BoardHistory'] as string[] || [];
-    const currentContractAddress = (CONTRACTS as any)[chainId]?.['CrosswordBoard']?.address as string | undefined;
+    const now = Date.now();
     
-    // Use either the history list or the current address if history is empty
-    const contractAddresses = boardHistory.length > 0 ? boardHistory : (currentContractAddress ? [currentContractAddress] : []);
+    // 1. Check Supabase Cache with Strict Timeout (5s)
+    try {
+      const cachedRowData = await withTimeout(
+        supabase.from('app_stats').select('*').eq('id', 1).single(),
+        5000,
+        "Supabase Timeout"
+      );
 
+      if (cachedRowData.data?.data) {
+        const lastUpdate = new Date(cachedRowData.data.updated_at).getTime();
+        const isFresh = (now - lastUpdate) < 5 * 60 * 1000; // 5 mins fresh
+
+        if (isFresh) {
+          return NextResponse.json(cachedRowData.data.data);
+        }
+      }
+    } catch (err) {
+      console.warn("API: Supabase cache lookup failed or timed out", err);
+    }
+
+    // 2. Blockchain Fetch (Modular Contracts Only)
+    const modularContracts = [
+        "0x7b79e1cb9a344cf8856b4db1131bf65fb6a6fba2", // CrosswordCore
+        "0x754b33d8aded1c6bf4821ea68158c42b434d781f", // CrosswordPrizes
+        "0xdc2b0c154f48c7e235872208a6f3093647a236a7"  // PublicCrosswordManager
+    ];
+    
     const CROSSWORD_1_ID = "0xdb4764000c54b9390a601e96783d76e3e3e9d06329637cdd119045bf32624e32";
     const CROSSWORD_2_ID = "0x28d1ba71976f4f4fa7344c7025215739bd3f6aa515d13e1fdfbe5245ea419ce2";
 
-    const cacheKey = `aggregated_stats_${contractAddresses.join('_')}`;
-    const cacheDuration = 3 * 60 * 1000; // 3 minutes
-    const now = Date.now();
-
-    // Check combined cache
-    const cached = combinedCache.get(cacheKey);
-    if (cached && (now - cached.timestamp) < cacheDuration) {
-      return new Response(JSON.stringify(cached.data), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
     const client = createPublicClient({
       chain: celo,
-      transport: http("https://forno.celo.org"),
+      transport: http("https://forno.celo.org", {
+          timeout: 10000 // 10s per RPC call
+      }),
+      retryCount: 1
     });
 
-    // Fetch data for all contracts in history
-    const allContractData = await Promise.all(contractAddresses.map(async (address) => {
-      const isLegacy = address.toLowerCase() === "0xdc2a624dffc1f6343f62a02001906252e3ca8fd2";
+    const allContractData = await Promise.all(modularContracts.map(async (address) => {
+      const cached = newContractCache.get(address);
+      if (cached && (now - cached.timestamp) < 5 * 60 * 1000) return cached.data;
       
-      // Use cache per address
-      const addressCache = isLegacy ? legacyCache : newContractCache;
-      const cachedData = addressCache.get(address);
-      
-      if (cachedData && (now - cachedData.timestamp) < (isLegacy ? 60 : 5) * 60 * 1000) {
-        return cachedData.data;
-      }
-      
-      const freshData = await fetchContractData(client, address, isLegacy);
-      addressCache.set(address, { data: freshData, timestamp: now });
+      const freshData = await fetchContractData(client, address);
+      newContractCache.set(address, { data: freshData, timestamp: now });
       return freshData;
     }));
 
-    // Aggregate results
-    const allCompletedEvents = allContractData.flatMap(d => d.completedEvents);
-    const allPrizeEvents = allContractData.flatMap(d => d.prizeEvents);
-    const allCreatedEvents = allContractData.flatMap(d => d.createdEvents);
+    const allCompleted = allContractData.flatMap(d => d.completedEvents);
+    const allPrize = allContractData.flatMap(d => d.prizeEvents);
+    const allCreated = allContractData.flatMap(d => d.createdEvents);
 
-    const crossword1 = allCompletedEvents.filter(log => log.args.crosswordId === CROSSWORD_1_ID);
-    const crossword2 = allCompletedEvents.filter(log => log.args.crosswordId === CROSSWORD_2_ID);
-    const testCrosswords = allCompletedEvents.filter(log =>
-      log.args.crosswordId !== CROSSWORD_1_ID && log.args.crosswordId !== CROSSWORD_2_ID
-    );
+    const totalCelo = allPrize.reduce((acc, e) => acc + Number(formatEther((e.args as any).amount || 0n)), 0);
+    const uniqueUsersSet = new Set(allCompleted.map(e => (e.args as any).user));
 
-    const uniqueUsersSet = new Set(allCompletedEvents.map(log => log.args.user));
-    const totalCelo = allPrizeEvents.reduce((sum, log) => sum + Number(formatEther(log.args.amount || 0n)), 0);
+    const crossword1 = allCompleted.filter(e => (e.args as any).crosswordId === CROSSWORD_1_ID);
+    const crossword2 = allCompleted.filter(e => (e.args as any).crosswordId === CROSSWORD_2_ID);
+    const testCrosswords = allCompleted.filter(e => (e.args as any).crosswordId !== CROSSWORD_1_ID && (e.args as any).crosswordId !== CROSSWORD_2_ID);
 
     const allEvents = [
-      ...allCompletedEvents.map(e => ({ ...e, type: "Completion" })),
-      ...allPrizeEvents.map(e => ({ ...e, type: "Prize" })),
-      ...allCreatedEvents.map(e => ({ ...e, type: "Created" }))
+      ...allCompleted.map(e => ({ ...e, type: 'Completion' })),
+      ...allPrize.map(e => ({ ...e, type: 'Prize' })),
+      ...allCreated.map(e => ({ ...e, type: 'Created' }))
     ].sort((a, b) => Number(b.blockNumber) - Number(a.blockNumber));
 
-    const recentTxs = await Promise.all(allEvents.slice(0, 10).map(async (event: any) => {
-      try {
-        const block = await client.getBlock({ blockNumber: event.blockNumber });
-        return {
-          hash: event.transactionHash,
-          type: event.type,
-          user: event.type === "Completion" ? (event.args as any).user : event.type === "Prize" ? (event.args as any).winner : "Admin",
-          timestamp: Number(block.timestamp) * 1000,
-          amount: event.type === "Prize" ? formatEther((event.args as any).amount || 0n) : undefined,
-          contractAddress: event.contractAddress,
-        };
-      } catch {
-        return {
-          hash: event.transactionHash,
-          type: event.type,
-          user: "Unknown",
-          timestamp: Date.now(),
-          contractAddress: event.contractAddress,
-        };
-      }
+    const recentTxs = allEvents.slice(0, 10).map(event => ({
+      hash: event.transactionHash,
+      type: event.type,
+      user: (event.args as any).user || (event.args as any).winner || (event.args as any).creator || "Admin",
+      timestamp: now, // Real timestamp fetching is too slow for 10 txs on public RPC
+      amount: (event.args as any).amount ? formatEther((event.args as any).amount) : undefined,
+      contractAddress: event.address
     }));
 
     const statsData: TransactionStats = {
-      totalCompletions: allCompletedEvents.length,
-      totalPrizeDistributions: allPrizeEvents.length,
-      totalCrosswordsCreated: allCreatedEvents.length,
-      totalCeloDistributed: totalCelo,
+      totalCompletions: allCompleted.length + LEGACY_STATS.totalCompletions,
+      totalPrizeDistributions: allPrize.length + LEGACY_STATS.totalPrizeDistributions,
+      totalCrosswordsCreated: allCreated.length + LEGACY_STATS.totalCrosswordsCreated,
+      totalCeloDistributed: totalCelo + LEGACY_STATS.totalCeloDistributed,
       crossword1Completions: crossword1.length,
       crossword2Completions: crossword2.length,
       testCompletions: testCrosswords.length,
-      uniqueUsers: uniqueUsersSet.size,
+      uniqueUsers: uniqueUsersSet.size + LEGACY_STATS.uniqueUsersCount,
       recentTransactions: recentTxs,
     };
 
-    combinedCache.set(cacheKey, { data: statsData, timestamp: now });
-    return new Response(JSON.stringify(statsData), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    // 3. Update Supabase Cache (Non-blocking)
+    supabase
+      .from('app_stats')
+      .upsert({ id: 1, data: statsData, updated_at: new Date().toISOString() })
+      .then(({ error }) => {
+          if (error) console.error("API: Background Supabase update failed", error.message);
+      })
+      .catch(err => console.error("API: Background Supabase update crash", err));
+
+    return NextResponse.json(statsData);
   } catch (error) {
-    console.error("API: Error fetching stats:", error);
-    return new Response(JSON.stringify({ error: "Internal server error" }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    console.error("API Fatal Error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
