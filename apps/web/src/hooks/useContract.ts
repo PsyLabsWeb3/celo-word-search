@@ -858,7 +858,7 @@ export const useCreatePublicCrosswordWithPrizePool = () => {
 };
 
 export const useCreatePublicCrosswordWithNativeCELOPrizePool = () => {
-    const { createCrossword, ...rest } = useGenericCreateCrossword('createCrosswordWithNativeCELOPrizePool');
+    const { createCrossword, ...rest } = useGenericCreateCrossword('createPublicCrosswordWithNativeCELOPrizePool');
     return { createPublicCrosswordWithNativeCELOPrizePool: createCrossword, ...rest };
 };
 
