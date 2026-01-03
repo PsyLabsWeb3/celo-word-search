@@ -615,8 +615,9 @@ export default function CreateCrosswordPage() {
             <Card className="border-4 border-black bg-card p-4 sm:p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] h-full w-full max-w-full">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-4">
                   <h2 className="text-xl font-black uppercase">
-                    Preview {conflictCells.size > 0 && <span className="text-destructive">({conflictCells.size} conflicts)</span>}
+                    Preview (10x10) {conflictCells.size > 0 && <span className="text-destructive">({conflictCells.size} conflicts)</span>}
                   </h2>
+                  {/* Grid size controls temporarily hidden - fixed at 10x10
                   <div className="flex gap-2 w-full sm:w-auto">
                     <div className="flex items-center gap-2">
                       <Label className="text-sm font-bold whitespace-nowrap">Rows:</Label>
@@ -655,6 +656,7 @@ export default function CreateCrosswordPage() {
                       />
                     </div>
                   </div>
+                  */}
                 </div>
                 <div className="flex items-center justify-center overflow-auto p-4">
                   <div className="inline-block border-4 border-black bg-white p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
