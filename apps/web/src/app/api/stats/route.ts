@@ -166,17 +166,19 @@ export async function GET() {
     };
 
     // 3. Update Supabase Cache (Non-blocking)
-    supabase
-      .from('app_stats')
-      .upsert({ id: 1, data: statsData, updated_at: new Date().toISOString() })
-      .then(response => {
-        if (response.error) {
-          console.error("API: Background Supabase update failed", response.error.message);
+    (async () => {
+      try {
+        const { error } = await supabase
+          .from('app_stats')
+          .upsert({ id: 1, data: statsData, updated_at: new Date().toISOString() });
+
+        if (error) {
+          console.error("API: Background Supabase update failed", error.message);
         }
-      })
-      .catch(err => {
-        console.error("API: Background Supabase update crash", err)
-      });
+      } catch (err) {
+        console.error("API: Background Supabase update crash", err);
+      }
+    })();
 
     return NextResponse.json(statsData);
   } catch (error) {
