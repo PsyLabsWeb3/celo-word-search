@@ -6,9 +6,17 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Plus, Trash2, Save, AlertCircle, Upload, RefreshCw, Settings, Banknote, Copy, Check } from "lucide-react"
+import { Plus, Trash2, Save, AlertCircle, Upload, RefreshCw, Settings, Banknote, Copy, Check, Info } from "lucide-react"
 import { useAccount } from "wagmi"
 import { toast } from "sonner"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { useIsAdmin, useCreatePublicCrossword, useCreatePublicCrosswordWithPrizePool, useCreatePublicCrosswordWithNativeCELOPrizePool, useActivateCrossword, useCrosswordPrizesDetails } from "@/hooks/useContract"
 import { useCrossword } from "@/contexts/crossword-context"
 import { useQueryClient } from "@tanstack/react-query"
@@ -56,6 +64,7 @@ export default function AdminPage() {
   const [prizePoolAmount, setPrizePoolAmount] = useState<string>("");
   const [prizePoolToken, setPrizePoolToken] = useState<string>("0x0000000000000000000000000000000000000000");
   const [isUpdatingConfig, setIsUpdatingConfig] = useState(false);
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
 
   // Prize pool configuration state
   const [defaultWinnerPercentages, setDefaultWinnerPercentages] = useState<string[]>(["10000"]);
@@ -265,23 +274,28 @@ export default function AdminPage() {
     setClues(clues.filter((_, i) => i !== index))
   }
 
-  const handleSave = async () => {
+  const handleValidateAndConfirm = () => {
     // Validate no conflicts
     if (conflictCells.size > 0) {
       alert("There are conflicts in the crossword. Please resolve all conflicts before saving.")
       return
     }
 
-    const crosswordData: CrosswordData = {
-      gridSize,
-      clues: clues.filter((c) => c.answer && c.clue),
-      isTest: isTestMode,
+    // Validate we have at least one clue
+    if (clues.length === 0) {
+      alert("Please add at least one word to the crossword before saving.")
+      return
     }
 
-    // Validate we have at least one clue
-    if (crosswordData.clues.length === 0) {
-      alert("Please add at least one word to the crossword before saving.")
-      return;
+    // MANDATORY VALIDATION: Name and Sponsor
+    if (!crosswordName.trim()) {
+      alert("Please enter a name for the crossword.")
+      return
+    }
+
+    if (!sponsoredBy.trim()) {
+      alert("Please enter a sponsor name.")
+      return
     }
 
     // Validate max winners is set to a valid value
@@ -326,7 +340,26 @@ export default function AdminPage() {
         alert("Please select a valid token address for the prize pool.");
         return;
       }
+    }
 
+    // If all validations pass, open confirmation dialog
+    setIsConfirmDialogOpen(true);
+  }
+
+  const executeSave = async () => {
+    setIsConfirmDialogOpen(false); // Close dialog
+
+    const crosswordData: CrosswordData = {
+      gridSize,
+      clues: clues.filter((c) => c.answer && c.clue),
+      isTest: isTestMode,
+    }
+
+    // Check if prize pool should be funded
+    if (prizePoolAmount && parseFloat(prizePoolAmount) > 0) {
+      // Validate token selection (double check)
+      let tokenAddress = prizePoolToken;
+      
       // Create crossword with prize pool
       try {
         setIsSavingToBlockchain(true);
@@ -361,10 +394,10 @@ export default function AdminPage() {
           // Use native CELO function
           createPublicCrosswordWithNativeCELOPrizePool([
             crosswordId as `0x${string}`,
-            crosswordName || "Daily Crossword",
+            crosswordName || "Daily Crossword", // Fallback shouldn't be needed due to validation
             dataString,
-            sponsoredBy || "",
-            BigInt(maxWinners),
+            sponsoredBy || "", // Fallback shouldn't be needed due to validation
+            BigInt(maxWinners || 3),
             amountInWei,
             winnerPercentagesBigInt,
             endTimeBigInt
@@ -376,7 +409,7 @@ export default function AdminPage() {
             crosswordName || "Daily Crossword",
             dataString,
             sponsoredBy || "",
-            BigInt(maxWinners),
+            BigInt(maxWinners || 3),
             tokenAddress as `0x${string}`,
             amountInWei,
             winnerPercentagesBigInt,
@@ -557,7 +590,7 @@ export default function AdminPage() {
       alert("Please enter a valid amount to deposit.");
       return;
     }
-    handleSave();
+    handleValidateAndConfirm();
   };
 
   // State to track the current crossword ID and details
@@ -1014,7 +1047,7 @@ export default function AdminPage() {
              {/* Actions */}
               <div className="flex flex-col gap-4 mt-4">
                 <Button
-                  onClick={handleSave}
+                  onClick={handleValidateAndConfirm}
                   disabled={isAnyLoading}
                   className="border-4 border-black bg-accent font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-accent hover:shadow-none disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -1175,6 +1208,44 @@ export default function AdminPage() {
         </div>
 
       </main>
+      <Dialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black uppercase">Confirm Creation</DialogTitle>
+            <DialogDescription className="pt-4 text-base">
+              Are you sure you want to create this crossword?
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4 space-y-3">
+             <div className="p-3 border-2 border-black rounded-md bg-muted/50">
+                <p className="text-sm font-bold text-muted-foreground uppercase text-xs">Name</p>
+                <p className="font-bold">{crosswordName}</p>
+             </div>
+             
+             <div className="p-3 border-2 border-black rounded-md bg-muted/50">
+                <p className="text-sm font-bold text-muted-foreground uppercase text-xs">Sponsor</p>
+                <p className="font-bold">{sponsoredBy}</p>
+             </div>
+
+             <div className="flex bg-yellow-100 border-l-4 border-yellow-500 p-3 items-start gap-2">
+               <AlertCircle className="h-5 w-5 text-yellow-600 shrink-0 mt-0.5" />
+               <p className="text-sm text-yellow-800 font-medium">
+                 This action cannot be undone. The crossword data cannot be modified after creation.
+               </p>
+             </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setIsConfirmDialogOpen(false)} className="border-2 border-black font-bold">
+              Cancel
+            </Button>
+            <Button onClick={executeSave} className="bg-primary text-black font-black border-2 border-black hover:bg-primary/90">
+              Confirm & Create
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

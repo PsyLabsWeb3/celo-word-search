@@ -444,9 +444,9 @@ export default function CreateCrosswordPage() {
                       />
                     </div>
                     <div>
-                      <Label className="font-bold">Sponsored By</Label>
+                      <Label className="font-bold">Sponsored By *</Label>
                       <Input
-                        placeholder="Optional"
+                        placeholder="By Psylabs"
                         value={sponsoredBy}
                         onChange={(e) => setSponsoredBy(e.target.value)}
                         className="border-4 border-black font-bold"
