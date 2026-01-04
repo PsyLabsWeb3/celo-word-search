@@ -44,12 +44,32 @@ export function useGetCrosswordHistory(
   // Get board history for current chain
   const boardHistory = (CONTRACTS as any)[chainId]?.['BoardHistory'] as `0x${string}`[] || [];
   const currentContractAddress = (CONTRACTS as any)[chainId]?.['CrosswordBoard']?.address as `0x${string}` | undefined;
+  const publicManagerAddress = (CONTRACTS as any)[chainId]?.['PublicCrosswordManager']?.address as `0x${string}` | undefined;
   
-  // Use either the history list or the current address if history is empty
-  const contractAddresses = useMemo(() => 
-    boardHistory.length > 0 ? boardHistory : (currentContractAddress ? [currentContractAddress] : []),
-    [boardHistory, currentContractAddress]
-  );
+  // Build list of contracts to query:
+  // 1. Current PublicCrosswordManager (for new crosswords)
+  // 2. BoardHistory (for old crosswords)
+  // 3. Current CrosswordBoard as fallback
+  const contractAddresses = useMemo(() => {
+    const addresses: `0x${string}`[] = [];
+    
+    // Always add PublicCrosswordManager first if available (most recent crosswords)
+    if (publicManagerAddress && publicManagerAddress !== '0x0000000000000000000000000000000000000000') {
+      addresses.push(publicManagerAddress);
+    }
+    
+    // Add board history
+    if (boardHistory.length > 0) {
+      addresses.push(...boardHistory);
+    }
+    
+    // Add current board as fallback if not already included
+    if (currentContractAddress && !addresses.includes(currentContractAddress)) {
+      addresses.push(currentContractAddress);
+    }
+    
+    return addresses;
+  }, [boardHistory, currentContractAddress, publicManagerAddress]);
 
   // Refs to prevent unnecessary re-execution
   const prevChainId = useRef(chainId);
@@ -118,6 +138,125 @@ export function useGetCrosswordHistory(
               // Otherwise fetch details from the first contract that has this crossword
               for (const address of contractAddresses) {
                 try {
+                  // STRATEGY 1: Modern getCrosswordDetails
+                  try {
+                    const details = await publicClient.readContract({
+                      address,
+                      abi: [{
+                        "inputs": [{ "internalType": "bytes32", "name": "crosswordId", "type": "bytes32" }],
+                        "name": "getCrosswordDetails",
+                        "outputs": [
+                          { "internalType": "string", "name": "name", "type": "string" },
+                          { "internalType": "string", "name": "sponsoredBy", "type": "string" },
+                          { "internalType": "string", "name": "crosswordData", "type": "string" },
+                          { "internalType": "address", "name": "token", "type": "address" },
+                          { "internalType": "uint256", "name": "totalPrizePool", "type": "uint256" },
+                          { "internalType": "uint256", "name": "maxWinners", "type": "uint256" },
+                          { "internalType": "uint256[]", "name": "winnerPercentages", "type": "uint256[]" },
+                          { "internalType": "uint256", "name": "activationTime", "type": "uint256" },
+                          { "internalType": "uint256", "name": "endTime", "type": "uint256" },
+                          { "internalType": "uint256", "name": "createdAt", "type": "uint256" },
+                          { "internalType": "bool", "name": "isActive", "type": "bool" },
+                          { "internalType": "bool", "name": "isCompleted", "type": "bool" },
+                          { "internalType": "address", "name": "creator", "type": "address" }
+                        ],
+                        "stateMutability": "view",
+                        "type": "function"
+                      }],
+                      functionName: 'getCrosswordDetails',
+                      args: [id]
+                    }) as any;
+
+                    if (details && typeof details[0] === 'string') {
+                      const [name, sponsoredBy, gridDataStr, token, prizePool, , , activationTime] = details;
+                      let gridData;
+                      if (gridDataStr) {
+                        try {
+                          const parsedGridData = JSON.parse(gridDataStr);
+                          gridData = {
+                            clues: parsedGridData.clues,
+                            gridSize: parsedGridData.gridSize,
+                            isTest: parsedGridData.isTest
+                          };
+                        } catch (e) { gridData = undefined; }
+                      }
+
+                      return {
+                        crosswordId: id,
+                        token,
+                        prizePool,
+                        creator: details[12] || '0x0000000000000000000000000000000000000000',
+                        blockNumber: 0n,
+                        timestamp: Number(activationTime) || Number(details[9]) || 0,
+                        contractAddress: address,
+                        coreAddress: (CONTRACTS as any)[chainId]?.['CrosswordCore']?.address as `0x${string}` | undefined,
+                        name: name || undefined,
+                        sponsoredBy: sponsoredBy || undefined,
+                        gridData
+                      } as CrosswordHistoryItem;
+                    }
+                  } catch (e) { /* ignore and try next strategy */ }
+
+                  // STRATEGY 2: Modern getPublicCrosswordDetails
+                  try {
+                    const details = await publicClient.readContract({
+                      address,
+                      abi: [{
+                        "inputs": [{ "internalType": "bytes32", "name": "crosswordId", "type": "bytes32" }],
+                        "name": "getPublicCrosswordDetails",
+                        "outputs": [
+                          { "internalType": "string", "name": "name", "type": "string" },
+                          { "internalType": "string", "name": "sponsoredBy", "type": "string" },
+                          { "internalType": "string", "name": "crosswordData", "type": "string" },
+                          { "internalType": "address", "name": "token", "type": "address" },
+                          { "internalType": "uint256", "name": "totalPrizePool", "type": "uint256" },
+                          { "internalType": "uint256", "name": "maxWinners", "type": "uint256" },
+                          { "internalType": "uint256[]", "name": "winnerPercentages", "type": "uint256[]" },
+                          { "internalType": "uint256", "name": "activationTime", "type": "uint256" },
+                          { "internalType": "uint256", "name": "endTime", "type": "uint256" },
+                          { "internalType": "uint256", "name": "createdAt", "type": "uint256" },
+                          { "internalType": "bool", "name": "isActive", "type": "bool" },
+                          { "internalType": "bool", "name": "isCompleted", "type": "bool" },
+                          { "internalType": "address", "name": "creator", "type": "address" }
+                        ],
+                        "stateMutability": "view",
+                        "type": "function"
+                      }],
+                      functionName: 'getPublicCrosswordDetails',
+                      args: [id]
+                    }) as any;
+
+                    if (details && typeof details[0] === 'string') {
+                      const [name, sponsoredBy, gridDataStr, token, prizePool, , , activationTime] = details;
+                      let gridData;
+                      if (gridDataStr) {
+                        try {
+                          const parsedGridData = JSON.parse(gridDataStr);
+                          gridData = {
+                            clues: parsedGridData.clues,
+                            gridSize: parsedGridData.gridSize,
+                            isTest: parsedGridData.isTest
+                          };
+                        } catch (e) { gridData = undefined; }
+                      }
+
+                      return {
+                        crosswordId: id,
+                        token,
+                        prizePool,
+                        creator: details[12] || '0x0000000000000000000000000000000000000000',
+                        blockNumber: 0n,
+                        timestamp: Number(activationTime) || Number(details[9]) || 0,
+                        contractAddress: address,
+                        coreAddress: (CONTRACTS as any)[chainId]?.['CrosswordCore']?.address as `0x${string}` | undefined,
+                        name: name || undefined,
+                        sponsoredBy: sponsoredBy || undefined,
+                        gridData
+                      } as CrosswordHistoryItem;
+                    }
+                  } catch (e) { /* ignore and try next strategy */ }
+
+                  // STRATEGY 3: Legacy getCrosswordDetails
                   const details = await publicClient.readContract({
                     address: address,
                     abi: [{
@@ -213,22 +352,9 @@ export function useGetCrosswordHistory(
           
           const allCompletedIdsPromises = contractAddresses.map(async (address) => {
             try {
-              // Try getCompletedCrosswords (Legacy)
+              // Try getAllPublicCrosswords first (Modern PublicCrosswordManager - returns all crosswords)
               try {
-                return await publicClient.readContract({
-                  address,
-                  abi: [{
-                    "inputs": [],
-                    "name": "getCompletedCrosswords",
-                    "outputs": [{ "internalType": "bytes32[]", "name": "", "type": "bytes32[]" }],
-                    "stateMutability": "view",
-                    "type": "function"
-                  }],
-                  functionName: 'getCompletedCrosswords'
-                }) as `0x${string}`[];
-              } catch (e) {
-                // If fails, try getAllPublicCrosswords (Modern)
-                return await publicClient.readContract({
+                const result = await publicClient.readContract({
                   address,
                   abi: [{
                     "inputs": [],
@@ -239,6 +365,40 @@ export function useGetCrosswordHistory(
                   }],
                   functionName: 'getAllPublicCrosswords'
                 }) as `0x${string}`[];
+                console.log(`getAllPublicCrosswords from ${address}:`, result);
+                return result;
+              } catch (e) {
+                // If fails, try getActiveCrosswordIds (Modern PublicCrosswordManager - returns active crosswords)
+                try {
+                  const result = await publicClient.readContract({
+                    address,
+                    abi: [{
+                      "inputs": [],
+                      "name": "getActiveCrosswordIds",
+                      "outputs": [{ "internalType": "bytes32[]", "name": "", "type": "bytes32[]" }],
+                      "stateMutability": "view",
+                      "type": "function"
+                    }],
+                    functionName: 'getActiveCrosswordIds'
+                  }) as `0x${string}`[];
+                  console.log(`getActiveCrosswordIds from ${address}:`, result);
+                  return result;
+                } catch (e2) {
+                  // Finally try getCompletedCrosswords (Legacy)
+                  const result = await publicClient.readContract({
+                    address,
+                    abi: [{
+                      "inputs": [],
+                      "name": "getCompletedCrosswords",
+                      "outputs": [{ "internalType": "bytes32[]", "name": "", "type": "bytes32[]" }],
+                      "stateMutability": "view",
+                      "type": "function"
+                    }],
+                    functionName: 'getCompletedCrosswords'
+                  }) as `0x${string}`[];
+                  console.log(`getCompletedCrosswords from ${address}:`, result);
+                  return result;
+                }
               }
             } catch (err) {
               console.warn(`Could not fetch crosswords from ${address}:`, err);
@@ -279,6 +439,133 @@ export function useGetCrosswordHistory(
             // Find details for each ID
             for (const address of contractAddresses) {
               try {
+                // STRATEGY 1: Try getPublicCrosswordDetails or getCrosswordDetails with Modern Signature
+                // (name, sponsoredBy, crosswordData, token, totalPrizePool, maxWinners, winnerPercentages, activationTime, endTime, createdAt, isActive, isCompleted, creator)
+                try {
+                  const details = await publicClient.readContract({
+                    address,
+                    abi: [{
+                      "inputs": [{ "internalType": "bytes32", "name": "crosswordId", "type": "bytes32" }],
+                      "name": "getCrosswordDetails", // Modern signature has more fields
+                      "outputs": [
+                        { "internalType": "string", "name": "name", "type": "string" },
+                        { "internalType": "string", "name": "sponsoredBy", "type": "string" },
+                        { "internalType": "string", "name": "crosswordData", "type": "string" },
+                        { "internalType": "address", "name": "token", "type": "address" },
+                        { "internalType": "uint256", "name": "totalPrizePool", "type": "uint256" },
+                        { "internalType": "uint256", "name": "maxWinners", "type": "uint256" },
+                        { "internalType": "uint256[]", "name": "winnerPercentages", "type": "uint256[]" },
+                        { "internalType": "uint256", "name": "activationTime", "type": "uint256" },
+                        { "internalType": "uint256", "name": "endTime", "type": "uint256" },
+                        { "internalType": "uint256", "name": "createdAt", "type": "uint256" },
+                        { "internalType": "bool", "name": "isActive", "type": "bool" },
+                        { "internalType": "bool", "name": "isCompleted", "type": "bool" },
+                        { "internalType": "address", "name": "creator", "type": "address" }
+                      ],
+                      "stateMutability": "view",
+                      "type": "function"
+                    }],
+                    functionName: 'getCrosswordDetails',
+                    args: [id]
+                  }) as any;
+
+                  if (details && typeof details[0] === 'string') {
+                    const [name, sponsoredBy, gridDataStr, token, prizePool, , , activationTime] = details;
+                    
+                    let gridData;
+                    if (gridDataStr) {
+                      try {
+                        const parsedGridData = JSON.parse(gridDataStr);
+                        gridData = {
+                          clues: parsedGridData.clues,
+                          gridSize: parsedGridData.gridSize,
+                          isTest: parsedGridData.isTest
+                        };
+                      } catch (e) { gridData = undefined; }
+                    }
+
+                    return {
+                      crosswordId: id,
+                      token,
+                      prizePool,
+                      creator: details[12] || '0x0000000000000000000000000000000000000000',
+                      blockNumber: 0n,
+                      timestamp: Number(activationTime) || Number(details[9]) || 0,
+                      contractAddress: address,
+                      coreAddress: (CONTRACTS as any)[chainId]?.['CrosswordCore']?.address as `0x${string}` | undefined,
+                      isLegacy: false,
+                      name: name || undefined,
+                      sponsoredBy: sponsoredBy || undefined,
+                      gridData
+                    } as CrosswordHistoryItem;
+                  }
+                } catch (modernErr) {
+                   // Continue to Strategy 2
+                }
+
+                // STRATEGY 2: Try getPublicCrosswordDetails (Modern CrosswordBoard signature)
+                try {
+                  const details = await publicClient.readContract({
+                    address,
+                    abi: [{
+                      "inputs": [{ "internalType": "bytes32", "name": "crosswordId", "type": "bytes32" }],
+                      "name": "getPublicCrosswordDetails",
+                      "outputs": [
+                        { "internalType": "string", "name": "name", "type": "string" },
+                        { "internalType": "string", "name": "sponsoredBy", "type": "string" },
+                        { "internalType": "string", "name": "crosswordData", "type": "string" },
+                        { "internalType": "address", "name": "token", "type": "address" },
+                        { "internalType": "uint256", "name": "totalPrizePool", "type": "uint256" },
+                        { "internalType": "uint256", "name": "maxWinners", "type": "uint256" },
+                        { "internalType": "uint256[]", "name": "winnerPercentages", "type": "uint256[]" },
+                        { "internalType": "uint256", "name": "activationTime", "type": "uint256" },
+                        { "internalType": "uint256", "name": "endTime", "type": "uint256" },
+                        { "internalType": "uint256", "name": "createdAt", "type": "uint256" },
+                        { "internalType": "bool", "name": "isActive", "type": "bool" },
+                        { "internalType": "bool", "name": "isCompleted", "type": "bool" },
+                        { "internalType": "address", "name": "creator", "type": "address" }
+                      ],
+                      "stateMutability": "view",
+                      "type": "function"
+                    }],
+                    functionName: 'getPublicCrosswordDetails',
+                    args: [id]
+                  }) as any;
+
+                  if (details && typeof details[0] === 'string') {
+                    const [name, sponsoredBy, gridDataStr, token, prizePool, , , activationTime] = details;
+                    let gridData;
+                    if (gridDataStr) {
+                      try {
+                        const parsedGridData = JSON.parse(gridDataStr);
+                        gridData = {
+                          clues: parsedGridData.clues,
+                          gridSize: parsedGridData.gridSize,
+                          isTest: parsedGridData.isTest
+                        };
+                      } catch (e) { gridData = undefined; }
+                    }
+
+                    return {
+                      crosswordId: id,
+                      token,
+                      prizePool,
+                      creator: details[12] || '0x0000000000000000000000000000000000000000',
+                      blockNumber: 0n,
+                      timestamp: Number(activationTime) || Number(details[9]) || 0,
+                      contractAddress: address,
+                      coreAddress: (CONTRACTS as any)[chainId]?.['CrosswordCore']?.address as `0x${string}` | undefined,
+                      isLegacy: false,
+                      name: name || undefined,
+                      sponsoredBy: sponsoredBy || undefined,
+                      gridData
+                    } as CrosswordHistoryItem;
+                  }
+                } catch (modernErr2) {
+                   // Continue to Strategy 3
+                }
+
+                // STRATEGY 3: Try Legacy getCrosswordDetails
                 const details = await publicClient.readContract({
                   address,
                   abi: [{
