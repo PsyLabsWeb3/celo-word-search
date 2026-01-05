@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useAccount, useConnect, useDisconnect } from 'wagmi';
-import { Menu } from "lucide-react";
+import { Menu, ArrowLeft } from "lucide-react";
 import { useMiniApp } from "@/contexts/miniapp-context";
 import {
   Dialog,
@@ -178,13 +178,22 @@ export default function Navbar() {
     );
   };
 
-
+  const handleBack = () => {
+    window.history.back();
+  };
 
   return (
     <nav className="border-b-4 border-black bg-[#AD27F5] p-4 shadow-[0px_4px_0px_0px_rgba(0,0,0,1)] relative">
-      <div className="container grid items-center grid-cols-3 mx-auto max-w-7xl">
-        {/* Menu button - far left */}
-        <div className="flex justify-start">
+      <div className="container flex items-center justify-between mx-auto max-w-7xl">
+        {/* Left section - back button and menu button */}
+        <div className="flex items-center gap-2">
+          <button
+            className="p-2"
+            onClick={handleBack}
+          >
+            <ArrowLeft className="w-6 h-6" />
+            <span className="sr-only">Go back</span>
+          </button>
           <button
             className="p-2 md:hidden"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -194,68 +203,13 @@ export default function Navbar() {
           </button>
         </div>
 
-        {/* Title - centered */}
+        {/* Center - empty for balance */}
 
-        {/* Desktop wallet button and avatar - far right */}
-        <div className="flex items-center justify-end gap-2 md:gap-12 md:flex">
-          {renderWalletButton(false)}
-          {isMiniAppReady && (
-            <Dialog>
-              <DialogTrigger asChild>
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center overflow-hidden cursor-pointer border-2 border-gray-800 hover:border-gray-900 active:border-gray-900 shadow-[3px_3px_0px_0px_rgba(0,0,0,0.3)] hover:shadow-[5px_5px_0px_0px_rgba(0,0,0,0.3)] active:shadow-[5px_5px_0px_0px_rgba(0,0,0,0.3)] transition-all">
-                  {pfpUrl ? (
-                    <img
-                      src={pfpUrl}
-                      alt="Profile"
-                      className="object-cover w-full h-full rounded-full"
-                    />
-                  ) : (
-                    <div className="flex items-center justify-center w-6 h-6 bg-gray-800 rounded-full">
-                      <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                    </div>
-                  )}
-                </div>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-md border-2 border-gray-800 shadow-[5px_5px_0px_0px_rgba(0,0,0,0.5)]">
-                <DialogHeader>
-                  <DialogTitle className="text-xl font-bold">{displayName}</DialogTitle>
-                  <DialogDescription>
-                    {username.startsWith('@') ? username : `@${username}`}
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="flex flex-col items-center py-4">
-                  <div className="flex items-center justify-center w-16 h-16 mb-4 overflow-hidden border-2 border-gray-800 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500">
-                    {pfpUrl ? (
-                      <img
-                        src={pfpUrl}
-                        alt="Profile"
-                        className="object-cover w-full h-full rounded-full"
-                      />
-                    ) : (
-                      <div className="flex items-center justify-center w-8 h-8 bg-gray-800 rounded-full">
-                        <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                      </div>
-                    )}
-                  </div>
-                  <div className="mb-2 text-sm text-gray-600">
-                    Wallet: {formatAddress(walletAddress)}
-                  </div>
-                  <div className={`flex items-center gap-1 text-xs ${
-                    isConnected ? 'text-green-600' : isAccountConnecting ? 'text-yellow-600' : 'text-gray-500'
-                  }`}>
-                    <div className={`w-2 h-2 rounded-full ${
-                      isConnected ? 'bg-green-500' : isAccountConnecting ? 'bg-yellow-500' : 'bg-gray-400'
-                    }`}></div>
-                    {isConnected ? 'Connected' : isAccountConnecting ? 'Connecting...' : 'Disconnected'}
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
-          )}
-        </div>
-
-        {/* For mobile: avatar in the right column with md:hidden */}
-        <div className="flex justify-end md:hidden">
+        {/* Right section - wallet and avatar */}
+        <div className="flex items-center gap-2">
+          <div className="hidden md:flex">
+            {renderWalletButton(false)}
+          </div>
           {isMiniAppReady && (
             <Dialog>
               <DialogTrigger asChild>
