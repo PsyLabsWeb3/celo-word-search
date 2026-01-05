@@ -17,10 +17,10 @@ const frame = {
   version: "1",
   imageUrl: `${appUrl}/embed-image.png`, // Must be 3:2 aspect ratio
   button: {
-    title: "Launch Onchain Crossword",
+    title: "Launch Onchain Word Search",
     action: {
       type: "launch_frame",
-      name: "Onchain Crossword",
+      name: "Onchain Word Search",
       url: appUrl,
       splashImageUrl: `${appUrl}/image.png?v=2`, // Must be 200x200px - v=2 forces cache refresh
       splashBackgroundColor: "#FEEF89",
@@ -30,17 +30,17 @@ const frame = {
 
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl),
-  title: 'celo-crossword',
-  description: 'A crossword in the celo chain ',
+  title: 'celo-word-search',
+  description: 'A word search game on the celo chain ',
   openGraph: {
-    title: 'celo-crossword',
-    description: 'A crossword in the celo chain ',
+    title: 'celo-word-search',
+    description: 'A word search game on the celo chain ',
     images: [`${appUrl}/homeimage.png`],
   },
   twitter: {
     card: "summary_large_image",
-    title: "celo-crossword",
-    description: "A crossword in the celo chain ",
+    title: "celo-word-search",
+    description: "A word search game on the celo chain ",
     images: [`${appUrl}/homeimage.png`],
   },
   other: {

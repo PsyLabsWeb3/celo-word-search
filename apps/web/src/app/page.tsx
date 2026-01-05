@@ -143,10 +143,10 @@ function PageContent() {
           <div className="mx-auto max-w-7xl">
             <div className="mb-6 text-center md:mb-8">
               <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl md:text-5xl">
-                DeFi Crossword
+                DeFi Word Search
               </h1>
               <p className="mt-2 text-sm text-muted-foreground sm:text-base">
-                Click a cell to select, then start typing.
+                Select a word in the grid to find it.
               </p>
             </div>
             <CrosswordGame
@@ -165,7 +165,7 @@ function PageContent() {
         <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-background/60 backdrop-blur-md">
           <div className=" ml-2 mr-2 border-4 border-black bg-white p-12 text-center space-y-4">
             <Loader2 className="w-16 h-16 animate-spin mx-auto text-primary" />
-            <h2 className="text-2xl font-black uppercase">Loading Crossword</h2>
+            <h2 className="text-2xl font-black uppercase">Loading Word Search</h2>
             <p className="text-muted-foreground font-bold">Bringing the board to life...</p>
           </div>
         </div>
@@ -197,11 +197,11 @@ function PageContent() {
             </div>
 
             <h1 className="text-4xl font-black leading-tight uppercase text-balance text-foreground sm:text-5xl md:text-7xl">
-              Onchain Crossword
+              Onchain Word Search
             </h1>
 
             <p className="max-w-lg mx-auto text-lg font-bold text-pretty text-muted-foreground md:text-xl">
-              Complete the crossword and compete for amazing rewards. The winners take it all!
+              Find words in the grid and compete for amazing rewards. The winners take it all!
             </p>
           </div>
 

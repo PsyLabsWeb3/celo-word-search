@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useAccount, useConnect, useDisconnect } from 'wagmi';
-import { Menu, ArrowLeft } from "lucide-react";
+import { Menu } from "lucide-react";
 import { useMiniApp } from "@/contexts/miniapp-context";
 import {
   Dialog,
@@ -178,22 +178,13 @@ export default function Navbar() {
     );
   };
 
-  const handleBack = () => {
-    window.history.back();
-  };
+
 
   return (
     <nav className="border-b-4 border-black bg-[#AD27F5] p-4 shadow-[0px_4px_0px_0px_rgba(0,0,0,1)] relative">
       <div className="container flex items-center justify-between mx-auto max-w-7xl">
-        {/* Left section - back button and menu button */}
-        <div className="flex items-center gap-2">
-          <button
-            className="p-2"
-            onClick={handleBack}
-          >
-            <ArrowLeft className="w-6 h-6" />
-            <span className="sr-only">Go back</span>
-          </button>
+        {/* Left section - menu button only */}
+        <div className="flex justify-start">
           <button
             className="p-2 md:hidden"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
