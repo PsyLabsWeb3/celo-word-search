@@ -196,7 +196,7 @@ export default function Navbar() {
 
         {/* Title - centered */}
         <div className="flex justify-center">
-          {/* <h1 className="text-xl font-black text-foreground sm:text-2xl md:text-3xl">Onchain Crossword</h1> */}
+          <a href="/word-search" className="text-xl font-black text-foreground sm:text-2xl md:text-3xl hover:underline">Word Search</a>
         </div>
 
         {/* Desktop wallet button and avatar - far right */}
