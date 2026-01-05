@@ -195,12 +195,9 @@ export default function Navbar() {
         </div>
 
         {/* Title - centered */}
-        <div className="flex justify-center">
-          <a href="/word-search" className="text-xl font-black text-foreground sm:text-2xl md:text-3xl hover:underline">Word Search</a>
-        </div>
 
         {/* Desktop wallet button and avatar - far right */}
-        <div className="flex items-center justify-end hidden gap-12 md:flex">
+        <div className="flex items-center justify-end gap-2 md:gap-12 md:flex">
           {renderWalletButton(false)}
           {isMiniAppReady && (
             <Dialog>
