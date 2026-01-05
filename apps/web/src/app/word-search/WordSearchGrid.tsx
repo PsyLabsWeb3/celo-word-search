@@ -256,7 +256,7 @@ const WordSearchGrid = () => {
     <div className="flex flex-col lg:flex-row gap-8">
       {/* Grid */}
       <div className="flex-1">
-        <div className="border-4 border-black bg-orange-50 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-6">
+        <div className="border-4 border-black bg-orange-50 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] mr-2 p-6">
           <div
             className="grid grid-cols-10 gap-1 sm:gap-2"
             onTouchMove={handleTouchMove}
@@ -300,7 +300,7 @@ const WordSearchGrid = () => {
 
       {/* Words List */}
       <div className="lg:w-1/3">
-        <div className="border-4 border-black bg-orange-50 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-6 h-full">
+        <div className="border-4 border-black bg-orange-50 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-6 h-full mr-2">
           <h2 className="text-2xl font-black mb-4">WORDS TO FIND</h2>
           <ul className="flex flex-wrap lg:flex-col gap-2">
             {WORDS_TO_FIND.map((word, index) => (

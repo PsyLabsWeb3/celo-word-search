@@ -205,70 +205,16 @@ function PageContent() {
             </p>
           </div>
 
-          <div className="grid w-full max-w-4xl gap-4 mx-auto mt-8 sm:grid-cols-2 lg:grid-cols-2">
+          <div className="grid w-full max-w-4xl gap-4 mx-auto mt-8 sm:grid-cols-1 lg:grid-cols-1">
             {isConnected && (
-              <>
-                <Link href="/active-crosswords" passHref className="w-full">
-                  <CeloNetworkButton
-                    className="h-auto min-h-32 w-full border-4 border-black bg-green-500 p-4 text-xl sm:text-2xl font-black uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 active:translate-x-1 active:translate-y-1 hover:bg-green-600 active:bg-green-600 hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary flex flex-col items-center justify-center gap-2 whitespace-normal leading-tight"
-                  >
-                    <Play className="w-10 h-10 shrink-0" />
-                    <span>Play Crosswords</span>
-                  </CeloNetworkButton>
-                </Link>
-
-                <Link href="/create-crossword" passHref className="w-full">
-                  <CeloNetworkButton
-                    className="h-auto min-h-32 w-full border-4 border-black bg-indigo-500 p-4 text-xl sm:text-2xl font-black uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 active:translate-x-1 active:translate-y-1 hover:bg-indigo-600 active:bg-indigo-600 hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary flex flex-col items-center justify-center gap-2 whitespace-normal leading-tight"
-                  >
-                    <Plus className="w-10 h-10 shrink-0" />
-                    <span>Create Crossword</span>
-                  </CeloNetworkButton>
-                </Link>
-
-                <Link href="/history" passHref className="w-full">
-                  <CeloNetworkButton
-                    variant="secondary"
-                    className="h-auto min-h-32 w-full border-4 border-black bg-teal-500 p-4 text-xl sm:text-2xl font-black uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 active:translate-x-1 active:translate-y-1 hover:bg-teal-600 active:bg-teal-600 hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary flex flex-col items-center justify-center gap-2 whitespace-normal leading-tight"
-                  >
-                    <History className="w-10 h-10 shrink-0" />
-                    <span>History</span>
-                  </CeloNetworkButton>
-                </Link>
-
-                <Link href="/stats" passHref className="w-full">
-                  <CeloNetworkButton
-                    variant="secondary"
-                    className="h-auto min-h-32 w-full border-4 border-black bg-orange-500 p-4 text-xl sm:text-2xl font-black uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 active:translate-x-1 active:translate-y-1 hover:bg-orange-600 active:bg-orange-600 hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary flex flex-col items-center justify-center gap-2 whitespace-normal leading-tight"
-                  >
-                    <BarChart3 className="w-10 h-10 shrink-0" />
-                    <span>Stats</span>
-                  </CeloNetworkButton>
-                </Link>
-
-                {(hasSavedCrossword || alreadyCompleted) && currentCrossword?.id && (
-                  <Link href="/leaderboard" passHref className="w-full">
-                    <CeloNetworkButton
-                      variant="secondary"
-                      className="h-auto min-h-32 w-full border-4 border-black bg-yellow-400 p-4 text-xl sm:text-2xl font-black uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 active:translate-x-1 active:translate-y-1 hover:bg-yellow-500 active:bg-yellow-500 hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary flex flex-col items-center justify-center gap-2 whitespace-normal leading-tight"
-                    >
-                      <Trophy className="w-10 h-10 shrink-0" />
-                      <span>Leaderboard</span>
-                    </CeloNetworkButton>
-                  </Link>
-                )}
-
-                {hasSavedCrossword && (
-                  <CeloNetworkButton
-                    variant="secondary"
-                    onClick={handleContinueGame}
-                    className="col-span-1 sm:col-span-2 h-auto min-h-24 w-full border-4 border-black bg-rose-500 p-4 text-lg sm:text-xl font-black uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 active:translate-x-1 active:translate-y-1 hover:bg-rose-600 active:bg-rose-600 hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary flex items-center justify-center gap-2 mt-4 whitespace-normal leading-tight"
-                  >
-                    <span>Continue Crossword</span>
-                    <ArrowRight className="w-6 h-6 shrink-0" />
-                  </CeloNetworkButton>
-                )}
-              </>
+              <Link href="/word-search" passHref className="w-full">
+                <CeloNetworkButton
+                  className="h-auto min-h-32 w-full border-4 border-black bg-green-500 p-4 text-xl sm:text-2xl font-black uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 active:translate-x-1 active:translate-y-1 hover:bg-green-600 active:bg-green-600 hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary flex flex-col items-center justify-center gap-2 whitespace-normal leading-tight"
+                >
+                  <Play className="w-10 h-10 shrink-0" />
+                  <span>Play Word Search</span>
+                </CeloNetworkButton>
+              </Link>
             )}
           </div>
 
