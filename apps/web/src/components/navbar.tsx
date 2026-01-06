@@ -14,7 +14,8 @@ import {
 } from "@/components/ui/dialog";
 
 export default function Navbar() {
-  const [isMenuOpen, setIsMenuOpen] = useState(true);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const navRef = useRef<HTMLElement>(null);
   const [mounted, setMounted] = useState(false);
   const [hasManuallyDisconnected, setHasManuallyDisconnected] = useState(false);
   const [manualConnecting, setManualConnecting] = useState(false);
@@ -59,6 +60,22 @@ export default function Navbar() {
       }
     }
   }, [isMiniAppReady, isConnected, isAccountConnecting, connect, hasManuallyDisconnected, connectors]);
+
+  // Handle click outside to close mobile menu
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      if (isMenuOpen && navRef.current && !navRef.current.contains(event.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, [isMenuOpen]);
 
 
   // Get frame connector for manual connection
@@ -123,35 +140,12 @@ export default function Navbar() {
         <div className="flex flex-col gap-2 sm:flex-row">
           <button
             onClick={async () => {
-              setManualConnecting(true);
-              try {
-                // Priority: Farcaster -> Injected -> MetaMask
-                const connectorToUse = 
-                  connectors.find(c => c.id === 'farcaster') || 
-                  connectors.find(c => c.id === 'injected' || c.name.toLowerCase().includes('meta') || c.id.includes('meta'));
-                
-                if (connectorToUse) {
-                  await connect({ connector: connectorToUse });
-                } else {
-                  alert("No compatible wallet found. Please use Farcaster or install a wallet like MetaMask.");
-                }
-              } catch (error) {
-                console.error("Connection error:", error);
-                alert(`Connection failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-              } finally {
-                setManualConnecting(false);
-              }
+              // Disabled for demo
             }}
-            disabled={isConnecting}
-            className={`bg-[#27F52A] px-3 py-2 text-sm font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 active:translate-x-1 active:translate-y-1 hover:bg-[#27F52A] active:bg-[#27F52A] hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary ${isMobile ? 'w-full' : 'sm:px-4 sm:text-base'} ${isConnecting ? 'opacity-70' : ''}`}
+            disabled={true}
+            className={`bg-[#27F52A] px-3 py-2 text-sm font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all opacity-50 cursor-not-allowed ${isMobile ? 'w-full' : 'sm:px-4 sm:text-base'}`}
           >
-            {isConnecting && (
-              <svg className="inline-block w-4 h-4 mr-2 -ml-1 text-current animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-            )}
-            {isConnecting ? 'Connecting...' : (hasFarcasterConnectorRef.current ? 'Connect Wallet' : 'Connect Wallet')}
+            Connect Wallet
           </button>
         </div>
       );
@@ -168,9 +162,10 @@ export default function Navbar() {
         </button>
 
         <button
-          onClick={handleDisconnect}
+          onClick={() => {}}
           type="button"
-          className={`bg-red-500 px-3 py-2 text-sm font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 active:translate-x-1 active:translate-y-1 hover:bg-red-600 active:bg-red-600 hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary ${isMobile ? 'w-full' : 'sm:px-4 sm:text-base'}`}
+          disabled={true}
+          className={`bg-red-500 px-3 py-2 text-sm font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all opacity-50 cursor-not-allowed ${isMobile ? 'w-full' : 'sm:px-4 sm:text-base'}`}
         >
           Disconnect
         </button>
@@ -181,7 +176,7 @@ export default function Navbar() {
 
 
   return (
-    <nav className="border-b-4 border-black bg-[#FEEE91] p-4 shadow-[0px_4px_0px_0px_rgba(0,0,0,1)] relative">
+    <nav ref={navRef} className="border-b-4 border-black bg-[#FEEE91] p-4 shadow-[0px_4px_0px_0px_rgba(0,0,0,1)] relative">
       <div className="container flex items-center justify-between mx-auto max-w-7xl">
         {/* Left section - menu button only */}
         <div className="flex justify-start">
