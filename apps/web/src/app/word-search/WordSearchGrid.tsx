@@ -96,7 +96,7 @@ const WordSearchGrid = () => {
     }
   };
 
-  const [grid] = useState<string[][]>(generateInitialGrid());
+  const [grid, setGrid] = useState<string[][]>(generateInitialGrid());
   const [selectedCells, setSelectedCells] = useState<[number, number][]>([]);
   const [foundWords, setFoundWords] = useState<string[]>([]);
   const [foundWordCells, setFoundWordCells] = useState<{
@@ -228,6 +228,16 @@ const WordSearchGrid = () => {
     setSelectedCells([]);
   };
 
+  const handleReset = () => {
+    setGrid(generateInitialGrid());
+    setSelectedCells([]);
+    setFoundWords([]);
+    setFoundWordCells({});
+    setIsMouseDown(false);
+    setStartCell(null);
+    setIsComplete(false);
+  };
+
   // Check if the game is complete
   useEffect(() => {
     if (foundWords.length === WORDS_TO_FIND.length) {
@@ -256,7 +266,7 @@ const WordSearchGrid = () => {
     <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
       {/* Grid */}
       <div className="w-full lg:w-2/3">
-        <div className="border-4 border-black bg-orange-50 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-4 md:p-6">
+        <div className="border-4 border-black bg-orange-50 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] mr-2 p-4 md:p-6">
           <div
             className="grid grid-cols-10 gap-1 sm:gap-2 mx-auto max-w-xs md:max-w-md lg:max-w-lg"
             onTouchMove={handleTouchMove}
@@ -296,11 +306,19 @@ const WordSearchGrid = () => {
             )}
           </div>
         </div>
+        <div className="mt-4 flex justify-center">
+          <button
+            onClick={handleReset}
+            className="border-4 border-black bg-yellow-400 px-6 py-2 font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 hover:bg-yellow-500 hover:shadow-none active:translate-x-1 active:translate-y-1 active:shadow-none"
+          >
+            Reset Grid
+          </button>
+        </div>
       </div>
 
       {/* Words List */}
       <div className="w-full lg:w-1/3">
-        <div className="border-4 border-black bg-orange-50 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-4 md:p-6 h-full">
+        <div className="border-4 border-black bg-orange-50 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-4 md:p-6 h-full mr-2">
           <h2 className="text-2xl font-black mb-4 text-center">WORDS TO FIND</h2>
           <ul className="flex flex-wrap lg:flex-col gap-2 justify-center lg:justify-start">
             {WORDS_TO_FIND.map((word, index) => (
