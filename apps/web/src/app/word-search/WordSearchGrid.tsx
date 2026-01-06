@@ -253,36 +253,12 @@ const WordSearchGrid = () => {
   };
 
   return (
-    <div className="flex flex-col lg:flex-row gap-8">
+    <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
       {/* Grid */}
-      <div className="flex-1">
-        <div className="border-4 border-black bg-orange-50 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] mr-2 p-6 mb-4">
-           <h2 className="text-2xl font-black mb-4">WORDS TO FIND</h2>
-          <ul className="flex flex-wrap lg:flex-col gap-2">
-            {WORDS_TO_FIND.map((word, index) => (
-              <li
-                key={index}
-                className={`font-black text-sm sm:text-base md:text-lg px-3 py-1.5 rounded-full border border-black/5 ${
-                  foundWords.includes(word)
-                    ? "bg-emerald-500/10 text-emerald-600 line-through border-emerald-500/20"
-                    : "bg-white/50 text-black shadow-sm"
-                }`}
-              >
-                {word}
-              </li>
-            ))}
-          </ul>
-
-          {isComplete && (
-            <div className="mt-6 animate-pulse">
-              <div className="border-4 border-black bg-yellow-400 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-4 text-center">
-                <h3 className="text-2xl font-black">MISSION COMPLETE!</h3>
-              </div>
-            </div>
-          )}
-    
+      <div className="w-full lg:w-2/3">
+        <div className="border-4 border-black bg-orange-50 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-4 md:p-6">
           <div
-            className="grid grid-cols-10 gap-1 sm:gap-2"
+            className="grid grid-cols-10 gap-1 sm:gap-2 mx-auto max-w-xs md:max-w-md lg:max-w-lg"
             onTouchMove={handleTouchMove}
             onTouchEnd={handleMouseUp}
           >
@@ -299,7 +275,7 @@ const WordSearchGrid = () => {
                     "bg-blue-500 text-white border-blue-600 scale-105 shadow-md z-10 ";
                 } else if (isFound) {
                   cellClasses +=
-                    "bg-emerald-500 text-white border-emerald-600 shadow-sm ";
+                    "bg-emerald-500 text-purple-900 border-emerald-600 shadow-sm ";
                 } else {
                   cellClasses += "hover:bg-gray-50 hover:border-black/30 ";
                 }
@@ -322,7 +298,34 @@ const WordSearchGrid = () => {
         </div>
       </div>
 
+      {/* Words List */}
+      <div className="w-full lg:w-1/3">
+        <div className="border-4 border-black bg-orange-50 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-4 md:p-6 h-full">
+          <h2 className="text-2xl font-black mb-4 text-center">WORDS TO FIND</h2>
+          <ul className="flex flex-wrap lg:flex-col gap-2 justify-center lg:justify-start">
+            {WORDS_TO_FIND.map((word, index) => (
+              <li
+                key={index}
+                className={`font-black text-sm sm:text-base md:text-lg px-3 py-1.5 rounded-full border border-black/5 ${
+                  foundWords.includes(word)
+                    ? "bg-purple-500/10 text-purple-600 line-through border-purple-500/20"
+                    : "bg-white/50 text-black shadow-sm"
+                }`}
+              >
+                {word}
+              </li>
+            ))}
+          </ul>
 
+          {isComplete && (
+            <div className="mt-6 animate-pulse">
+              <div className="border-4 border-black bg-yellow-400 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-4 text-center">
+                <h3 className="text-2xl font-black">MISSION COMPLETE!</h3>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
