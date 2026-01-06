@@ -47,6 +47,7 @@ export default function Navbar() {
 
   // Auto-connect wallet when miniapp is ready in Farcaster environment, but only if user hasn't manually disconnected
   useEffect(() => {
+    /* Auto-connect disabled for demo
     // Detectar si estamos en un entorno de Farcaster
     const isFarcasterEnvironment = typeof window !== 'undefined' && 
       (window as any).frameContext !== undefined;
@@ -59,6 +60,7 @@ export default function Navbar() {
         connect({ connector: farcasterConnector });
       }
     }
+    */
   }, [isMiniAppReady, isConnected, isAccountConnecting, connect, hasManuallyDisconnected, connectors]);
 
   // Handle click outside to close mobile menu
