@@ -288,7 +288,7 @@ function PageContent() {
                       className="h-auto min-h-12 w-full border-4 border-black bg-green-500 p-3 text-base sm:text-lg font-black uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 active:translate-x-1 active:translate-y-1 hover:bg-green-600 active:bg-green-600 hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary flex items-center justify-center gap-2 whitespace-normal leading-tight"
                     >
                       <Play className="w-6 h-6 shrink-0" />
-                      <span>Play Full Game</span>
+                      <span>Play Game</span>
                     </Button>
                   </Link>
                 </div>
