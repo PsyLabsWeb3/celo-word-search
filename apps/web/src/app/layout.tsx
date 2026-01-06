@@ -56,12 +56,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={pressStart2P.className}>
+      <body className={`${pressStart2P.className} bg-[#8CE4FF]`}>
         {/* Navbar is included on all pages */}
-        <div className="relative flex flex-col min-h-screen">
+        <div className="relative flex flex-col min-h-screen bg-[#8CE4FF]">
           <Providers>
             <Navbar />
-            <main className="flex-1 pb-16 sm:pb-0">
+            <main className="flex-1 sm:pb-0">
               {children}
             </main>
             <footer className="p-4 text-center text-gray-600">

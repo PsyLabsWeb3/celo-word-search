@@ -256,7 +256,31 @@ const WordSearchGrid = () => {
     <div className="flex flex-col lg:flex-row gap-8">
       {/* Grid */}
       <div className="flex-1">
-        <div className="border-4 border-black bg-orange-50 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] mr-2 p-6">
+        <div className="border-4 border-black bg-orange-50 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] mr-2 p-6 mb-4">
+           <h2 className="text-2xl font-black mb-4">WORDS TO FIND</h2>
+          <ul className="flex flex-wrap lg:flex-col gap-2">
+            {WORDS_TO_FIND.map((word, index) => (
+              <li
+                key={index}
+                className={`font-black text-sm sm:text-base md:text-lg px-3 py-1.5 rounded-full border border-black/5 ${
+                  foundWords.includes(word)
+                    ? "bg-emerald-500/10 text-emerald-600 line-through border-emerald-500/20"
+                    : "bg-white/50 text-black shadow-sm"
+                }`}
+              >
+                {word}
+              </li>
+            ))}
+          </ul>
+
+          {isComplete && (
+            <div className="mt-6 animate-pulse">
+              <div className="border-4 border-black bg-yellow-400 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-4 text-center">
+                <h3 className="text-2xl font-black">MISSION COMPLETE!</h3>
+              </div>
+            </div>
+          )}
+    
           <div
             className="grid grid-cols-10 gap-1 sm:gap-2"
             onTouchMove={handleTouchMove}
@@ -298,34 +322,7 @@ const WordSearchGrid = () => {
         </div>
       </div>
 
-      {/* Words List */}
-      <div className="lg:w-1/3">
-        <div className="border-4 border-black bg-orange-50 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-6 h-full mr-2">
-          <h2 className="text-2xl font-black mb-4">WORDS TO FIND</h2>
-          <ul className="flex flex-wrap lg:flex-col gap-2">
-            {WORDS_TO_FIND.map((word, index) => (
-              <li
-                key={index}
-                className={`font-black text-sm sm:text-base md:text-lg px-3 py-1.5 rounded-full border border-black/5 ${
-                  foundWords.includes(word)
-                    ? "bg-emerald-500/10 text-emerald-600 line-through border-emerald-500/20"
-                    : "bg-white/50 text-black shadow-sm"
-                }`}
-              >
-                {word}
-              </li>
-            ))}
-          </ul>
 
-          {isComplete && (
-            <div className="mt-6 animate-pulse">
-              <div className="border-4 border-black bg-yellow-400 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-4 text-center">
-                <h3 className="text-2xl font-black">MISSION COMPLETE!</h3>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
     </div>
   );
 };

@@ -139,7 +139,7 @@ function PageContent() {
   if (gameStarted) {
     return (
       <>
-        <main className="min-h-screen p-4 bg-background sm:p-6 md:p-8">
+        <main className="min-h-screen p-4 bg-[#8CE4FF] sm:p-6 md:p-8">
           <div className="mx-auto max-w-7xl">
             <div className="mb-6 text-center md:mb-8">
               <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl md:text-5xl">
@@ -162,7 +162,7 @@ function PageContent() {
   return (
     <>
       {isRedirecting && (
-        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-background/60 backdrop-blur-md">
+        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#8CE4FF]/60 backdrop-blur-md">
           <div className=" ml-2 mr-2 border-4 border-black bg-white p-12 text-center space-y-4">
             <Loader2 className="w-16 h-16 animate-spin mx-auto text-primary" />
             <h2 className="text-2xl font-black uppercase">Loading Word Search</h2>
@@ -170,20 +170,26 @@ function PageContent() {
           </div>
         </div>
       )}
-      <main className="relative flex items-center justify-center min-h-screen p-4 overflow-hidden bg-background">
+      <main className="relative flex items-center justify-center min-h-screen p-4 overflow-hidden bg-[#8CE4FF]">
         {/* Animated crossword grid background */}
         <div className="absolute inset-0 opacity-10">
           <div className="grid w-full h-full grid-cols-12 gap-2 p-8 md:grid-cols-20">
-            {Array.from({ length: 240 }).map((_, i) => (
-              <div
-                key={i}
-                className="bg-white border-4 border-black animate-pulse"
-                style={{
-                  animationDelay: `${(i * 50) % 3000}ms`,
-                  animationDuration: "3s",
-                }}
-              />
-            ))}
+            {Array.from({ length: 240 }).map((_, i) => {
+              // Generate a random letter (A-Z)
+              const randomLetter = String.fromCharCode(Math.floor(Math.random() * 26) + 65);
+              return (
+                <div
+                  key={i}
+                  className="bg-white border-4 border-black animate-pulse flex items-center justify-center font-black text-black"
+                  style={{
+                    animationDelay: `${(i * 50) % 3000}ms`,
+                    animationDuration: "3s",
+                  }}
+                >
+                  {randomLetter}
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -192,9 +198,7 @@ function PageContent() {
         {/* Main content */}
         <div className="relative z-10 w-full max-w-2xl text-center">
           <div className="mb-8 space-y-4">
-            <div className="inline-block animate-bounce border-4 border-black bg-green-500 px-6 py-3 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
-              <AlphabetAnimation />
-            </div>
+         
 
             <h1 className="text-4xl font-black leading-tight uppercase text-balance text-foreground sm:text-5xl md:text-7xl">
               Onchain Word Search
@@ -205,17 +209,76 @@ function PageContent() {
             </p>
           </div>
 
-          <div className="grid w-full max-w-4xl gap-4 mx-auto mt-8 sm:grid-cols-1 lg:grid-cols-1">
-            {isConnected && (
-              <Link href="/word-search" passHref className="w-full">
-                <CeloNetworkButton
-                  className="h-auto min-h-32 w-full border-4 border-black bg-green-500 p-4 text-xl sm:text-2xl font-black uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 active:translate-x-1 active:translate-y-1 hover:bg-green-600 active:bg-green-600 hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary flex flex-col items-center justify-center gap-2 whitespace-normal leading-tight"
-                >
-                  <Play className="w-10 h-10 shrink-0" />
-                  <span>Play Word Search</span>
-                </CeloNetworkButton>
-              </Link>
-            )}
+          <div className="flex flex-col lg:flex-row gap-8 w-full max-w-6xl mx-auto mt-8">
+            {/* Sample Word Search Grid */}
+            <div className="flex-1">
+              <div className="border-4 border-black bg-orange-50 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] mr-2 p-4">
+                <div className="grid grid-cols-10 gap-1 sm:gap-1">
+                  {Array.from({ length: 100 }).map((_, index) => {
+                    const row = Math.floor(index / 10);
+                    const col = index % 10;
+                    // Create a sample grid with some words placed
+                    let letter = String.fromCharCode(Math.floor(Math.random() * 26) + 65);
+
+                    // Place some sample words for demonstration
+                    if (row === 0 && col >= 0 && col <= 7) {
+                      // BLOCKCHA (first 8 letters of BLOCKCHAIN)
+                      const wordLetters = ['B', 'L', 'O', 'C', 'K', 'C', 'H', 'A'];
+                      if (col < wordLetters.length) letter = wordLetters[col];
+                    } else if (row === 2 && col >= 3 && col <= 6) {
+                      // CELO (letters 4-7)
+                      const wordLetters = ['C', 'E', 'L', 'O'];
+                      const wordCol = col - 3;
+                      if (wordCol < wordLetters.length) letter = wordLetters[wordCol];
+                    } else if (row === 4 && col >= 1 && col <= 4) {
+                      // CRYp (letters 5-8)
+                      const wordLetters = ['C', 'R', 'Y', 'P'];
+                      const wordCol = col - 1;
+                      if (wordCol < wordLetters.length) letter = wordLetters[wordCol];
+                    }
+
+                    return (
+                      <div
+                        key={index}
+                        className="bg-white/90 backdrop-blur-sm border border-black/5 aspect-square flex items-center justify-center font-black text-xs sm:text-sm md:text-base text-black rounded-sm shadow-sm"
+                      >
+                        {letter}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Words List */}
+            <div className="lg:w-1/3">
+              <div className="border-4 border-black bg-orange-50 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-6 h-full mr-2">
+                <h2 className="text-xl font-black mb-4">WORDS TO FIND</h2>
+                <ul className="flex flex-wrap lg:flex-col gap-2">
+                  {["BLOCKCHAIN", "CELO", "CRYPTO", "STABLE", "WEB3"].map((word, index) => (
+                    <li
+                      key={index}
+                      className="font-black text-xs sm:text-sm md:text-base px-3 py-1.5 rounded-full border border-black/5 bg-white/50 text-black shadow-sm"
+                    >
+                      {word}
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="mt-6">
+                  {isConnected && (
+                    <Link href="/word-search" passHref className="w-full">
+                      <CeloNetworkButton
+                        className="h-auto min-h-16 w-full border-4 border-black bg-green-500 p-3 text-lg font-black uppercase shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-1 hover:translate-y-1 active:translate-x-1 active:translate-y-1 hover:bg-green-600 active:bg-green-600 hover:shadow-none active:shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary flex items-center justify-center gap-2 whitespace-normal leading-tight"
+                      >
+                        <Play className="w-6 h-6 shrink-0" />
+                        <span>Play Game</span>
+                      </CeloNetworkButton>
+                    </Link>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
 
 
@@ -236,7 +299,6 @@ function PageContent() {
                 ),
                 text: "Powered by CELO"
               },
-              { emoji: "🏆", text: "Prizes for the first solves" },
               {
                 emoji: (
                   <div className="relative w-full h-12">

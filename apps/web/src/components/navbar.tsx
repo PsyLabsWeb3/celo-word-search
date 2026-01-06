@@ -181,7 +181,7 @@ export default function Navbar() {
 
 
   return (
-    <nav className="border-b-4 border-black bg-[#AD27F5] p-4 shadow-[0px_4px_0px_0px_rgba(0,0,0,1)] relative">
+    <nav className="border-b-4 border-black bg-[#FEEE91] p-4 shadow-[0px_4px_0px_0px_rgba(0,0,0,1)] relative">
       <div className="container flex items-center justify-between mx-auto max-w-7xl">
         {/* Left section - menu button only */}
         <div className="flex justify-start">
@@ -260,7 +260,7 @@ export default function Navbar() {
       {/* Mobile dropdown menu */}
       {isMenuOpen && (
         <div className="container mx-auto mt-3 max-w-7xl md:hidden">
-          <div className="flex flex-col gap-3 p-3 bg-[#AD27F5]">
+          <div className="flex flex-col gap-3 p-3 bg-[#FEEE91]">
             {renderWalletButton(true)}
             <div className="pt-3 mt-3 border-t border-white/30">
               {/* <div className="font-medium text-white">

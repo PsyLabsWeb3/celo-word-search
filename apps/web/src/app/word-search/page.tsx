@@ -5,7 +5,7 @@ import WordSearchGrid from './WordSearchGrid';
 
 const WordSearchPage = () => {
   return (
-    <div className="min-h-screen p-2 md:p-8 transition-colors duration-500 bg-background">
+    <div className="min-h-screen p-2 md:p-8 transition-colors duration-500 bg-[#8CE4FF]">
       <div className="max-w-6xl mx-auto space-y-4 md:space-y-8">
         <div className="relative">
           <div className="mr-2 border-4 border-black bg-orange-50 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-4 md:p-8">
@@ -17,7 +17,7 @@ const WordSearchPage = () => {
             <div className="mt-6 md:mt-10 grid md:grid-cols-2 gap-4 md:gap-8 items-center">
               <div className="bg-yellow-200 border-4 border-black p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
                 <p className="font-black text-black mb-3 flex items-center gap-2 text-sm md:text-lg">
-                  <span className="w-3 h-3 border-2 border-black bg-white" />
+                  {/* <span className="w-3 h-3 border-2 border-black bg-white" /> */}
                   HOW TO PLAY:
                 </p>
                 <ul className="space-y-2 text-black font-bold text-xs md:text-base">
@@ -34,13 +34,6 @@ const WordSearchPage = () => {
                     <span>Words can be horizontal, vertical, or diagonal</span>
                   </li>
                 </ul>
-              </div>
-              <div className="hidden md:block">
-                <div className="aspect-video border-4 border-black bg-cyan-200 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center justify-center overflow-hidden">
-                  <div className="text-black text-7xl font-black select-none tracking-tighter opacity-20">
-                    SEARCH
-                  </div>
-                </div>
               </div>
             </div>
           </div>
